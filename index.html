@@ -43,8 +43,9 @@ body{
   display:flex;align-items:center;justify-content:center;
   font-size:22px;flex-shrink:0;
 }
-.hdr-title{color:#fff;font-size:20px;font-weight:700}
-.hdr-sub{color:rgba(255,255,255,.72);font-size:14px;margin-top:2px}
+.hdr-txt{flex:1;min-width:0}
+.hdr-title{color:#fff;font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-sub{color:rgba(255,255,255,.72);font-size:14px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* タブ */
 .tabs{display:none}
@@ -312,7 +313,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
 
 <div class="hdr">
   <div class="hdr-logo">🌿</div>
-  <div>
+  <div class="hdr-txt">
     <div class="hdr-title">シフト希望フォーム</div>
     <div class="hdr-sub">おりーぶ庵株式会社</div>
   </div>
@@ -2596,6 +2597,7 @@ async function importStaffFromExcel(input){
 /* ===================== AI社員「オリーブ」 ===================== */
 const AI_KEY_STORE="olive_ai_key";
 const AI_MODEL_STORE="olive_ai_model";
+const AI_MODE_STORE="olive_ai_mode";
 
 const AI_BASE=
 `あなたは「おりーぶ庵株式会社」で働くAI社員「オリーブ」です。この会社は障害福祉サービス事業者で、グループホーム「おりーぶ庵」や就労支援の「ウェル工房」などを運営しています。現場の職員（介護・支援スタッフ、事務、経理、看護、管理者）の業務を手伝います。
@@ -2628,6 +2630,8 @@ function aiInit(){
   const modelSel=document.getElementById("aiModel");
   if(savedModel && modelSel){ modelSel.value=savedModel; }
   if(modelSel){ modelSel.addEventListener("change",()=>localStorage.setItem(AI_MODEL_STORE,modelSel.value)); }
+  const savedMode=localStorage.getItem(AI_MODE_STORE);
+  if(savedMode && AI_MODES.some(m=>m.id===savedMode)){ aiMode=savedMode; }
   aiRenderModes();
   aiRefreshKeyState();
   const inp=document.getElementById("aiInput");
@@ -2635,7 +2639,13 @@ function aiInit(){
     inp.addEventListener("keydown",e=>{
       if(e.key==="Enter" && (e.ctrlKey||e.metaKey)){ e.preventDefault(); aiSend(); }
     });
+    inp.addEventListener("input",()=>aiAutoGrow(inp));
   }
+}
+
+function aiAutoGrow(el){
+  el.style.height="auto";
+  el.style.height=Math.min(el.scrollHeight,150)+"px";
 }
 
 function aiRefreshKeyState(){
@@ -2670,7 +2680,7 @@ function aiRenderModes(){
     const b=document.createElement("button");
     b.className="ai-mode"+(m.id===aiMode?" on":"");
     b.textContent=m.label;
-    b.onclick=()=>{ aiMode=m.id; aiRenderModes(); };
+    b.onclick=()=>{ aiMode=m.id; localStorage.setItem(AI_MODE_STORE,m.id); aiRenderModes(); };
     wrap.appendChild(b);
   });
 }
@@ -2728,6 +2738,7 @@ async function aiSend(){
   if(!text) return;
 
   inputEl.value="";
+  aiAutoGrow(inputEl);
   aiHistory.push({role:"user",content:text});
   aiAppendMsg("user",text);
   aiSetBusy(true);
