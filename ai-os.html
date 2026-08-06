@@ -430,6 +430,16 @@
           <input type="file" id="hkTmpl" accept=".xlsx,.docx" style="display:none">
         </div>
       </div>
+
+      <div class="hkSep" style="margin-top:14px">⑦ 大阪市「様式第3号（変更届）」に直接記入</div>
+      <div class="wpNote">
+        御社の <b>様式第3号（.xlsx）</b> を選ぶと、上の入力（変更前/変更後の住所・氏名、変更年月日、変更理由、事業所所在地・種類）を
+        <b>該当セルに自動記入</b>して、体裁そのままで書き出します。※.xls の場合は一度 .xlsx で保存してからお使いください。
+        <div style="margin-top:8px">
+          <button class="wpBtn primary" id="hkY3">🏛 様式第3号(.xlsx)を選んで記入</button>
+          <input type="file" id="hkY3File" accept=".xlsx" style="display:none">
+        </div>
+      </div>
       <div id="hkResult"></div>
     </div>
   </div>
@@ -1402,6 +1412,59 @@ function hkTokenRegex(tk){
   return new RegExp(parts.join('(?:<[^>]*>)*'),'g');
 }
 function hkXmlEsc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+// 大阪市「様式第3号（変更届）」に直接セル記入（管理者変更）
+document.getElementById('hkY3').addEventListener('click', ()=>{
+  if(typeof XLSX==='undefined'){ alert('Excelライブラリを読み込み中です。ブラウザ／公開URLで開くと動きます。'); return; }
+  document.getElementById('hkY3File').click();
+});
+document.getElementById('hkY3File').addEventListener('change', function(){
+  const f=this.files[0]; this.value=''; if(f) hkFillYoushiki3(f);
+});
+async function hkFillYoushiki3(file){
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellStyles:true});
+    const sn=wb.SheetNames.find(n=>n.indexOf('様式第')>=0 || n.indexOf('変更届')>=0) || wb.SheetNames[0];
+    const ws=wb.Sheets[sn];
+    const setV=(a,v)=>{ if(v==null||v==='') return; if(!ws[a]) ws[a]={}; ws[a].t=(typeof v==='number')?'n':'s'; ws[a].v=v; ws[a].w=String(v); };
+    const box=(addr,name)=> ('管理者\n'+(addr||'')+'\n'+(name||'')).replace(/\n+$/,'');
+    // 変更前 / 変更後（管理者）
+    setV('N32', box(hkVal('f_old_addr'), hkVal('f_old_name')));
+    setV('N64', box(hkVal('f_new_addr'), hkVal('f_new_name')));
+    // 変更年月日（西暦の年/月/日セル）
+    const hd=hkVal('f_hendate');
+    if(hd){ const p=hd.split('-').map(Number); setV('S91',p[0]); setV('V91',p[1]); setV('Y91',p[2]); }
+    // 変更理由（未入力なら定型文）
+    const riyu = hkVal('f_riyu') || (hd? (hkWareki(hd)+'付で、管理者を下記のとおり変更いたしましたので届出いたします。') : '');
+    setV('N92', riyu);
+    // 事業所 所在地／種類（任意で上書き）
+    if(hkVal('f_jusho'))   setV('R25', hkVal('f_jusho'));
+    if(hkVal('f_service')) setV('R26', hkVal('f_service'));
+    const u8=XLSX.write(wb,{type:'array',bookType:'xlsx',cellStyles:true});
+    const blob = await xlsxSetOnePage(u8);   // A4・1ページに収める設定を注入
+    hkDownload(blob, '様式第3号_記入済.xlsx');
+    banner('🏛 様式第3号に記入しました');
+    say('行政','様式第3号に記入しました',2600);
+    say('監査','変更前後・年月日をご確認を',2400);
+    logLine('<b>行政AI</b>：様式第3号（変更届）へ記入 → 様式第3号_記入済.xlsx を保存');
+  }catch(e){ alert('様式第3号の記入でエラー：'+e.message); }
+}
+// 生成した.xlsxに「A4・1ページに収める」用紙設定を注入（SheetJSは用紙設定を書けないため）
+async function xlsxSetOnePage(u8){
+  if(typeof JSZip==='undefined') return new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const zip=await JSZip.loadAsync(u8);
+  const names=Object.keys(zip.files).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n));
+  for(const nm of names){
+    let x=await zip.file(nm).async('string');
+    if(!/<sheetPr[ >]/.test(x)) x=x.replace(/(<worksheet[^>]*>)/, '$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+    else if(!/<pageSetUpPr/.test(x)) x=x.replace(/(<sheetPr[^>]*>)/, '$1<pageSetUpPr fitToPage="1"/>');
+    if(!/<pageSetup[ >]/.test(x)){
+      if(/<pageMargins[^>]*\/>/.test(x)) x=x.replace(/(<pageMargins[^>]*\/>)/, '$1<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>');
+      else x=x.replace(/(<\/worksheet>)/, '<pageMargins left="0.3" right="0.3" top="0.4" bottom="0.4" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>$1');
+    }
+    zip.file(nm, x);
+  }
+  return await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
 function hkAfterFill(hit, kind){
   if(hit===0){
     alert('この様式にトークンが見つかりませんでした。\n「🔖 トークン一覧を見る」のトークンを、様式の記入したい場所に貼り付けてから、もう一度お試しください。');
