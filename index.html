@@ -43,9 +43,8 @@ body{
   display:flex;align-items:center;justify-content:center;
   font-size:22px;flex-shrink:0;
 }
-.hdr-txt{flex:1;min-width:0}
-.hdr-title{color:#fff;font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hdr-sub{color:rgba(255,255,255,.72);font-size:14px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-title{color:#fff;font-size:20px;font-weight:700}
+.hdr-sub{color:rgba(255,255,255,.72);font-size:14px;margin-top:2px}
 
 /* タブ */
 .tabs{display:none}
@@ -239,34 +238,6 @@ table.agg tr.sum td{background:var(--sand);font-weight:700}
 .toast.ok{background:var(--gr)} .toast.err{background:#c62828}
 
 .hidden{display:none!important}
-
-/* ===== AI社員 ===== */
-.ai-banner{background:linear-gradient(135deg,#00695c,#00897b)!important}
-.ai-privacy{background:#fff8e1;border:1.5px solid #ffe082;color:#7a5c00;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.7;margin-bottom:14px}
-.ai-modes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.ai-mode{border:2px solid var(--bdr);background:#fff;border-radius:100px;padding:9px 15px;font-size:14px;font-weight:700;color:var(--sub);cursor:pointer;font-family:inherit;transition:.15s;-webkit-appearance:none}
-.ai-mode.on{background:var(--gr-bg);border-color:var(--gr-bdr);color:var(--m)}
-.ai-mode:active{transform:scale(.96)}
-.ai-chat{background:var(--sand);border-radius:14px;padding:14px;min-height:220px;max-height:54vh;overflow-y:auto;margin-bottom:12px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
-.ai-empty{color:var(--sub);font-size:14px;text-align:center;padding:36px 10px;line-height:1.8}
-.ai-msg{max-width:90%;padding:12px 14px;border-radius:14px;font-size:15px;line-height:1.75;white-space:pre-wrap;word-break:break-word}
-.ai-msg.user{align-self:flex-end;background:var(--gr);color:#fff;border-bottom-right-radius:4px}
-.ai-msg.bot{align-self:flex-start;background:#fff;color:var(--text);border:1px solid var(--bdr);border-bottom-left-radius:4px}
-.ai-msg.err{align-self:stretch;max-width:100%;background:#ffebee;border:1px solid #ffcdd2;color:#c62828;font-size:14px}
-.ai-copy{display:inline-block;margin-top:10px;font-size:12px;font-weight:700;color:var(--gr);background:var(--gr-bg);border:1px solid var(--gr-bdr);border-radius:8px;padding:5px 11px;cursor:pointer;font-family:inherit}
-.ai-copy:active{transform:scale(.95)}
-.ai-inputbar{display:flex;gap:8px;align-items:flex-end}
-.ai-inputbar textarea{flex:1;border:2px solid var(--bdr);border-radius:12px;padding:12px 14px;font-size:16px;font-family:inherit;resize:none;outline:none;line-height:1.5;color:var(--text);max-height:150px;-webkit-appearance:none}
-.ai-inputbar textarea:focus{border-color:var(--gr2)}
-.ai-send{flex-shrink:0;background:var(--gr);color:#fff;border:none;border-radius:12px;padding:0 18px;height:50px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
-.ai-send:disabled{opacity:.45}
-.ai-send:active{transform:scale(.96)}
-.ai-foot{display:flex;align-items:center;gap:10px;margin-top:11px;flex-wrap:wrap}
-.ai-foot select{border:1.5px solid var(--bdr);border-radius:9px;padding:8px 10px;font-size:13px;font-family:inherit;background:#fff;color:var(--text)}
-.ai-link{font-size:13px;color:var(--gr);cursor:pointer;background:none;border:none;font-family:inherit;padding:4px;font-weight:600}
-.ai-typing{align-self:flex-start;color:var(--sub);font-size:14px;padding:6px 10px;background:#fff;border:1px solid var(--bdr);border-radius:14px;border-bottom-left-radius:4px}
-.ai-steps{background:var(--sand);border-radius:11px;padding:13px 15px;font-size:14px;color:var(--sub);line-height:2;margin-bottom:14px}
-.ai-steps b{color:var(--gr)}
 .day.has-comment::after{
   content:"💬";position:absolute;top:1px;right:1px;
   font-size:9px;line-height:1;
@@ -313,12 +284,11 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
 
 <div class="hdr">
   <div class="hdr-logo">🌿</div>
-  <div class="hdr-txt">
+  <div>
     <div class="hdr-title">シフト希望フォーム</div>
     <div class="hdr-sub">おりーぶ庵株式会社</div>
   </div>
-  <button id="aiToggleBtn" onclick="toggleAiMode()" style="margin-left:auto;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:10px;padding:8px 11px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;">🤖 AI社員</button>
-  <button id="adminToggleBtn" onclick="toggleAdminMode()" style="margin-left:7px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:10px;padding:8px 11px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;">⚙️ 管理</button>
+  <button id="adminToggleBtn" onclick="toggleAdminMode()" style="margin-left:auto;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;">⚙️ 管理</button>
 </div>
 <div class="tabs">
   <button class="tab on" id="tab-input" onclick="switchMode('input')">📅 シフト希望</button>
@@ -869,66 +839,6 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
   </div>
 </div>
 
-<!-- ===== AI社員 ===== -->
-<main class="hidden" id="view-ai">
-  <div class="banner ai-banner">
-    <h2>🤖 AI社員「オリーブ」</h2>
-    <p>個別支援計画・アセスメント・監査対策・事務・経理などをお手伝いします。</p>
-  </div>
-
-  <!-- 初期設定（APIキー未登録時） -->
-  <div class="card" id="aiSetupCard">
-    <div class="card-h">
-      <span class="card-hn">🔑</span>
-      <div><div class="card-hl">はじめの設定（1回だけ）</div><div class="card-hs">AI利用キーを登録します</div></div>
-    </div>
-    <div class="card-b">
-      <div class="ai-steps">
-        AI社員に働いてもらうには、<b>Claude（クロード）の利用キー</b>が必要です。<br>
-        <b>①</b> パソコンで <b>console.anthropic.com</b> にアクセスして登録<br>
-        <b>②</b> 左メニューの「API Keys」から新しいキーを作成<br>
-        <b>③</b> できたキー（<b>sk-ant-</b> で始まる長い文字列）を下に貼り付け
-      </div>
-      <div class="field">
-        <label class="lbl" for="aiKeyInput">利用キー</label>
-        <input class="inp" type="password" id="aiKeyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
-      </div>
-      <button class="btn btn-gr" onclick="aiSaveKey()">💾 登録して始める</button>
-      <div style="font-size:12px;color:var(--sub);margin-top:12px;line-height:1.7">
-        ※ キーはこの端末のブラウザにだけ保存されます。AIとの通信以外に外部へ送信されることはありません。
-      </div>
-    </div>
-  </div>
-
-  <!-- 本体 -->
-  <div id="aiMain" class="hidden">
-    <div class="ai-privacy">
-      ⚠️ <b>個人情報のあつかい</b><br>
-      利用者さんの氏名・生年月日などは、<b>イニシャルや仮名</b>に置きかえて入力してください（例：田中太郎さん → Aさん）。
-    </div>
-
-    <div style="font-size:14px;font-weight:700;color:var(--sub);margin-bottom:9px">どの仕事を手伝ってほしいですか？</div>
-    <div class="ai-modes" id="aiModes"></div>
-
-    <div class="ai-chat" id="aiChat"></div>
-
-    <div class="ai-inputbar">
-      <textarea id="aiInput" rows="2" placeholder="例：Aさんの個別支援計画を作りたい。就労継続支援B型を利用中で…"></textarea>
-      <button class="ai-send" id="aiSendBtn" onclick="aiSend()">送信</button>
-    </div>
-
-    <div class="ai-foot">
-      <select id="aiModel" title="AIモデルの選択">
-        <option value="claude-sonnet-5">標準（バランス）</option>
-        <option value="claude-opus-5">高性能（じっくり）</option>
-        <option value="claude-haiku-4-5">高速（かんたん）</option>
-      </select>
-      <button class="ai-link" onclick="aiNewChat()">🗑 会話をクリア</button>
-      <button class="ai-link" onclick="aiResetKey()">🔑 キー変更</button>
-    </div>
-  </div>
-</main>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -959,22 +869,16 @@ function defaultRange(){
 }
 
 function switchMode(mode){
-  ["input","admin","ai"].forEach(v=>{
+  ["input","admin"].forEach(v=>{
     const view=document.getElementById("view-"+v);
     if(view){ v===mode ? view.classList.remove("hidden") : view.classList.add("hidden"); }
   });
   const btn=document.getElementById("adminToggleBtn");
   if(btn){ btn.textContent = mode==="admin" ? "← 戻る" : "⚙️ 管理"; }
-  const aiBtn=document.getElementById("aiToggleBtn");
-  if(aiBtn){ aiBtn.textContent = mode==="ai" ? "← 戻る" : "🤖 AI社員"; }
 }
 function toggleAdminMode(){
   const isAdmin=!document.getElementById("view-admin").classList.contains("hidden");
   switchMode(isAdmin?"input":"admin");
-}
-function toggleAiMode(){
-  const isAi=!document.getElementById("view-ai").classList.contains("hidden");
-  switchMode(isAi?"input":"ai");
 }
 
 function init(){
@@ -2594,252 +2498,7 @@ async function importStaffFromExcel(input){
   }
 }
 
-/* ===================== AI社員「オリーブ」 ===================== */
-const AI_KEY_STORE="olive_ai_key";
-const AI_MODEL_STORE="olive_ai_model";
-const AI_MODE_STORE="olive_ai_mode";
-
-const AI_BASE=
-`あなたは「おりーぶ庵株式会社」で働くAI社員「オリーブ」です。この会社は障害福祉サービス事業者で、グループホーム「おりーぶ庵」や就労支援の「ウェル工房」などを運営しています。現場の職員（介護・支援スタッフ、事務、経理、看護、管理者）の業務を手伝います。
-
-【基本方針】
-- ていねいで分かりやすい日本語で答える。専門用語には短い補足をつける。
-- 書類を作るときは、そのまま使える完成度の高い下書きを、見出しや項目で整理して提示する。必要な情報が足りないときは、先に質問して埋めてから作る。
-- 個人情報は仮名・イニシャルのまま扱い、実在の氏名や生年月日を推測して補完しない。
-- 制度・報酬・法令・医療・税務にかかわる最終判断は、必ず「担当者や専門家（所轄の行政窓口・税理士・医師など）に確認してください」と一言そえる。断定しすぎない。
-- 事実が不確かなときは、はっきり「確認が必要」と伝える。作り話をしない。`;
-
-const AI_MODES=[
-  {id:"plan",   label:"個別支援計画", sys:"今回は【個別支援計画】の作成を手伝ってください。利用者本人・家族の意向、総合的な支援の方針、長期目標・短期目標、それぞれの目標に対する具体的な支援内容・担当・提供期間・留意点、モニタリング時期を、項目立てした書式でまとめてください。"},
-  {id:"assess", label:"アセスメント", sys:"今回は【アセスメント（利用者理解）】を手伝ってください。本人・家族の意向、生活歴、心身の状況、日常生活の状況、社会参加・就労の状況、本人の強み（ストレングス）、課題とニーズを、項目立てで整理してください。"},
-  {id:"audit",  label:"監査対策",     sys:"今回は【実地指導・監査対策】を手伝ってください。障害福祉サービスの運営基準に関する一般的な観点から、必要書類のチェックリスト、指摘されやすいポイント、日ごろの整備のコツを説明してください。基準は自治体や年度で異なるため、必ず所轄の行政窓口や最新の通知で確認するよう強く促してください。"},
-  {id:"doc",    label:"事務・書類",   sys:"今回は【事務・書類作成】を手伝ってください。お知らせ文、案内文、議事録、報告書、メール返信、掲示物などを、目的と読み手に合わせて作成してください。"},
-  {id:"acct",   label:"経理",         sys:"今回は【経理・事務】を手伝ってください。請求業務の整理、勘定科目や仕訳の一般的な考え方の説明、簡単な計算補助、経理関連書類の下書きなどを行います。金額の計算は慎重に行い、税務・会計の最終判断は税理士に確認するよう促してください。"},
-  {id:"nurse",  label:"看護・申請",   sys:"今回は【看護・各種申請】を手伝ってください。看護記録、ヒヤリハット・事故報告、健康管理の記録、各種申請書類の下書きなどを行います。診断・投薬などの医療的判断は行わず、医師・看護師の判断に委ねる前提で書いてください。"},
-  {id:"well",   label:"ウェル工房",   sys:"今回は【ウェル工房（就労支援）】の業務を手伝ってください。作業日誌、生産活動・工賃の記録、実習・訓練の記録、就労面の支援記録などを作成してください。"},
-  {id:"inquiry",label:"問い合わせ対応",sys:"今回は【問い合わせ対応】を手伝ってください。利用者・ご家族・関係機関からの問い合わせに対する、ていねいで分かりやすい返答文を作成してください。必要に応じてQ&A形式でも整理します。"},
-  {id:"free",   label:"その他相談",   sys:"今回は業務全般の相談に対応してください。内容に応じて、書類作成・整理・アイデア出しなどを柔軟に手伝ってください。"}
-];
-
-let aiMode="plan";
-let aiHistory=[];   // {role:"user"|"assistant", content:"..."}
-let aiBusy=false;
-
-function aiInit(){
-  const savedModel=localStorage.getItem(AI_MODEL_STORE);
-  const modelSel=document.getElementById("aiModel");
-  if(savedModel && modelSel){ modelSel.value=savedModel; }
-  if(modelSel){ modelSel.addEventListener("change",()=>localStorage.setItem(AI_MODEL_STORE,modelSel.value)); }
-  const savedMode=localStorage.getItem(AI_MODE_STORE);
-  if(savedMode && AI_MODES.some(m=>m.id===savedMode)){ aiMode=savedMode; }
-  aiRenderModes();
-  aiRefreshKeyState();
-  const inp=document.getElementById("aiInput");
-  if(inp){
-    inp.addEventListener("keydown",e=>{
-      if(e.key==="Enter" && (e.ctrlKey||e.metaKey)){ e.preventDefault(); aiSend(); }
-    });
-    inp.addEventListener("input",()=>aiAutoGrow(inp));
-  }
-}
-
-function aiAutoGrow(el){
-  el.style.height="auto";
-  el.style.height=Math.min(el.scrollHeight,150)+"px";
-}
-
-function aiRefreshKeyState(){
-  const hasKey=!!localStorage.getItem(AI_KEY_STORE);
-  document.getElementById("aiSetupCard").classList.toggle("hidden",hasKey);
-  document.getElementById("aiMain").classList.toggle("hidden",!hasKey);
-  if(hasKey && aiHistory.length===0){ aiRenderEmpty(); }
-}
-
-function aiSaveKey(){
-  const el=document.getElementById("aiKeyInput");
-  const key=(el.value||"").trim();
-  if(!key){ toast("キーを入力してください","err"); return; }
-  if(!key.startsWith("sk-ant-")){ toast("キーの形式が違うようです","err"); return; }
-  localStorage.setItem(AI_KEY_STORE,key);
-  el.value="";
-  toast("登録しました","ok");
-  aiRefreshKeyState();
-}
-
-function aiResetKey(){
-  if(!confirm("登録した利用キーを削除して、登録画面に戻りますか？")) return;
-  localStorage.removeItem(AI_KEY_STORE);
-  aiRefreshKeyState();
-}
-
-function aiRenderModes(){
-  const wrap=document.getElementById("aiModes");
-  if(!wrap) return;
-  wrap.innerHTML="";
-  AI_MODES.forEach(m=>{
-    const b=document.createElement("button");
-    b.className="ai-mode"+(m.id===aiMode?" on":"");
-    b.textContent=m.label;
-    b.onclick=()=>{ aiMode=m.id; localStorage.setItem(AI_MODE_STORE,m.id); aiRenderModes(); };
-    wrap.appendChild(b);
-  });
-}
-
-function aiRenderEmpty(){
-  const chat=document.getElementById("aiChat");
-  chat.innerHTML='<div class="ai-empty">上のボタンで仕事をえらんで、<br>下の欄に相談内容を入力してください。<br><br>個人情報は仮名（Aさんなど）で入力してくださいね。</div>';
-}
-
-function aiAppendMsg(role,text){
-  const chat=document.getElementById("aiChat");
-  const empty=chat.querySelector(".ai-empty");
-  if(empty) empty.remove();
-  const div=document.createElement("div");
-  div.className="ai-msg "+role;
-  div.textContent=text;
-  chat.appendChild(div);
-  chat.scrollTop=chat.scrollHeight;
-  return div;
-}
-
-function aiCopy(btn){
-  const txt=btn.getAttribute("data-text")||"";
-  const done=()=>{ btn.textContent="✓ コピーしました"; setTimeout(()=>btn.textContent="📋 コピー",1600); };
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));
-  }else{ fallbackCopy(txt,done); }
-}
-function fallbackCopy(txt,done){
-  const ta=document.createElement("textarea");
-  ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
-  document.body.appendChild(ta); ta.select();
-  try{ document.execCommand("copy"); done(); }catch(e){}
-  document.body.removeChild(ta);
-}
-
-function aiNewChat(){
-  if(aiBusy) return;
-  aiHistory=[];
-  aiRenderEmpty();
-}
-
-function aiSetBusy(b){
-  aiBusy=b;
-  const btn=document.getElementById("aiSendBtn");
-  if(btn){ btn.disabled=b; btn.textContent=b?"…":"送信"; }
-}
-
-async function aiSend(){
-  if(aiBusy) return;
-  const key=localStorage.getItem(AI_KEY_STORE);
-  if(!key){ aiRefreshKeyState(); return; }
-  const inputEl=document.getElementById("aiInput");
-  const text=(inputEl.value||"").trim();
-  if(!text) return;
-
-  inputEl.value="";
-  aiAutoGrow(inputEl);
-  aiHistory.push({role:"user",content:text});
-  aiAppendMsg("user",text);
-  aiSetBusy(true);
-
-  const chat=document.getElementById("aiChat");
-  const typing=document.createElement("div");
-  typing.className="ai-typing";
-  typing.textContent="オリーブが考えています…";
-  chat.appendChild(typing);
-  chat.scrollTop=chat.scrollHeight;
-
-  const model=document.getElementById("aiModel").value||"claude-sonnet-5";
-  const mode=AI_MODES.find(m=>m.id===aiMode)||AI_MODES[0];
-  const system=AI_BASE+"\n\n"+mode.sys;
-
-  let botEl=null, full="";
-  try{
-    const resp=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{
-        "content-type":"application/json",
-        "x-api-key":key,
-        "anthropic-version":"2023-06-01",
-        "anthropic-dangerous-direct-browser-access":"true"
-      },
-      body:JSON.stringify({
-        model:model,
-        max_tokens:8000,
-        system:system,
-        messages:aiHistory.map(m=>({role:m.role,content:m.content})),
-        stream:true
-      })
-    });
-
-    if(!resp.ok){
-      let detail="";
-      try{ const j=await resp.json(); detail=(j.error&&j.error.message)||""; }catch(e){}
-      typing.remove();
-      throw new Error(aiHttpMsg(resp.status,detail));
-    }
-
-    const reader=resp.body.getReader();
-    const dec=new TextDecoder();
-    let buf="";
-    while(true){
-      const {done,value}=await reader.read();
-      if(done) break;
-      buf+=dec.decode(value,{stream:true});
-      let nl;
-      while((nl=buf.indexOf("\n"))>=0){
-        const line=buf.slice(0,nl).trim();
-        buf=buf.slice(nl+1);
-        if(!line.startsWith("data:")) continue;
-        const data=line.slice(5).trim();
-        if(!data||data==="[DONE]") continue;
-        let ev; try{ ev=JSON.parse(data); }catch(e){ continue; }
-        if(ev.type==="content_block_delta" && ev.delta && ev.delta.type==="text_delta"){
-          if(!botEl){ typing.remove(); botEl=aiAppendMsg("bot",""); }
-          full+=ev.delta.text;
-          botEl.textContent=full;
-          chat.scrollTop=chat.scrollHeight;
-        }else if(ev.type==="error"){
-          throw new Error((ev.error&&ev.error.message)||"通信エラーが発生しました");
-        }
-      }
-    }
-
-    if(typing.parentNode) typing.remove();
-    if(!full.trim()){
-      if(!botEl) botEl=aiAppendMsg("bot","");
-      botEl.textContent="（応答がありませんでした。もう一度お試しください）";
-    }else{
-      aiHistory.push({role:"assistant",content:full});
-      const cp=document.createElement("button");
-      cp.className="ai-copy"; cp.textContent="📋 コピー";
-      cp.setAttribute("data-text",full);
-      cp.onclick=()=>aiCopy(cp);
-      botEl.appendChild(document.createElement("br"));
-      botEl.appendChild(cp);
-    }
-  }catch(err){
-    if(typing.parentNode) typing.remove();
-    aiHistory.pop(); // 失敗したユーザー発言は履歴から戻す
-    const e=aiAppendMsg("err","⚠️ "+ (err.message||"通信に失敗しました"));
-    e.classList.remove("bot","user");
-  }finally{
-    aiSetBusy(false);
-  }
-}
-
-function aiHttpMsg(status,detail){
-  if(status===401) return "利用キーが正しくないようです。「🔑 キー変更」から登録し直してください。";
-  if(status===400) return "リクエストにエラーがありました。"+(detail?"（"+detail+"）":"");
-  if(status===403) return "このキーではアクセスできません。プランや権限をご確認ください。";
-  if(status===429) return "利用が混み合っています。少し待ってからもう一度お試しください。";
-  if(status===529) return "AIが混み合っています。少し待ってからもう一度お試しください。";
-  if(status>=500) return "AI側で一時的なエラーが発生しました。少し待ってからお試しください。";
-  return "通信エラーが発生しました（コード "+status+"）。"+(detail?"（"+detail+"）":"");
-}
-
-window.addEventListener("load",function(){try{init();}catch(e){console.error(e);}try{aiInit();}catch(e){console.error(e);}});
+window.addEventListener("load",function(){try{init();}catch(e){console.error(e);}});
 </script>
 </body>
 </html>
