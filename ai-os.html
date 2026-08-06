@@ -232,6 +232,38 @@
   .names li b{color:var(--olive-d)}
   .wpNote{font-size:11px; color:#6b7358; margin-top:10px; line-height:1.5}
   .tblwrap{max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px}
+
+  /* ===== 変更届パネル ===== */
+  .hkForm{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px}
+  .hkForm .full{grid-column:1 / -1}
+  .hkField{display:flex; flex-direction:column; gap:2px}
+  .hkField label{font-size:10.5px; color:#5c6a48; font-weight:700}
+  .hkField input, .hkField select, .hkField textarea{
+    border:1px solid var(--line); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:inherit; width:100%
+  }
+  .hkField textarea{min-height:44px; resize:vertical}
+  .hkSep{grid-column:1/-1; font-size:11px; font-weight:800; color:var(--olive-d);
+    border-bottom:2px solid var(--olive-l); padding:6px 0 3px; margin-top:4px}
+  .hkChecks{grid-column:1/-1; display:flex; flex-wrap:wrap; gap:10px; font-size:11.5px; color:#455038}
+  .hkChecks label{display:flex; gap:4px; align-items:center}
+  /* A4下書きプレビュー */
+  .doc-preview{background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px 22px;
+    margin-top:12px; color:#1a1a1a; font-size:12.5px; line-height:1.7}
+  .doc-preview h2.dtitle{text-align:center; font-size:19px; letter-spacing:8px; margin:2px 0 16px; font-weight:800}
+  .doc-preview .dmeta{display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px}
+  .doc-preview .to{font-size:13px; font-weight:700; margin:10px 0 2px}
+  .doc-preview .lead{margin:12px 0}
+  .doc-preview table.dt{border-collapse:collapse; width:100%; margin:8px 0 4px}
+  .doc-preview table.dt th, .doc-preview table.dt td{border:1px solid #333; padding:5px 8px; font-size:12px; vertical-align:top}
+  .doc-preview table.dt th{background:#f0f0eb; width:120px; text-align:left; white-space:nowrap}
+  .doc-preview .sec{font-weight:800; margin:14px 0 4px; font-size:13px}
+  .doc-preview .beppyo{page-break-before:always; margin-top:22px}
+  .doc-preview .stamp{text-align:right; margin-top:6px; font-size:11px; color:#666}
+  @media print{
+    body * { visibility:hidden }
+    #hkPrintArea, #hkPrintArea * { visibility:visible }
+    #hkPrintArea{ position:absolute; left:0; top:0; width:100%; border:none; margin:0; padding:0 }
+  }
 </style>
 
 <header>
@@ -273,9 +305,9 @@
   <aside class="side">
     <div class="card">
       <div class="demo-note">
-        ✅ <b>「シフトを集計して」は本物です。</b>フォーム(GAS)の希望を読み取り、日別に集計＋人手不足の日を検出し、
-        <b>「シフト集計」Excelテンプレートに ○/△/× を反映</b>してダウンロードできます。<br>
-        その他の指示（変更届・給与など）はまだ<b>見た目のデモ</b>で、中身は1業務ずつ追加していきます。
+        ✅ <b>「シフトを集計して」</b>…フォーム(GAS)の希望を集計＋人手不足検出＋Excel反映。<br>
+        ✅ <b>「変更届作成して」</b>…管理者変更届の下書きを自動作成（印刷/PDF・保存）。<br>
+        その他（給与・請求など）はまだ<b>見た目のデモ</b>で、中身は1業務ずつ追加していきます。
       </div>
     </div>
     <div class="card">
@@ -324,6 +356,72 @@
   </div>
 </div>
 
+<!-- ===== 業務パネル：変更届の下書き（行政AI） ===== -->
+<div class="modal" id="henkouPanel" hidden>
+  <div class="sheet">
+    <div class="sheetHead">
+      <b>📋 変更届の下書き</b>
+      <span class="real-badge">本物の処理</span>
+      <span class="grow"></span>
+      <button id="hkClose" title="閉じる">✕</button>
+    </div>
+    <div class="sheetBody">
+      <div class="wpControls" style="margin-bottom:10px">
+        <label>届出の種類
+          <select id="hkType">
+            <option value="kanrisha">管理者の変更届</option>
+            <option value="other" disabled>その他（名称/所在地/加算 …）準備中</option>
+          </select>
+        </label>
+        <button id="hkSample">サンプルを入れる</button>
+      </div>
+
+      <div class="hkForm" id="hkForm">
+        <div class="hkSep">① 提出先・届出日</div>
+        <div class="hkField"><label>提出先</label><input id="f_ate" value="大阪市長"></div>
+        <div class="hkField"><label>届出日</label><input id="f_todokede" type="date"></div>
+
+        <div class="hkSep">② 事業者（法人）</div>
+        <div class="hkField"><label>法人名称</label><input id="f_houjin" placeholder="社会福祉法人 ○○会"></div>
+        <div class="hkField"><label>代表者 職・氏名</label><input id="f_daihyo" placeholder="理事長 ○○ ○○"></div>
+        <div class="hkField full"><label>主たる事務所の所在地</label><input id="f_honten" placeholder="大阪市○○区○○ 1-2-3"></div>
+        <div class="hkField"><label>電話番号</label><input id="f_tel" placeholder="06-0000-0000"></div>
+
+        <div class="hkSep">③ 事業所</div>
+        <div class="hkField"><label>事業所名称</label><input id="f_jigyosho" placeholder="おりーぶ庵 ○○"></div>
+        <div class="hkField"><label>指定番号</label><input id="f_shitei" placeholder="2710000000"></div>
+        <div class="hkField"><label>サービス種類</label><input id="f_service" value="共同生活援助"></div>
+        <div class="hkField"><label>事業所所在地</label><input id="f_jusho" placeholder="大阪市此花区○○"></div>
+
+        <div class="hkSep">④ 変更内容（管理者）</div>
+        <div class="hkField"><label>変更年月日</label><input id="f_hendate" type="date"></div>
+        <div class="hkField"><label>変更の理由</label><input id="f_riyu" placeholder="前任者の退職に伴う"></div>
+        <div class="hkField"><label>【変更前】氏名</label><input id="f_old_name" placeholder="旧 太郎"></div>
+        <div class="hkField"><label>【変更後】氏名</label><input id="f_new_name" placeholder="新 花子"></div>
+        <div class="hkField"><label>【変更前】生年月日</label><input id="f_old_birth" placeholder="昭和50年1月1日"></div>
+        <div class="hkField"><label>【変更後】生年月日</label><input id="f_new_birth" placeholder="昭和55年5月5日"></div>
+        <div class="hkField full"><label>【変更前】住所</label><input id="f_old_addr" placeholder="大阪市○○区…"></div>
+        <div class="hkField full"><label>【変更後】住所</label><input id="f_new_addr" placeholder="大阪市○○区…"></div>
+
+        <div class="hkSep">⑤ 添付書類（チェックした書類を一覧に記載）</div>
+        <div class="hkChecks">
+          <label><input type="checkbox" id="a1" checked>管理者の経歴書</label>
+          <label><input type="checkbox" id="a2" checked>資格を証する書類の写し</label>
+          <label><input type="checkbox" id="a3">実務経験証明書</label>
+          <label><input type="checkbox" id="a4" checked>誓約書</label>
+        </div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+        <button class="wpBtn primary" id="hkMake">📝 下書きを作成</button>
+        <button class="wpBtn" id="hkPrint" style="display:none">🖨 印刷 / PDFで保存</button>
+        <button class="wpBtn" id="hkDl" style="display:none">⬇ HTMLで保存</button>
+      </div>
+      <div id="hkResult"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* =========================================================================
@@ -360,7 +458,7 @@ const ZONES = [
 /* ---- 業務プラン（キーワード → 担当AIの流れ＋成果物） ---- */
 const PLANS = [
   {key:['変更届','管理者'], title:'管理者変更届を作成中…', icon:'📋',
-   output:'管理者変更届（下書き）', outNote:'行政AI・人事AI・監査AI・文書AI 連携',
+   output:'管理者変更届（下書き）', outNote:'行政AI・人事AI・監査AI・文書AI 連携', real:'henkou',
    flow:['秘書','行政','人事','監査','文書','秘書']},
   {key:['給与','賃金'], title:'給与を確認中…', icon:'💴',
    output:'給与確認レポート', outNote:'経理AI・人事AI 連携',
@@ -532,6 +630,7 @@ async function runWorkflow(text){
 
   // ★中身のある業務は、ここで本物の処理パネルを開く
   if(plan.real === 'shift'){ openShiftPanel(); }
+  else if(plan.real === 'henkou'){ openHenkouPanel(); }
 
   await wait(700);
 
@@ -557,8 +656,11 @@ function addDoc(plan){
   const openable = plan.real ? '　▶ 開く' : '';
   d.innerHTML = `<span class="ic">${plan.icon}</span>
      <div><div>${plan.output}${openable}</div><small>${plan.outNote}</small></div>`;
-  if(plan.real==='shift'){ d.style.cursor='pointer'; d.title='クリックで集計を開く';
-    d.addEventListener('click', openShiftPanel); }
+  if(plan.real){ d.style.cursor='pointer'; d.title='クリックで開く';
+    d.addEventListener('click', ()=>{
+      if(plan.real==='shift') openShiftPanel();
+      else if(plan.real==='henkou') openHenkouPanel();
+    }); }
   tray.prepend(d);
   while(tray.children.length>6) tray.lastChild.remove();
 }
@@ -605,7 +707,8 @@ document.getElementById('cmd').addEventListener('keydown', e=>{ if(e.key==='Ente
 /* ---- クイック指示チップ ---- */
 const CHIPS = [
   {t:'シフトを集計して', real:true},
-  {t:'変更届作成して'}, {t:'給与確認して'}, {t:'請求書作って'},
+  {t:'変更届作成して', real:true},
+  {t:'給与確認して'}, {t:'請求書作って'},
   {t:'監査チェックして'}, {t:'工房売上を集計して'}
 ];
 const chipBox = document.getElementById('chips');
@@ -1059,6 +1162,139 @@ function shDownloadCsv(){
   logLine(`<b>文書AI</b>：シフト集計.csv を出力`);
 }
 /* ▲▲▲ シフト集計モジュール ここまで ▲▲▲ */
+
+
+/* =========================================================================
+   ▼▼▼ 中身レイヤー：変更届の下書き（行政AI）▼▼▼
+   入力内容から「管理者の変更届出書」の下書きを組み立て、印刷/PDF・保存する。
+   ※あくまで下書きです。実際の提出前に大阪市の最新様式・記載要領をご確認ください。
+   ========================================================================= */
+function hkEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function hkVal(id){ const el=document.getElementById(id); return el ? el.value.trim() : ''; }
+function hkWareki(ymd){ // "2026-08-06" → 令和8年8月6日
+  if(!ymd) return '　　年　　月　　日';
+  const [y,m,d]=ymd.split('-').map(Number);
+  if(y>=2019){ const r=y-2018; return `令和${r===1?'元':r}年${m}月${d}日`; }
+  return `${y}年${m}月${d}日`;
+}
+
+function openHenkouPanel(){
+  const p = document.getElementById('henkouPanel');
+  const t = document.getElementById('f_todokede');
+  if(!t.value){ const now=new Date(); t.value=`${now.getFullYear()}-${('0'+(now.getMonth()+1)).slice(-2)}-${('0'+now.getDate()).slice(-2)}`; }
+  p.hidden = false;
+}
+document.getElementById('hkClose').addEventListener('click', ()=> document.getElementById('henkouPanel').hidden=true);
+document.getElementById('henkouPanel').addEventListener('click', ev=>{ if(ev.target.id==='henkouPanel') ev.target.hidden=true; });
+
+document.getElementById('hkSample').addEventListener('click', ()=>{
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.value=v;};
+  set('f_ate','大阪市長'); set('f_houjin','社会福祉法人おりーぶ会');
+  set('f_daihyo','理事長　織部　一郎'); set('f_honten','大阪市此花区西九条○丁目○番○号');
+  set('f_tel','06-0000-0000'); set('f_jigyosho','おりーぶ庵　西九条'); set('f_shitei','2710000000');
+  set('f_service','共同生活援助'); set('f_jusho','大阪市此花区西九条○丁目○番○号');
+  set('f_riyu','前任管理者の退職に伴うため');
+  set('f_old_name','織部　太郎'); set('f_new_name','織部　花子');
+  set('f_old_birth','昭和50年1月1日'); set('f_new_birth','昭和55年5月5日');
+  set('f_old_addr','大阪市此花区○○'); set('f_new_addr','大阪市西区○○');
+  const now=new Date(), iso=`${now.getFullYear()}-${('0'+(now.getMonth()+1)).slice(-2)}-${('0'+now.getDate()).slice(-2)}`;
+  document.getElementById('f_todokede').value=iso; document.getElementById('f_hendate').value=iso;
+});
+
+// 下書き本文（プレビュー/印刷/保存で共通利用）を組み立て
+function buildHenkouInner(){
+  const g=hkVal;
+  const atts=[];
+  if(document.getElementById('a1').checked) atts.push('管理者の経歴書');
+  if(document.getElementById('a2').checked) atts.push('資格を証する書類の写し');
+  if(document.getElementById('a3').checked) atts.push('実務経験証明書');
+  if(document.getElementById('a4').checked) atts.push('誓約書');
+  const row=(k,a,b)=>`<tr><th>${k}</th><td>${hkEsc(a)||'&nbsp;'}</td><td>${hkEsc(b)||'&nbsp;'}</td></tr>`;
+  return `
+    <h2 class="dtitle">変更届出書</h2>
+    <div class="dmeta"><span></span><span>${hkWareki(g('f_todokede'))}</span></div>
+    <div class="to">${hkEsc(g('f_ate')||'大阪市長')}　様</div>
+    <table class="dt" style="margin-top:4px">
+      <tr><th>届出者（法人）</th><td>${hkEsc(g('f_houjin'))||'&nbsp;'}</td></tr>
+      <tr><th>代表者職・氏名</th><td>${hkEsc(g('f_daihyo'))||'&nbsp;'}　　　　㊞</td></tr>
+      <tr><th>主たる事務所</th><td>${hkEsc(g('f_honten'))||'&nbsp;'}</td></tr>
+      <tr><th>電話番号</th><td>${hkEsc(g('f_tel'))||'&nbsp;'}</td></tr>
+    </table>
+    <p class="lead">下記のとおり、指定障害福祉サービス事業者に係る事項に変更があったので、関係法令の規定により届け出ます。</p>
+    <div style="text-align:center; font-weight:800; letter-spacing:4px">記</div>
+
+    <div class="sec">１．事業所</div>
+    <table class="dt">
+      <tr><th>事業所の名称</th><td>${hkEsc(g('f_jigyosho'))||'&nbsp;'}</td></tr>
+      <tr><th>所在地</th><td>${hkEsc(g('f_jusho'))||'&nbsp;'}</td></tr>
+      <tr><th>指定番号</th><td>${hkEsc(g('f_shitei'))||'&nbsp;'}</td></tr>
+      <tr><th>サービスの種類</th><td>${hkEsc(g('f_service'))||'&nbsp;'}</td></tr>
+    </table>
+
+    <div class="sec">２．変更があった事項</div>
+    <table class="dt">
+      <tr><th>変更事項</th><td>管理者</td></tr>
+      <tr><th>変更年月日</th><td>${hkWareki(g('f_hendate'))}</td></tr>
+      <tr><th>変更の理由</th><td>${hkEsc(g('f_riyu'))||'&nbsp;'}</td></tr>
+    </table>
+
+    <div class="sec beppyo">（別紙）変更事項の内容　―　管理者</div>
+    <table class="dt">
+      <tr><th style="width:110px">項目</th><th style="width:auto;text-align:center">変更前</th><th style="width:auto;text-align:center">変更後</th></tr>
+      ${row('氏名', g('f_old_name'), g('f_new_name'))}
+      ${row('生年月日', g('f_old_birth'), g('f_new_birth'))}
+      ${row('住所', g('f_old_addr'), g('f_new_addr'))}
+    </table>
+
+    <div class="sec">３．添付書類</div>
+    <div>${atts.length? atts.map((a,i)=>`（${i+1}）${hkEsc(a)}`).join('　') : '（なし）'}</div>
+
+    <div class="stamp">※ 本書はAIが作成した下書きです。提出前に大阪市の最新様式・記載要領をご確認ください。</div>
+  `;
+}
+
+document.getElementById('hkMake').addEventListener('click', ()=>{
+  if(!hkVal('f_houjin') || !hkVal('f_jigyosho')){
+    alert('少なくとも「法人名称」と「事業所名称」を入力してください。'); return;
+  }
+  const inner = buildHenkouInner();
+  document.getElementById('hkResult').innerHTML =
+    `<div class="doc-preview" id="hkPrintArea">${inner}</div>`;
+  document.getElementById('hkPrint').style.display='';
+  document.getElementById('hkDl').style.display='';
+  banner('📋 変更届の下書きができました');
+  say('行政', '変更届の下書きを作成しました', 2800);
+  say('監査', '記載漏れがないかご確認を', 2400);
+  logLine(`<b>行政AI</b>：管理者変更届の下書きを作成`);
+  document.getElementById('hkResult').scrollIntoView({behavior:'smooth', block:'nearest'});
+});
+
+document.getElementById('hkPrint').addEventListener('click', ()=> window.print());
+
+document.getElementById('hkDl').addEventListener('click', ()=>{
+  const inner = buildHenkouInner();
+  const full = `<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<title>変更届出書（下書き）</title>
+<style>
+  @page{ size:A4; margin:18mm }
+  body{ font-family:"Yu Mincho","Hiragino Mincho ProN","MS Mincho",serif; color:#111; line-height:1.8; font-size:12pt }
+  h2.dtitle{ text-align:center; font-size:20pt; letter-spacing:10px; margin:0 0 18px }
+  .dmeta{ display:flex; justify-content:flex-end; font-size:11pt; margin-bottom:6px }
+  .to{ font-size:13pt; font-weight:700; margin:10px 0 2px }
+  .lead{ margin:14px 0 }
+  table.dt{ border-collapse:collapse; width:100%; margin:8px 0 }
+  table.dt th, table.dt td{ border:1px solid #333; padding:6px 9px; font-size:11pt; vertical-align:top }
+  table.dt th{ background:#f0f0eb; width:130px; text-align:left; white-space:nowrap }
+  .sec{ font-weight:800; margin:16px 0 4px }
+  .beppyo{ page-break-before:always; margin-top:24px }
+  .stamp{ text-align:right; margin-top:8px; font-size:9pt; color:#666 }
+</style></head><body>${inner}</body></html>`;
+  const blob = new Blob([full], {type:'text/html;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='変更届出書_下書き.html'; a.click(); URL.revokeObjectURL(a.href);
+  logLine(`<b>文書AI</b>：変更届出書_下書き.html を保存`);
+});
+/* ▲▲▲ 変更届モジュール ここまで ▲▲▲ */
 
 /* ---- 最初のひとこと ---- */
 setTimeout(()=>{ say('秘書','おはようございます、社長！ご指示をどうぞ。', 3000);
