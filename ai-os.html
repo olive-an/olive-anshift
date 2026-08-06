@@ -313,6 +313,13 @@
       <button id="pause">⏸ 自律モードを止める</button>
       <span>放っておくとAI社員が自分で動きます。</span>
     </div>
+    <div class="toolbar" style="margin-top:6px; flex-wrap:wrap">
+      <button id="setDir">📁 保存先フォルダを設定</button>
+      <button id="setBk">🗄 バックアップ先（任意）</button>
+      <label style="font-size:11px"><input type="checkbox" id="bkChk" checked> バックアップを作成</label>
+      <button id="clrDir">解除</button>
+      <span id="dirLabel">保存先：未設定（現在はダウンロードフォルダ）</span>
+    </div>
   </div>
 
   <!-- サイド -->
@@ -763,18 +770,65 @@ document.getElementById('pause').addEventListener('click', e=>{
 /* =========================================================================
    共通：ファイル保存（保存先を選べる場合は選択ダイアログ）＋画面プレビュー
    ========================================================================= */
+/* ---- 保存先フォルダ（記憶式）＋バックアップ ---- */
+let aiosMainDir = null;   // 保存先フォルダ（例：\\...\AI作成\aishain をドライブ割当したもの）
+let aiosBackupDir = null; // バックアップ先フォルダ（任意）
+let aiosBackupOn = true;
+
+// IndexedDB にフォルダハンドルを記憶
+function idbOpen(){ return new Promise((res,rej)=>{ const o=indexedDB.open('aios_fs',1);
+  o.onupgradeneeded=()=>o.result.createObjectStore('h'); o.onsuccess=()=>res(o.result); o.onerror=()=>rej(o.error); }); }
+async function idbGet(k){ const db=await idbOpen(); return new Promise((res,rej)=>{ const g=db.transaction('h','readonly').objectStore('h').get(k); g.onsuccess=()=>res(g.result); g.onerror=()=>rej(g.error); }); }
+async function idbSet(k,v){ const db=await idbOpen(); return new Promise((res,rej)=>{ const tx=db.transaction('h','readwrite'); tx.objectStore('h').put(v,k); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+
+function aiosStamp(){ const d=new Date(), p=n=>('0'+n).slice(-2);
+  return ''+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds()); }
+
+async function aiosDirPerm(h){ if(!h) return false; const opt={mode:'readwrite'};
+  try{ if((await h.queryPermission(opt))==='granted') return true; return (await h.requestPermission(opt))==='granted'; }catch(e){ return false; } }
+
+async function aiosPickDir(which){
+  if(!window.showDirectoryPicker){ alert('保存先フォルダの指定は、Edge/Chromeで「公開URL(https)」または「localhost」から開いた場合に使えます。\nファイルを直接開いた状態では、ダウンロードフォルダに保存されます。'); return; }
+  try{
+    const h=await window.showDirectoryPicker({mode:'readwrite', id:'aios-'+which});
+    if(which==='main'){ aiosMainDir=h; await idbSet('mainDir',h); }
+    else { aiosBackupDir=h; await idbSet('backupDir',h); }
+    aiosUpdateDirLabel();
+  }catch(e){ if(e.name!=='AbortError') alert('フォルダ設定エラー：'+e.message); }
+}
+async function aiosClearDir(){ aiosMainDir=null; aiosBackupDir=null; try{ await idbSet('mainDir',null); await idbSet('backupDir',null);}catch(e){} aiosUpdateDirLabel(); }
+
+// フォルダへ書き込み（＋バックアップ）
+async function aiosWriteToDir(dir, filename, blob){
+  const fh=await dir.getFileHandle(filename,{create:true});
+  const w=await fh.createWritable(); await w.write(blob); await w.close();
+}
+async function aiosBackupWrite(filename, blob){
+  const dot=filename.lastIndexOf('.');
+  const bname = (dot>0? filename.slice(0,dot):filename)+'_'+aiosStamp()+(dot>0?filename.slice(dot):'');
+  if(aiosBackupDir && await aiosDirPerm(aiosBackupDir)){ await aiosWriteToDir(aiosBackupDir, bname, blob); return {name:bname, where:aiosBackupDir.name}; }
+  if(aiosMainDir && await aiosDirPerm(aiosMainDir)){ const sub=await aiosMainDir.getDirectoryHandle('バックアップ',{create:true}); const fh=await sub.getFileHandle(bname,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); return {name:bname, where:aiosMainDir.name+'／バックアップ'}; }
+  return null;
+}
+
 async function aiosSaveBlob(blob, filename){
-  // Chrome/Edge（https/localhost）なら保存先フォルダを選べる
+  // ① 記憶した保存先フォルダがあればそこへ（＋バックアップ）
+  if(aiosMainDir && await aiosDirPerm(aiosMainDir)){
+    try{
+      await aiosWriteToDir(aiosMainDir, filename, blob);
+      let bk=null; if(aiosBackupOn){ try{ bk=await aiosBackupWrite(filename, blob); }catch(e){} }
+      return { ok:true, name:filename, folder:aiosMainDir.name, backup:bk };
+    }catch(e){ /* 失敗時は下へフォールバック */ }
+  }
+  // ② 対応ブラウザなら保存先を選べる
   if(window.showSaveFilePicker){
     try{
       const handle = await window.showSaveFilePicker({ suggestedName: filename });
       const w = await handle.createWritable(); await w.write(blob); await w.close();
       return { ok:true, name:handle.name||filename, picked:true };
-    }catch(e){
-      if(e && e.name==='AbortError') return { ok:false, aborted:true }; // ユーザーがキャンセル
-      // 非対応・失敗時は通常ダウンロードへ
-    }
+    }catch(e){ if(e && e.name==='AbortError') return { ok:false, aborted:true }; }
   }
+  // ③ 通常ダウンロード
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download=filename; a.click(); URL.revokeObjectURL(a.href);
   return { ok:true, name:filename, picked:false };
@@ -785,14 +839,37 @@ async function aiosDeliver(blob, filename, targetId, previewHtml){
   if(res.aborted){ banner('保存をキャンセルしました'); return res; }
   const el = document.getElementById(targetId);
   if(el){
-    const where = res.picked ? 'お選びの保存先フォルダ' : 'ブラウザのダウンロードフォルダ';
+    const where = res.folder ? ('フォルダ「'+res.folder+'」')
+                : res.picked ? 'お選びの保存先'
+                : 'ブラウザのダウンロードフォルダ';
+    const bk = res.backup ? `<br>🗄 バックアップ：<span class="path">${res.backup.where} ／ ${res.backup.name}</span>` : '';
     const note = `<div class="savednote">💾 <b>${filename}</b> を保存しました
-      <br>保存先：<span class="path">${where}</span></div>`;
+      <br>保存先：<span class="path">${where}</span>${bk}</div>`;
     el.insertAdjacentHTML('afterbegin', note + (previewHtml ? `<div class="savedprev">${previewHtml}</div>` : ''));
     el.scrollIntoView({behavior:'smooth', block:'nearest'});
   }
   return res;
 }
+
+// 保存先設定UIの配線
+function aiosUpdateDirLabel(){
+  const el=document.getElementById('dirLabel'); if(!el) return;
+  if(aiosMainDir){
+    el.innerHTML='保存先：<b>'+aiosMainDir.name+'</b>'
+      + (aiosBackupDir ? '（バックアップ先：'+aiosBackupDir.name+'）'
+         : (aiosBackupOn ? '（＋サブフォルダ「バックアップ」に自動保存）' : '（バックアップOFF）'));
+  } else el.textContent='保存先：未設定（現在はダウンロードフォルダ）';
+}
+document.getElementById('setDir').addEventListener('click', ()=>aiosPickDir('main'));
+document.getElementById('setBk').addEventListener('click', ()=>aiosPickDir('backup'));
+document.getElementById('clrDir').addEventListener('click', aiosClearDir);
+document.getElementById('bkChk').addEventListener('change', e=>{ aiosBackupOn=e.target.checked; aiosUpdateDirLabel(); });
+// 前回設定したフォルダを復元（次の保存時に許可を確認）
+(async ()=>{ try{
+  const m=await idbGet('mainDir'); if(m) aiosMainDir=m;
+  const b=await idbGet('backupDir'); if(b) aiosBackupDir=b;
+  aiosUpdateDirLabel();
+}catch(e){} })();
 
 /* =========================================================================
    ▼▼▼ 中身レイヤー：本物のシフト集計モジュール ▼▼▼
