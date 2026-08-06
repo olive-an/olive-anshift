@@ -14,6 +14,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>おりーぶ庵 AI-OS（デモ）</title>
+<!-- Excel入出力ライブラリ（既存 index.html と同じSheetJS） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --olive:#5a7d3c; --olive-d:#3f5a29; --olive-l:#e8f0dd;
@@ -271,7 +273,8 @@
   <aside class="side">
     <div class="card">
       <div class="demo-note">
-        ✅ <b>「シフトを集計して」は本物です。</b>フォーム(GAS)の希望を読み取り、日別に集計して人手不足の日まで出します。<br>
+        ✅ <b>「シフトを集計して」は本物です。</b>フォーム(GAS)の希望を読み取り、日別に集計＋人手不足の日を検出し、
+        <b>「シフト集計」Excelテンプレートに ○/△/× を反映</b>してダウンロードできます。<br>
         その他の指示（変更届・給与など）はまだ<b>見た目のデモ</b>で、中身は1業務ずつ追加していきます。
       </div>
     </div>
@@ -315,6 +318,7 @@
       </div>
       <textarea id="wpPaste" placeholder="シフト希望のテキストをここに貼り付けてもOK（○＝可 / △＝応相談 / ×＝不可）"></textarea>
       <button id="wpRun" class="wpBtn primary">この内容で集計する</button>
+      <input type="file" id="wpTmpl" accept=".xlsx" style="display:none">
       <div id="wpResult"></div>
     </div>
   </div>
@@ -650,12 +654,15 @@ function shExtractName(block){
 }
 function shExtractMarks(block, y){
   const res = {};
-  const re = /(\d{1,2})\/(\d{1,2})\s*(?:[（(][^）)]*[）)])?\s*([○◯⭕✅◎〇×✕✖❌☓✗△▲])/g;
+  // 記号のあとに続く 💬コメント も同時に拾う（index.html と同じ）
+  const re = /(\d{1,2})\/(\d{1,2})\s*(?:[（(][^）)]*[）)])?\s*([○◯⭕✅◎〇×✕✖❌☓✗△▲])([^\n\r]*)/g;
   let m;
   while((m = re.exec(block)) !== null){
     const sym = shNormSym(m[3]); if(!sym) continue;
     const key = `${y}-${("0"+parseInt(m[1])).slice(-2)}-${("0"+parseInt(m[2])).slice(-2)}`;
     res[key] = sym;
+    const cmt = (m[4]||"").match(/💬(.+)/);
+    if(cmt) res[key+"__comment"] = cmt[1].trim();
   }
   return res;
 }
@@ -695,17 +702,18 @@ document.getElementById('workPanel').addEventListener('click', ev=>{ if(ev.targe
 document.getElementById('wpSample').addEventListener('click', ()=>{
   const s = shParseYMD(document.getElementById('wpStart').value);
   const m = s.getMonth()+1, d = s.getDate();
+  // ※ 氏名はテンプレート「シフト集計」の名簿と一致させてあります（Excel反映を確認できます）
   document.getElementById('wpPaste').value =
-`【シフト希望】岩久保
-${m}/${d}（土）○ ${m}/${d+1}（日）× ${m}/${d+2}（月）○ ${m}/${d+3}（火）△ ${m}/${d+4}（水）○
+`【シフト希望】竹政　高
+${m}/${d}○ ${m}/${d+1}× ${m}/${d+2}○ ${m}/${d+3}△ ${m}/${d+4}○
 
-（お名前）田中　太郎
-${m}/${d}⭕ ${m}/${d+1}❌ ${m}/${d+2}⭕ ${m}/${d+3}△ ${m}/${d+4}❌
+（お名前）黒田　栄光
+${m}/${d}⭕💬午前のみ ${m}/${d+1}❌ ${m}/${d+2}⭕ ${m}/${d+3}△ ${m}/${d+4}❌
 
-佐藤　花子
-${m}/${d}（土）〇 ${m}/${d+1}（日）○ ${m}/${d+2}（月）× ${m}/${d+3}○ ${m}/${d+4}○
+向原　忍
+${m}/${d}〇 ${m}/${d+1}○ ${m}/${d+2}× ${m}/${d+3}○ ${m}/${d+4}○
 
-鈴木　一郎
+浅野　和子
 ${m}/${d}× ${m}/${d+1}○ ${m}/${d+2}○ ${m}/${d+3}○ ${m}/${d+4}△`;
   shRun();
 });
@@ -772,6 +780,8 @@ function shRun(){
                 avail, maybe, count:avail.length, short:isShort });
   }
   shLastRows = { rows, names, minStaff };
+  // Excel反映用に集計結果を保持（dates配列＋名前別マップ）
+  window._aiosAgg = { dates: rows.map(r=>shParseYMD(r.key)), byName };
 
   // 個人別の出勤可能日数
   const perName = names.map(n=>{
@@ -807,16 +817,193 @@ function shRun(){
      ⚠ の日は「出勤可(○)」が最低人数（${minStaff}名）に足りていません。
      <br>この結果はブラウザ内で集計したものです（会社のデータは変更しません）。
      </div>
-     <div style="margin-top:10px"><button class="wpBtn primary" id="wpCsv">CSVダウンロード</button></div>`;
+     <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+       <button class="wpBtn primary" id="wpXlsx">📊 このシフト集計Excelに反映</button>
+       <button class="wpBtn" id="wpCsv">CSVダウンロード</button>
+     </div>`;
 
   out.innerHTML = html;
   document.getElementById('wpCsv').addEventListener('click', shDownloadCsv);
+  document.getElementById('wpXlsx').addEventListener('click', ()=>{
+    if(typeof XLSX === 'undefined'){
+      alert('Excelライブラリを読み込み中です。少し待つか、ページをブラウザ／公開URLで開くと反映できます。'); return;
+    }
+    document.getElementById('wpTmpl').click(); // テンプレのシフト集計Excelを選ぶ
+  });
 
   // AI社員の反応＆ログに実データを反映
   banner(`✅ 集計完了：${names.length}名 / 人手不足 ${shortDays}日`);
   say('人事', `${names.length}名分、集計しました`, 2600);
   if(shortDays>0) say('監査', `${shortDays}日が人手不足です⚠`, 2600);
   logLine(`<b>人事AI</b>：シフト集計完了（${names.length}名・対象${rows.length}日・人手不足${shortDays}日）`);
+}
+
+// テンプレート(.xlsx)を選んだら反映処理を実行
+document.getElementById('wpTmpl').addEventListener('change', function(){
+  const f = this.files[0]; this.value = '';
+  if(f) shExportExcel(f);
+});
+
+/* ---- 集計結果を「シフト集計」Excelテンプレートに反映して出力 ----
+   ロジックは既存 index.html の writeToShuukei() を移植・再利用。
+   テンプレートをコピーして「YYYY年M月」シートを作り、
+   氏名×日付で ○/△/× を書き込み、出勤可能回数・備考・ログを付与。 */
+async function shExportExcel(file){
+  const agg = window._aiosAgg;
+  if(!agg){ alert('先に「集計する」を実行してください'); return; }
+  if(typeof XLSX === 'undefined'){ alert('Excelライブラリを読み込めませんでした。ブラウザ／公開URLで開くと動きます。'); return; }
+  try{
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf, {type:'array', cellDates:false, cellStyles:true});
+
+    const tmplName = wb.SheetNames.find(n=>n.includes('シフト')||n.includes('集計')) || wb.SheetNames[0];
+    const tmpl = wb.Sheets[tmplName];
+
+    const d0 = agg.dates[0];
+    const newSheetName = `${d0.getFullYear()}年${d0.getMonth()+1}月`;
+    if(wb.SheetNames.includes(newSheetName)){
+      if(!confirm(`「${newSheetName}」シートが既にあります。上書きしますか？`)) return;
+      delete wb.Sheets[newSheetName];
+      wb.SheetNames.splice(wb.SheetNames.indexOf(newSheetName),1);
+    }
+
+    // テンプレートをディープコピーして新シート化
+    const ws = {};
+    for(const key of Object.keys(tmpl)){
+      ws[key] = key.startsWith('!') ? JSON.parse(JSON.stringify(tmpl[key])) : {...tmpl[key]};
+    }
+    wb.SheetNames.push(newSheetName); wb.Sheets[newSheetName] = ws;
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    if(!data || data.length===0) throw new Error('シートが空です');
+
+    // 「氏名」ヘッダー行を探す
+    let hdrRowIdx = -1;
+    for(let r=0; r<Math.min(6,data.length); r++){
+      const v = data[r] && data[r][0];
+      if(typeof v==='string' && v.includes('氏名')){ hdrRowIdx=r; break; }
+    }
+    if(hdrRowIdx===-1) throw new Error('「氏名」ヘッダー行が見つかりません');
+
+    // 日付見出し（B列から）を集計期間で書き換え
+    const dateColMap={}, mdToFmt={};
+    agg.dates.forEach((d,i)=>{
+      const col=i+1; const md=`${d.getMonth()+1}/${d.getDate()}`;
+      dateColMap[md]=col; mdToFmt[md]=shFmt(d);
+      const addr=XLSX.utils.encode_cell({r:hdrRowIdx,c:col});
+      const st = ws[addr] ? ws[addr].s : undefined;
+      ws[addr]={t:'s',v:md,w:md}; if(st!==undefined) ws[addr].s=st;
+    });
+    const cmtColIdx = agg.dates.length+1;
+    ws[XLSX.utils.encode_cell({r:hdrRowIdx,c:cmtColIdx})]={t:'s',v:'備考・コメント',w:'備考・コメント'};
+
+    // A列の氏名 → 行番号
+    const nameRowMap={};
+    for(let r=hdrRowIdx+1; r<data.length; r++){
+      const nm=data[r]&&data[r][0];
+      if(!nm||typeof nm!=='string') continue;
+      const clean=nm.replace(/[\s　]/g,''); if(clean) nameRowMap[clean]=r;
+    }
+
+    // 書き込み（氏名は空白除去で照合、姓一致・末尾1字違いもフォロー）
+    let written=0; const skipped=[];
+    Object.keys(agg.byName).forEach(csvName=>{
+      const csvClean=csvName.replace(/[\s　]/g,'');
+      let targetRow=nameRowMap[csvClean];
+      if(targetRow===undefined){
+        for(const [nm,ri] of Object.entries(nameRowMap)){
+          if(nm.startsWith(csvClean)||csvClean.startsWith(nm)){ targetRow=ri; break; }
+        }
+      }
+      if(targetRow===undefined && csvClean.length>=3){
+        const pre=csvClean.slice(0,-1);
+        for(const [nm,ri] of Object.entries(nameRowMap)){
+          if(nm.startsWith(pre)&&Math.abs(nm.length-csvClean.length)<=1){ targetRow=ri; break; }
+        }
+      }
+      if(targetRow===undefined){ skipped.push(csvName); return; }
+
+      const commentParts=[];
+      Object.entries(dateColMap).forEach(([md,colIdx])=>{
+        const fmtKey=mdToFmt[md]; if(!fmtKey) return;
+        const v=agg.byName[csvName][fmtKey]||'';
+        const mark = v==='○'?'○' : v==='×'?'×' : v==='△'?'△' : '';
+        const addr=XLSX.utils.encode_cell({r:targetRow,c:colIdx});
+        if(!ws[addr]){
+          const ref=ws[XLSX.utils.encode_cell({r:targetRow,c:0})];
+          ws[addr]={t:'s',v:''}; if(ref&&ref.s) ws[addr].s=ref.s;
+        }
+        ws[addr].t='s'; ws[addr].v=mark; ws[addr].w=mark; if(mark) written++;
+        const cmt=agg.byName[csvName][fmtKey+'__comment']; if(cmt) commentParts.push(`${md}：${cmt}`);
+      });
+      if(commentParts.length){
+        const a=XLSX.utils.encode_cell({r:targetRow,c:cmtColIdx});
+        const ref=ws[XLSX.utils.encode_cell({r:targetRow,c:0})];
+        ws[a]={t:'s',v:commentParts.join(' ／ '),w:commentParts.join(' ／ ')};
+        if(ref&&ref.s) ws[a].s=ref.s;
+      }
+    });
+
+    // 出勤可能回数（○の数）列
+    let countColIdx=-1;
+    for(let c=0;c<200;c++){
+      const a=XLSX.utils.encode_cell({r:hdrRowIdx,c}); const v=ws[a]&&ws[a].v;
+      if(v&&String(v).includes('回数')){ countColIdx=c; break; }
+      if(v&&String(v).includes('出勤可能')){ countColIdx=c; }
+    }
+    if(countColIdx<0) countColIdx=cmtColIdx+1;
+    const chdr=XLSX.utils.encode_cell({r:hdrRowIdx,c:countColIdx});
+    if(!ws[chdr]) ws[chdr]={}; ws[chdr].t='s'; ws[chdr].v='出勤可能回数'; ws[chdr].w='出勤可能回数';
+    Object.keys(nameRowMap).forEach(cn=>{
+      const ri=nameRowMap[cn]; let cnt=0;
+      Object.entries(dateColMap).forEach(([md,ci])=>{
+        const a=XLSX.utils.encode_cell({r:ri,c:ci}); const v=ws[a]&&ws[a].v; if(v==='○') cnt++;
+      });
+      const a=XLSX.utils.encode_cell({r:ri,c:countColIdx});
+      const ref=ws[XLSX.utils.encode_cell({r:ri,c:0})];
+      if(!ws[a]) ws[a]={}; ws[a].t='n'; ws[a].v=cnt; ws[a].w=String(cnt); if(ref&&ref.s) ws[a].s=ref.s;
+    });
+
+    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:data.length-1, c:Math.max(cmtColIdx,countColIdx)}});
+
+    // 罫線・フォント（12pt / thin）
+    const thinB={style:'thin',color:{auto:1}};
+    const mkBorder=()=>({top:thinB,bottom:thinB,left:thinB,right:thinB});
+    for(let r=hdrRowIdx; r<data.length; r++){
+      for(let c=0; c<=Math.max(cmtColIdx,countColIdx); c++){
+        const a=XLSX.utils.encode_cell({r,c}); if(!ws[a]) ws[a]={t:'s',v:''};
+        const isHdr=r===hdrRowIdx, isName=c===0, isCount=c===countColIdx;
+        ws[a].s={ font:{name:'Arial',bold:isHdr||isCount,sz:12}, border:mkBorder(),
+          alignment:{horizontal:isName&&!isHdr?'left':'center',vertical:'center',wrapText:isName||isCount||isHdr} };
+      }
+    }
+
+    // ログシート
+    if(wb.SheetNames.includes('ログ')){ delete wb.Sheets['ログ']; wb.SheetNames.splice(wb.SheetNames.indexOf('ログ'),1); }
+    const logWs={};
+    XLSX.utils.sheet_add_aoa(logWs,[
+      ['項目','内容'],
+      ['処理日時', new Date().toLocaleString('ja-JP')],
+      ['名簿人数', Object.keys(nameRowMap).length],
+      ['日付列数', Object.keys(dateColMap).length],
+      ['書き込み件数', written],
+      ['照合OK数', Object.keys(agg.byName).length - skipped.length],
+      ['照合NG数', skipped.length],
+      ['照合できなかった名前', skipped.join('、')],
+    ],{origin:'A1'});
+    logWs['!cols']=[{wch:20},{wch:50}];
+    wb.SheetNames.push('ログ'); wb.Sheets['ログ']=logWs;
+
+    // ダウンロード
+    const outBuf=XLSX.write(wb,{type:'array',bookType:'xlsx',cellStyles:true});
+    const blob=new Blob([outBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=`シフト集計_反映済_${shFmt(agg.dates[0])}.xlsx`; a.click(); URL.revokeObjectURL(a.href);
+
+    banner(`✅ Excelに${written}セル反映`);
+    say('文書', `Excelに${written}件反映しました`, 2800);
+    logLine(`<b>文書AI</b>：シフト集計Excelに${written}セル反映${skipped.length?`（照合NG ${skipped.length}名）`:''}`);
+    if(skipped.length) alert(`反映しました（${written}セル）。\n照合できなかった名前：${skipped.join('、')}\n※テンプレートA列の名簿と氏名を合わせてください。`);
+  }catch(e){ alert('Excel処理エラー：'+e.message); }
 }
 
 function shDownloadCsv(){
