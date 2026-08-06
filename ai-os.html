@@ -177,6 +177,59 @@
     border:1px solid var(--line); background:#fff; border-radius:8px;
     padding:4px 9px; cursor:pointer; font-size:11px
   }
+
+  /* ===== 業務パネル（本物の集計結果） ===== */
+  .modal{
+    position:fixed; inset:0; background:rgba(30,40,20,.45); z-index:20;
+    display:flex; align-items:center; justify-content:center; padding:14px;
+  }
+  .modal[hidden]{display:none}
+  .sheet{
+    background:var(--paper); border-radius:16px; width:100%; max-width:720px;
+    max-height:92vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 18px 50px rgba(0,0,0,.35)
+  }
+  .sheetHead{
+    display:flex; align-items:center; gap:10px; padding:11px 14px;
+    background:linear-gradient(180deg,var(--olive),var(--olive-d)); color:#fff;
+  }
+  .sheetHead b{font-size:14px} .sheetHead .grow{margin-left:auto}
+  .sheetHead button{
+    border:none; background:rgba(255,255,255,.2); color:#fff; width:28px; height:28px;
+    border-radius:8px; cursor:pointer; font-size:14px
+  }
+  .sheetBody{padding:14px; overflow:auto}
+  .real-badge{font-size:10px; background:#3a9d5d; color:#fff; padding:2px 8px; border-radius:999px}
+  .wpControls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:12px; margin-bottom:8px; color:#455038}
+  .wpControls input[type=date],.wpControls input[type=number]{
+    border:1px solid var(--line); border-radius:8px; padding:5px 7px; font-size:12px
+  }
+  .wpControls button, .wpBtn{
+    border:1px solid var(--olive); background:#fff; color:var(--olive-d);
+    border-radius:8px; padding:5px 10px; cursor:pointer; font-size:12px; font-weight:700
+  }
+  .wpBtn.primary{background:var(--olive); color:#fff; border-color:var(--olive)}
+  #wpPaste{
+    width:100%; min-height:70px; border:1px solid var(--line); border-radius:10px;
+    padding:8px; font-size:12px; font-family:inherit; resize:vertical; margin-bottom:8px
+  }
+  .kpis{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0}
+  .kpi{background:#fff; border:1px solid var(--line); border-radius:10px; padding:6px 12px; text-align:center; min-width:84px}
+  .kpi b{display:block; font-size:18px; color:var(--olive-d)} .kpi span{font-size:10px; color:#7a8567}
+  .kpi.warn b{color:var(--s-err)}
+  table.agg{border-collapse:collapse; width:100%; font-size:12px; margin-top:6px}
+  table.agg th, table.agg td{border:1px solid var(--line); padding:4px 6px; text-align:center}
+  table.agg th{background:var(--olive-l); color:var(--olive-d); position:sticky; top:0}
+  table.agg td.name{text-align:left; white-space:nowrap}
+  table.agg tr.sat td:first-child{color:#2f6fb3}
+  table.agg tr.sun td:first-child{color:#c0392b}
+  table.agg tr.short{background:#fdecea}
+  table.agg tr.short td:nth-child(4){color:var(--s-err); font-weight:800}
+  .names{list-style:none; padding:0; margin:8px 0 0; display:flex; flex-wrap:wrap; gap:6px}
+  .names li{background:#fff; border:1px solid var(--line); border-radius:999px; padding:3px 9px; font-size:11px}
+  .names li b{color:var(--olive-d)}
+  .wpNote{font-size:11px; color:#6b7358; margin-top:10px; line-height:1.5}
+  .tblwrap{max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px}
 </style>
 
 <header>
@@ -218,8 +271,8 @@
   <aside class="side">
     <div class="card">
       <div class="demo-note">
-        ⚠️ これは<b>見た目のデモ</b>です。AI社員は動きますが、まだ本当の書類作成や集計はしていません。
-        次の段階で「1業務ずつ」中身を入れていきます。
+        ✅ <b>「シフトを集計して」は本物です。</b>フォーム(GAS)の希望を読み取り、日別に集計して人手不足の日まで出します。<br>
+        その他の指示（変更届・給与など）はまだ<b>見た目のデモ</b>で、中身は1業務ずつ追加していきます。
       </div>
     </div>
     <div class="card">
@@ -240,6 +293,31 @@
       </div>
     </div>
   </aside>
+</div>
+
+<!-- ===== 業務パネル：本物のシフト集計 ===== -->
+<div class="modal" id="workPanel" hidden>
+  <div class="sheet">
+    <div class="sheetHead">
+      <b>🗓️ シフト集計</b>
+      <span class="real-badge">本物の処理</span>
+      <span class="grow"></span>
+      <button id="wpClose" title="閉じる">✕</button>
+    </div>
+    <div class="sheetBody">
+      <div class="wpControls">
+        <label>期間 <input type="date" id="wpStart"></label>
+        <span>〜</span>
+        <input type="date" id="wpEnd">
+        <label>最低人数 <input type="number" id="wpMin" value="2" min="1" style="width:56px"></label>
+        <button id="wpSample">サンプルで試す</button>
+        <button id="wpGAS">フォームから取得</button>
+      </div>
+      <textarea id="wpPaste" placeholder="シフト希望のテキストをここに貼り付けてもOK（○＝可 / △＝応相談 / ×＝不可）"></textarea>
+      <button id="wpRun" class="wpBtn primary">この内容で集計する</button>
+      <div id="wpResult"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -296,7 +374,7 @@ const PLANS = [
    output:'工房 売上集計', outNote:'工房AI・経理AI 連携',
    flow:['秘書','工房','経理']},
   {key:['シフト','勤務'], title:'シフトを集計中…', icon:'🗓️',
-   output:'シフト集計表', outNote:'秘書AI・人事AI 連携',
+   output:'シフト集計表', outNote:'秘書AI・人事AI 連携', real:'shift',
    flow:['秘書','人事','秘書']},
   {key:['看護','健康','受診'], title:'健康記録を確認中…', icon:'🩺',
    output:'看護記録サマリ', outNote:'看護AI・人事AI 連携',
@@ -447,6 +525,10 @@ async function runWorkflow(text){
   addDoc(plan);
   banner('✅ 完成しました');
   logLine(`📄 成果物「<b>${plan.output}</b>」が完成`);
+
+  // ★中身のある業務は、ここで本物の処理パネルを開く
+  if(plan.real === 'shift'){ openShiftPanel(); }
+
   await wait(700);
 
   // 全員自席へ帰る
@@ -468,8 +550,11 @@ function addDoc(plan){
   if(tray.dataset.empty!=='0'){ tray.innerHTML=''; tray.dataset.empty='0'; }
   const d = document.createElement('div');
   d.className='doc';
+  const openable = plan.real ? '　▶ 開く' : '';
   d.innerHTML = `<span class="ic">${plan.icon}</span>
-     <div><div>${plan.output}</div><small>${plan.outNote}</small></div>`;
+     <div><div>${plan.output}${openable}</div><small>${plan.outNote}</small></div>`;
+  if(plan.real==='shift'){ d.style.cursor='pointer'; d.title='クリックで集計を開く';
+    d.addEventListener('click', openShiftPanel); }
   tray.prepend(d);
   while(tray.children.length>6) tray.lastChild.remove();
 }
@@ -514,11 +599,16 @@ document.getElementById('go').addEventListener('click', submit);
 document.getElementById('cmd').addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
 
 /* ---- クイック指示チップ ---- */
-const CHIPS = ['変更届作成して','給与確認して','請求書作って','監査チェックして','利用者登録して','工房売上を集計して'];
+const CHIPS = [
+  {t:'シフトを集計して', real:true},
+  {t:'変更届作成して'}, {t:'給与確認して'}, {t:'請求書作って'},
+  {t:'監査チェックして'}, {t:'工房売上を集計して'}
+];
 const chipBox = document.getElementById('chips');
 for(const c of CHIPS){
-  const b=document.createElement('button'); b.className='chip'; b.textContent=c;
-  b.addEventListener('click',()=>runWorkflow(c));
+  const b=document.createElement('button'); b.className='chip';
+  b.innerHTML = c.real ? `${c.t} <b style="color:#3a9d5d">●本物</b>` : c.t;
+  b.addEventListener('click',()=>runWorkflow(c.t));
   chipBox.appendChild(b);
 }
 
@@ -527,6 +617,223 @@ document.getElementById('pause').addEventListener('click', e=>{
   autonomous = !autonomous;
   e.target.textContent = autonomous ? '⏸ 自律モードを止める' : '▶ 自律モードを動かす';
 });
+
+/* =========================================================================
+   ▼▼▼ 中身レイヤー：本物のシフト集計モジュール ▼▼▼
+   既存 index.html（シフト希望フォーム）と同じ解析ロジックを再利用しています。
+   データ元は3通り：(1)フォーム(GAS)から取得 (2)テキスト貼り付け (3)サンプル
+   ========================================================================= */
+
+// 既存フォームと同じGASエンドポイント（読み取り専用・JSONP）
+const SHIFT_GAS_URL = "https://script.google.com/macros/s/AKfycbwG__KMZmGaeF7S1wwqJokyijgjfOVHYNKmG7huHApz5H9KxpKC1KsPHNRH9TfqX0SvjQ/exec";
+const WDOW = ["日","月","火","水","木","金","土"];
+
+// ---- 記号・氏名・日付マークの抽出（index.html と同一ロジック） ----
+function shNormSym(s){
+  if(!s) return "";
+  if(/[○◯⭕✅◎〇]/.test(s)) return "○";
+  if(/[×✕✖❌☓✗]/.test(s)) return "×";
+  if(/[△▲]/.test(s)) return "△";
+  return "";
+}
+function shExtractName(block){
+  let m = block.match(/【[^】]*】\s*([^\n\r]{1,30})/);
+  if(m){ const n=m[1].trim(); if(n && !/^[\d\/]/.test(n)) return n; }
+  m = block.match(/[）\)]\s*([^\n\r（()]{1,30})/);
+  if(m && m[1].trim().length>0) return m[1].trim();
+  m = block.match(/(?:お名前[^\n]*?ください|お名前)[　\s]+([^\n\r]+)/);
+  if(m) return m[1].trim();
+  const first = block.split(/\n/).map(x=>x.trim()).filter(Boolean)[0] || "";
+  if(first && !/\d+\/\d+/.test(first) && first.length<=30)
+    return first.replace(/[）\)（\(🍀🌼🌸🕊️🌿📝【】]/g,"").trim();
+  return "（不明）";
+}
+function shExtractMarks(block, y){
+  const res = {};
+  const re = /(\d{1,2})\/(\d{1,2})\s*(?:[（(][^）)]*[）)])?\s*([○◯⭕✅◎〇×✕✖❌☓✗△▲])/g;
+  let m;
+  while((m = re.exec(block)) !== null){
+    const sym = shNormSym(m[3]); if(!sym) continue;
+    const key = `${y}-${("0"+parseInt(m[1])).slice(-2)}-${("0"+parseInt(m[2])).slice(-2)}`;
+    res[key] = sym;
+  }
+  return res;
+}
+function shParse(raw, year){
+  const blocks = raw.split(/\n\s*\n+/).map(x=>x.trim()).filter(Boolean);
+  const byName = {};
+  for(const b of blocks){
+    const name  = shExtractName(b);
+    const marks = shExtractMarks(b, year);
+    if(Object.keys(marks).length === 0) continue;
+    byName[name] = Object.assign(byName[name]||{}, marks);
+  }
+  return byName;
+}
+
+// ---- 日付ユーティリティ ----
+function shFmt(d){ return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function shParseYMD(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function shDefaultRange(){
+  const t=new Date(), y=t.getFullYear(), m=t.getMonth();
+  const sM = t.getDate()>=16 ? m+1 : m;               // 16日始まりの給与/シフト期間に合わせる
+  return [ new Date(y,sM,16), new Date(y,sM+1,15) ];
+}
+
+// ---- パネルの開閉 ----
+let shGasCache = null; // フォームから取得した生テキストを保持
+function openShiftPanel(){
+  const p = document.getElementById('workPanel');
+  const s = document.getElementById('wpStart'), e = document.getElementById('wpEnd');
+  if(!s.value || !e.value){ const [a,b]=shDefaultRange(); s.value=shFmt(a); e.value=shFmt(b); }
+  p.hidden = false;
+}
+document.getElementById('wpClose').addEventListener('click', ()=> document.getElementById('workPanel').hidden = true);
+document.getElementById('workPanel').addEventListener('click', ev=>{ if(ev.target.id==='workPanel') ev.target.hidden=true; });
+
+// ---- データ元ボタン ----
+document.getElementById('wpSample').addEventListener('click', ()=>{
+  const s = shParseYMD(document.getElementById('wpStart').value);
+  const m = s.getMonth()+1, d = s.getDate();
+  document.getElementById('wpPaste').value =
+`【シフト希望】岩久保
+${m}/${d}（土）○ ${m}/${d+1}（日）× ${m}/${d+2}（月）○ ${m}/${d+3}（火）△ ${m}/${d+4}（水）○
+
+（お名前）田中　太郎
+${m}/${d}⭕ ${m}/${d+1}❌ ${m}/${d+2}⭕ ${m}/${d+3}△ ${m}/${d+4}❌
+
+佐藤　花子
+${m}/${d}（土）〇 ${m}/${d+1}（日）○ ${m}/${d+2}（月）× ${m}/${d+3}○ ${m}/${d+4}○
+
+鈴木　一郎
+${m}/${d}× ${m}/${d+1}○ ${m}/${d+2}○ ${m}/${d+3}○ ${m}/${d+4}△`;
+  shRun();
+});
+document.getElementById('wpGAS').addEventListener('click', async ()=>{
+  const btn = document.getElementById('wpGAS');
+  btn.textContent = '取得中…'; btn.disabled = true;
+  try{
+    const data = await shFetchGAS();
+    if(!data || data.length===0){ alert('フォームにデータがありません。従業員に希望を送信してもらってください。'); }
+    else{
+      shGasCache = data.map(d=>d.text).join("\n\n");
+      document.getElementById('wpPaste').value = shGasCache;
+      logLine(`<b>秘書AI</b>：フォームから${data.length}名分を取得`);
+      shRun();
+    }
+  }catch(err){
+    alert('フォームから取得できませんでした（'+err.message+'）。\nテキスト貼り付けかサンプルでお試しください。');
+  }finally{ btn.textContent = 'フォームから取得'; btn.disabled = false; }
+});
+document.getElementById('wpRun').addEventListener('click', shRun);
+
+// JSONPでGASからシフト希望を取得（index.html と同一方式）
+function shFetchGAS(){
+  return new Promise((resolve, reject)=>{
+    const cb = "_aiosShiftCb_" + Date.now();
+    const sc = document.createElement('script');
+    const to = setTimeout(()=>{ delete window[cb]; sc.remove(); reject(new Error('タイムアウト')); }, 10000);
+    window[cb] = json => { clearTimeout(to); delete window[cb]; sc.remove(); resolve(json.data||[]); };
+    sc.onerror = ()=>{ clearTimeout(to); delete window[cb]; sc.remove(); reject(new Error('接続エラー')); };
+    sc.src = SHIFT_GAS_URL + "?callback=" + cb;
+    document.body.appendChild(sc);
+  });
+}
+
+// ---- 集計本体 ----
+let shLastRows = null; // CSV用
+function shRun(){
+  const startEl = document.getElementById('wpStart'), endEl = document.getElementById('wpEnd');
+  const start = shParseYMD(startEl.value), end = shParseYMD(endEl.value);
+  const minStaff = Math.max(1, parseInt(document.getElementById('wpMin').value)||1);
+  const raw = document.getElementById('wpPaste').value.trim();
+  const out = document.getElementById('wpResult');
+  if(!raw){ out.innerHTML = '<p class="wpNote">データがありません。「サンプルで試す」か「フォームから取得」を押すか、テキストを貼り付けてください。</p>'; return; }
+  if(end < start){ out.innerHTML = '<p class="wpNote">期間が逆になっています。開始日と終了日を確認してください。</p>'; return; }
+
+  const byName = shParse(raw, start.getFullYear());
+  const names = Object.keys(byName);
+  if(names.length === 0){ out.innerHTML = '<p class="wpNote">氏名やシフト記号（○△×）を読み取れませんでした。書式をご確認ください。</p>'; return; }
+
+  // 日付ごとに集計
+  const rows = [];
+  let shortDays = 0;
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    const key = shFmt(d);
+    const avail = [], maybe = [];
+    for(const n of names){
+      const v = byName[n][key];
+      if(v === '○') avail.push(n);
+      else if(v === '△') maybe.push(n);
+    }
+    const isShort = avail.length < minStaff;
+    if(isShort) shortDays++;
+    rows.push({ key, dow:d.getDay(), day:`${d.getMonth()+1}/${d.getDate()}`,
+                avail, maybe, count:avail.length, short:isShort });
+  }
+  shLastRows = { rows, names, minStaff };
+
+  // 個人別の出勤可能日数
+  const perName = names.map(n=>{
+    let o=0, s=0;
+    for(const k in byName[n]){ if(byName[n][k]==='○') o++; else if(byName[n][k]==='△') s++; }
+    return { name:n, o, s };
+  }).sort((a,b)=> b.o - a.o);
+
+  // 描画
+  let html = `<div class="kpis">
+    <div class="kpi"><b>${names.length}</b><span>提出人数</span></div>
+    <div class="kpi"><b>${rows.length}</b><span>対象日数</span></div>
+    <div class="kpi ${shortDays?'warn':''}"><b>${shortDays}</b><span>人手不足の日</span></div>
+    <div class="kpi"><b>${minStaff}</b><span>最低人数の設定</span></div>
+  </div>`;
+
+  html += `<div class="tblwrap"><table class="agg"><thead><tr>
+      <th>日付</th><th>曜</th><th>出勤可(○)</th><th>応相談(△)</th><th>可能な人</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const cls = (r.dow===0?'sun':r.dow===6?'sat':'') + (r.short?' short':'');
+    html += `<tr class="${cls.trim()}">
+      <td>${r.day}</td><td>${WDOW[r.dow]}</td>
+      <td>${r.count}${r.short?' ⚠':''}</td><td>${r.maybe.length}</td>
+      <td class="name">${r.avail.join('、')||'—'}</td></tr>`;
+  }
+  html += `</tbody></table></div>`;
+
+  html += `<ul class="names">` +
+    perName.map(p=>`<li><b>${p.name}</b> ○${p.o}日${p.s?` / △${p.s}日`:''}</li>`).join('') +
+    `</ul>`;
+
+  html += `<div class="wpNote">
+     ⚠ の日は「出勤可(○)」が最低人数（${minStaff}名）に足りていません。
+     <br>この結果はブラウザ内で集計したものです（会社のデータは変更しません）。
+     </div>
+     <div style="margin-top:10px"><button class="wpBtn primary" id="wpCsv">CSVダウンロード</button></div>`;
+
+  out.innerHTML = html;
+  document.getElementById('wpCsv').addEventListener('click', shDownloadCsv);
+
+  // AI社員の反応＆ログに実データを反映
+  banner(`✅ 集計完了：${names.length}名 / 人手不足 ${shortDays}日`);
+  say('人事', `${names.length}名分、集計しました`, 2600);
+  if(shortDays>0) say('監査', `${shortDays}日が人手不足です⚠`, 2600);
+  logLine(`<b>人事AI</b>：シフト集計完了（${names.length}名・対象${rows.length}日・人手不足${shortDays}日）`);
+}
+
+function shDownloadCsv(){
+  if(!shLastRows) return;
+  const { rows } = shLastRows;
+  const lines = [['日付','曜日','出勤可人数','応相談人数','可能な人']];
+  for(const r of rows){ lines.push([r.day, WDOW[r.dow], r.count, r.maybe.length, r.avail.join(' ')]); }
+  const csv = "﻿" + lines.map(l=> l.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'シフト集計.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  logLine(`<b>文書AI</b>：シフト集計.csv を出力`);
+}
+/* ▲▲▲ シフト集計モジュール ここまで ▲▲▲ */
 
 /* ---- 最初のひとこと ---- */
 setTimeout(()=>{ say('秘書','おはようございます、社長！ご指示をどうぞ。', 3000);
