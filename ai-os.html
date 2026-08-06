@@ -1537,29 +1537,66 @@ document.getElementById('hkY3').addEventListener('click', ()=>{
 document.getElementById('hkY3File').addEventListener('change', function(){
   const f=this.files[0]; this.value=''; if(f) hkFillYoushiki3(f);
 });
-async function hkFillYoushiki3(file){
+// ★大阪市フォーマットを一切崩さないため、SheetJSではなく JSZip で
+//   「該当セルの値だけ」XMLに書き込む（罫線・結合・書式=styles.xmlに触れない）
+function hkXmlEscC(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function hkXmlCell(xml, ref, value, isNum){
+  if(value==null || value==='') return xml;
+  const re=new RegExp('<c r="'+ref+'"([^>]*?)(?:/>|>[\\s\\S]*?</c>)');
+  const m=xml.match(re);
+  if(!m) return xml; // テンプレに無いセルはスキップ
+  const attrs=m[1].replace(/\s+t="[^"]*"/,''); // 既存t除去・s(スタイル)は保持
+  const inner=isNum ? ('<v>'+value+'</v>') : ('<is><t xml:space="preserve">'+hkXmlEscC(value)+'</t></is>');
+  const tAttr=isNum ? '' : ' t="inlineStr"';
+  return xml.replace(re, '<c r="'+ref+'"'+attrs+tAttr+'>'+inner+'</c>');
+}
+async function hkSheetPath(zip){
   try{
-    const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellStyles:true});
-    const sn=wb.SheetNames.find(n=>n.indexOf('様式第')>=0 || n.indexOf('変更届')>=0) || wb.SheetNames[0];
-    const ws=wb.Sheets[sn];
-    const setV=(a,v)=>{ if(v==null||v==='') return; if(!ws[a]) ws[a]={}; ws[a].t=(typeof v==='number')?'n':'s'; ws[a].v=v; ws[a].w=String(v); };
+    const wbx=await zip.file('xl/workbook.xml').async('string');
+    const sheets=[...wbx.matchAll(/<sheet[^>]*\bname="([^"]*)"[^>]*\br:id="([^"]*)"[^>]*\/>/g)];
+    let rid = (sheets.find(s=>/様式第|変更届/.test(s[1]))||sheets[0]||[])[2];
+    if(rid){
+      const rels=await zip.file('xl/_rels/workbook.xml.rels').async('string');
+      const rm=rels.match(new RegExp('<Relationship[^>]*Id="'+rid+'"[^>]*Target="([^"]*)"'));
+      if(rm){ let t=rm[1].replace(/^\//,''); return t.indexOf('xl/')===0 ? t : ('xl/'+t); }
+    }
+  }catch(e){}
+  return 'xl/worksheets/sheet1.xml';
+}
+function hkInjectOnePage(x){
+  if(!/<sheetPr[ >]/.test(x)) x=x.replace(/(<worksheet[^>]*>)/,'$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+  else if(!/<pageSetUpPr/.test(x)) x=x.replace(/(<sheetPr[^>]*>)/,'$1<pageSetUpPr fitToPage="1"/>');
+  if(!/<pageSetup[ >]/.test(x)){
+    if(/<pageMargins[^>]*\/>/.test(x)) x=x.replace(/(<pageMargins[^>]*\/>)/,'$1<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>');
+    else x=x.replace(/(<\/worksheet>)/,'<pageMargins left="0.3" right="0.3" top="0.4" bottom="0.4" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>$1');
+  }
+  return x;
+}
+async function hkFillYoushiki3(file){
+  if(typeof JSZip==='undefined'){ alert('ライブラリを読み込めませんでした。ブラウザ／公開URLで開くと動きます。'); return; }
+  try{
     const box=(addr,name)=> ('管理者\n'+(addr||'')+'\n'+(name||'')).replace(/\n+$/,'');
-    // 変更前 / 変更後（管理者）
-    setV('N32', box(hkVal('f_old_addr'), hkVal('f_old_name')));
-    setV('N64', box(hkVal('f_new_addr'), hkVal('f_new_name')));
-    // 変更年月日（西暦の年/月/日セル）
     const hd=hkVal('f_hendate');
-    if(hd){ const p=hd.split('-').map(Number); setV('S91',p[0]); setV('V91',p[1]); setV('Y91',p[2]); }
+    const zip=await JSZip.loadAsync(await file.arrayBuffer());
+    const path=await hkSheetPath(zip);
+    let xml=await zip.file(path).async('string');
+    // 変更前 / 変更後（管理者）
+    xml=hkXmlCell(xml,'N32', box(hkVal('f_old_addr'), hkVal('f_old_name')), false);
+    xml=hkXmlCell(xml,'N64', box(hkVal('f_new_addr'), hkVal('f_new_name')), false);
+    // 変更年月日（西暦の 年/月/日）
+    if(hd){ const p=hd.split('-').map(Number); xml=hkXmlCell(xml,'S91',p[0],true); xml=hkXmlCell(xml,'V91',p[1],true); xml=hkXmlCell(xml,'Y91',p[2],true); }
     // 変更理由（未入力なら定型文）
     const riyu = hkVal('f_riyu') || (hd? (hkWareki(hd)+'付で、管理者を下記のとおり変更いたしましたので届出いたします。') : '');
-    setV('N92', riyu);
-    // 事業所 所在地／種類（任意で上書き）
-    if(hkVal('f_jusho'))   setV('R25', hkVal('f_jusho'));
-    if(hkVal('f_service')) setV('R26', hkVal('f_service'));
-    const u8=XLSX.write(wb,{type:'array',bookType:'xlsx',cellStyles:true});
-    const blob = await xlsxSetOnePage(u8);   // A4・1ページに収める設定を注入
+    xml=hkXmlCell(xml,'N92', riyu, false);
+    // 事業所 所在地／種類（任意）
+    xml=hkXmlCell(xml,'R25', hkVal('f_jusho'), false);
+    xml=hkXmlCell(xml,'R26', hkVal('f_service'), false);
+    // A4・1ページ設定を注入（無ければ）
+    xml=hkInjectOnePage(xml);
+    zip.file(path, xml);
+    const blob=await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     // 画面プレビュー用（何を記入したか）
-    const hd2=hkVal('f_hendate');
+    const hd2=hd;
     const prev = `<h4>📋 様式第3号に記入した内容（プレビュー）</h4>
       <table>
         <tr><th>変更事項</th><td>管理者（変更事項 9）</td></tr>
