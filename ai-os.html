@@ -654,8 +654,9 @@ function shExtractName(block){
 }
 function shExtractMarks(block, y){
   const res = {};
-  // 記号のあとに続く 💬コメント も同時に拾う（index.html と同じ）
-  const re = /(\d{1,2})\/(\d{1,2})\s*(?:[（(][^）)]*[）)])?\s*([○◯⭕✅◎〇×✕✖❌☓✗△▲])([^\n\r]*)/g;
+  // 記号のあとに続く 💬コメント も拾う。末尾は「次の日付／改行／文末」の手前で止める
+  // （1行に複数日をスペース区切りで書いても全日拾えるように堅牢化）
+  const re = /(\d{1,2})\/(\d{1,2})\s*(?:[（(][^）)]*[）)])?\s*([○◯⭕✅◎〇×✕✖❌☓✗△▲])([^\n\r]*?)(?=\s*\d{1,2}\/\d{1,2}|[\r\n]|$)/g;
   let m;
   while((m = re.exec(block)) !== null){
     const sym = shNormSym(m[3]); if(!sym) continue;
