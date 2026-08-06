@@ -1,0 +1,37 @@
+name: Deploy AI-OS to Netlify (olive-ai-os)
+
+# ai-os.html などを push すると、専用サイト olive-ai-os へ自動公開します。
+# 公開先: https://olive-ai-os.netlify.app/ai-os.html
+# 事前準備（1回だけ）: リポジトリの Settings → Secrets and variables → Actions に
+#   NETLIFY_AUTH_TOKEN を登録してください（Netlify の Personal access token）。
+
+on:
+  push:
+    branches:
+      - claude/olive-an-ai-os-design-k9hw1j
+    paths:
+      - "ai-os.html"
+      - "index.html"
+      - ".github/workflows/deploy-ai-os.yml"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Netlify（olive-ai-os）へ公開
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::NETLIFY_AUTH_TOKEN が未設定です。リポジトリの Settings → Secrets and variables → Actions で登録してください。"
+            exit 1
+          fi
+          npx -y netlify-cli@17 deploy \
+            --prod \
+            --dir=. \
+            --site=c2898a43-3ef3-4a13-bf9f-812ec9da380e \
+            --message "auto-deploy ${{ github.sha }}"
