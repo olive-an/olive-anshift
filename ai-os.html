@@ -16,6 +16,8 @@
 <title>おりーぶ庵 AI-OS（デモ）</title>
 <!-- Excel入出力ライブラリ（既存 index.html と同じSheetJS） -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Word(.docx)差し込み用の ZIP ライブラリ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root{
     --olive:#5a7d3c; --olive-d:#3f5a29; --olive-l:#e8f0dd;
@@ -416,6 +418,17 @@
         <button class="wpBtn primary" id="hkMake">📝 下書きを作成</button>
         <button class="wpBtn" id="hkPrint" style="display:none">🖨 印刷 / PDFで保存</button>
         <button class="wpBtn" id="hkDl" style="display:none">⬇ HTMLで保存</button>
+      </div>
+
+      <div class="hkSep" style="margin-top:14px">⑥ 実際の様式に差し込む（推奨）</div>
+      <div class="wpNote">
+        お使いの様式（Excel/Word）の「値を入れたい場所」に、下のトークン（例 <code>{{事業所名称}}</code>）を書いておくと、
+        <b>その様式のまま</b>自動で記入して書き出します。<br>
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="wpBtn" id="hkTokens">🔖 トークン一覧を見る</button>
+          <button class="wpBtn primary" id="hkFillReal">📄 様式ファイル(.xlsx/.docx)を選んで差し込む</button>
+          <input type="file" id="hkTmpl" accept=".xlsx,.docx" style="display:none">
+        </div>
       </div>
       <div id="hkResult"></div>
     </div>
@@ -1294,6 +1307,110 @@ document.getElementById('hkDl').addEventListener('click', ()=>{
   a.download='変更届出書_下書き.html'; a.click(); URL.revokeObjectURL(a.href);
   logLine(`<b>文書AI</b>：変更届出書_下書き.html を保存`);
 });
+/* ---- 実様式への差し込み（Excel .xlsx / Word .docx） ---- */
+// トークン → 現在の入力値（届出日・変更年月日は和暦に変換）
+function hkTokenPairs(){
+  return [
+    ['{{提出先}}',       hkVal('f_ate')],
+    ['{{届出日}}',       hkWareki(hkVal('f_todokede'))],
+    ['{{法人名称}}',     hkVal('f_houjin')],
+    ['{{代表者}}',       hkVal('f_daihyo')],
+    ['{{主たる事務所}}', hkVal('f_honten')],
+    ['{{電話番号}}',     hkVal('f_tel')],
+    ['{{事業所名称}}',   hkVal('f_jigyosho')],
+    ['{{指定番号}}',     hkVal('f_shitei')],
+    ['{{サービス種類}}', hkVal('f_service')],
+    ['{{事業所所在地}}', hkVal('f_jusho')],
+    ['{{変更年月日}}',   hkWareki(hkVal('f_hendate'))],
+    ['{{変更理由}}',     hkVal('f_riyu')],
+    ['{{変更前氏名}}',   hkVal('f_old_name')],
+    ['{{変更後氏名}}',   hkVal('f_new_name')],
+    ['{{変更前生年月日}}', hkVal('f_old_birth')],
+    ['{{変更後生年月日}}', hkVal('f_new_birth')],
+    ['{{変更前住所}}',   hkVal('f_old_addr')],
+    ['{{変更後住所}}',   hkVal('f_new_addr')],
+  ];
+}
+// トークン一覧を表示
+document.getElementById('hkTokens').addEventListener('click', ()=>{
+  const rows = hkTokenPairs().map(([tk,val])=>
+    `<tr><td style="font-family:monospace">${hkEsc(tk)}</td><td>${hkEsc(val)||'<span style="color:#aaa">（未入力）</span>'}</td></tr>`).join('');
+  document.getElementById('hkResult').innerHTML =
+    `<div class="card" style="margin-top:12px"><h3>🔖 差し込みトークン一覧</h3>
+     <div class="wpNote">お使いの様式の「値を入れたい場所」に、左のトークンをそのまま貼り付けてください（セル内・文中どちらでも可）。
+     現在の入力値が右です。</div>
+     <div class="tblwrap" style="margin-top:8px"><table class="agg"><thead>
+       <tr><th>トークン</th><th>差し込まれる値</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  document.getElementById('hkResult').scrollIntoView({behavior:'smooth', block:'nearest'});
+});
+// ファイル選択→差し込み
+document.getElementById('hkFillReal').addEventListener('click', ()=> document.getElementById('hkTmpl').click());
+document.getElementById('hkTmpl').addEventListener('change', function(){
+  const f=this.files[0]; this.value=''; if(!f) return;
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  if(ext==='xlsx') hkFillXlsx(f);
+  else if(ext==='docx') hkFillDocx(f);
+  else alert('Excel(.xlsx) か Word(.docx) の様式を選んでください。');
+});
+
+function hkDownload(blob, name){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+// Excel様式：全セルのトークンを置換
+async function hkFillXlsx(file){
+  if(typeof XLSX==='undefined'){ alert('Excelライブラリを読み込めませんでした。ブラウザ／公開URLで開くと動きます。'); return; }
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellStyles:true});
+    const pairs=hkTokenPairs(); let hit=0;
+    wb.SheetNames.forEach(sn=>{ const ws=wb.Sheets[sn];
+      Object.keys(ws).forEach(addr=>{ if(addr[0]==='!') return; const c=ws[addr];
+        if(c && typeof c.v==='string' && c.v.indexOf('{{')>=0){
+          let s=c.v; pairs.forEach(([tk,val])=>{ if(s.indexOf(tk)>=0){ s=s.split(tk).join(val); hit++; } });
+          c.v=s; c.w=s; c.t='s';
+        }});
+    });
+    const out=XLSX.write(wb,{type:'array',bookType:'xlsx',cellStyles:true});
+    hkDownload(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), '様式_記入済_'+file.name);
+    hkAfterFill(hit, 'Excel');
+  }catch(e){ alert('Excel様式の差し込みでエラー：'+e.message); }
+}
+// Word様式：document.xml のトークンを置換（Wordがタグで分割していても拾う）
+async function hkFillDocx(file){
+  if(typeof JSZip==='undefined'){ alert('Word用ライブラリを読み込めませんでした。ブラウザ／公開URLで開くと動きます。'); return; }
+  try{
+    const zip=await JSZip.loadAsync(await file.arrayBuffer());
+    const targets=Object.keys(zip.files).filter(n=>/^word\/(document|header\d*|footer\d*)\.xml$/.test(n));
+    const pairs=hkTokenPairs(); let hit=0;
+    for(const name of targets){
+      let xml=await zip.file(name).async('string');
+      pairs.forEach(([tk,val])=>{
+        const re=hkTokenRegex(tk); const before=xml;
+        xml=xml.replace(re, hkXmlEsc(val));
+        if(xml!==before) hit++;
+      });
+      zip.file(name, xml);
+    }
+    const out=await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    hkDownload(out, '様式_記入済_'+file.name);
+    hkAfterFill(hit, 'Word');
+  }catch(e){ alert('Word様式の差し込みでエラー：'+e.message); }
+}
+// トークン文字の間にXMLタグが割り込んでいても一致する正規表現
+function hkTokenRegex(tk){
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const parts=Array.from(tk).map(ch=>esc(ch));
+  return new RegExp(parts.join('(?:<[^>]*>)*'),'g');
+}
+function hkXmlEsc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function hkAfterFill(hit, kind){
+  if(hit===0){
+    alert('この様式にトークンが見つかりませんでした。\n「🔖 トークン一覧を見る」のトークンを、様式の記入したい場所に貼り付けてから、もう一度お試しください。');
+    return;
+  }
+  banner(`✅ ${kind}様式に差し込みました`);
+  say('文書', `${kind}様式に記入しました`, 2600);
+  logLine(`<b>文書AI</b>：${kind}様式へ ${hit}か所 差し込み → 「様式_記入済_…」を保存`);
+}
 /* ▲▲▲ 変更届モジュール ここまで ▲▲▲ */
 
 /* ---- 最初のひとこと ---- */
