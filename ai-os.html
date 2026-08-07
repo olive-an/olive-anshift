@@ -521,6 +521,63 @@
   </div>
 </div>
 
+<!-- ===== 業務パネル：個別支援計画書（ポチパス連携） ===== -->
+<div class="modal" id="keikakuPanel" hidden>
+  <div class="sheet">
+    <div class="sheetHead">
+      <b>📘 個別支援計画書</b>
+      <span class="real-badge">本物の処理</span>
+      <span class="grow"></span>
+      <button id="kkClose" title="閉じる">✕</button>
+    </div>
+    <div class="sheetBody">
+      <div class="wpNote" style="margin-bottom:10px">
+        ポチパスの「サービス等個別支援計画（様式1-1）」Excelと連携します。
+        <b>①既存Excelを読み込み → ②ここで編集 → ③Excelへ書き出し</b>（様式・罫線は完全保持、ポチパス連携用データ列にも書き込みます）。
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="wpBtn primary" id="kkImport">📥 ポチパスExcelを読み込む</button>
+          <button class="wpBtn" id="kkSample">サンプルを入れる</button>
+          <input type="file" id="kkImportFile" accept=".xlsx" style="display:none">
+        </div>
+      </div>
+
+      <div class="hkForm">
+        <div class="hkSep">① 利用者・事業所</div>
+        <div class="hkField"><label>利用者氏名</label><input id="k_name" placeholder="織部　太郎 様"></div>
+        <div class="hkField"><label>障害支援区分</label><input id="k_kubun" placeholder="区分４"></div>
+        <div class="hkField"><label>保護者氏名</label><input id="k_hogosha"></div>
+        <div class="hkField"><label>本人との続柄</label><input id="k_zokugara"></div>
+        <div class="hkField"><label>受給者証番号</label><input id="k_jukyu" placeholder="0000000000"></div>
+        <div class="hkField"><label>通所受給者証番号</label><input id="k_tsuusho"></div>
+        <div class="hkField"><label>地域相談支援受給者証番号</label><input id="k_chiiki"></div>
+        <div class="hkField"><label>支援事業者名</label><input id="k_jigyosha" placeholder="おりーぶ庵西九条"></div>
+        <div class="hkField"><label>計画作成担当者</label><input id="k_tantou"></div>
+        <div class="hkField"><label>計画案作成日</label><input id="k_sakuseibi" placeholder="2026/01/01"></div>
+        <div class="hkField full"><label>モニタリング期間</label><input id="k_monitoring" placeholder="2026/01/01～2026/06/30"></div>
+
+        <div class="hkSep">② 意向・方針・目標</div>
+        <div class="hkField full"><label>利用者及びその家族の生活に対する意向（希望する生活）</label><textarea id="k_ikou"></textarea></div>
+        <div class="hkField full"><label>総合的な援助の方針</label><textarea id="k_houshin"></textarea></div>
+        <div class="hkField full"><label>長期目標</label><textarea id="k_choki"></textarea></div>
+        <div class="hkField full"><label>短期目標</label><textarea id="k_tanki"></textarea></div>
+
+        <div class="hkSep">③ 支援内容（優先順位 1〜6）</div>
+        <div class="full" id="kkRows"></div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+        <button class="wpBtn primary" id="kkExport">📤 ポチパスExcelへ書き出す（様式を選択）</button>
+        <input type="file" id="kkExportFile" accept=".xlsx" style="display:none">
+      </div>
+      <div class="wpNote" style="margin-top:6px">
+        ※書き出し先には、ポチパスの様式1-1のExcel（今回読み込んだファイルでも可）を選んでください。
+        フォームの内容で該当セルを上書きし、元の書式のまま新しいファイルとして保存します（元ファイルは変更されません）。
+      </div>
+      <div id="kkResult"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* =========================================================================
@@ -568,6 +625,9 @@ const PLANS = [
   {key:['監査','点検','運営指導'], title:'自己点検を実施中…', icon:'✅',
    output:'自己点検チェックリスト', outNote:'監査AI・行政AI・文書AI 連携',
    flow:['秘書','監査','行政','文書']},
+  {key:['個別支援計画','支援計画'], title:'個別支援計画書を作成中…', icon:'📘',
+   output:'個別支援計画書', outNote:'看護AI・ホーム管理AI・文書AI 連携', real:'keikaku',
+   flow:['秘書','ホーム','看護','文書']},
   {key:['利用者','入居','登録'], title:'利用者情報を登録中…', icon:'🧑‍🦽',
    output:'利用者登録票', outNote:'ホーム管理AI・人事AI・文書AI 連携',
    flow:['秘書','ホーム','人事','文書']},
@@ -730,6 +790,7 @@ async function runWorkflow(text){
   // ★中身のある業務は、ここで本物の処理パネルを開く
   if(plan.real === 'shift'){ openShiftPanel(); }
   else if(plan.real === 'henkou'){ openHenkouPanel(); }
+  else if(plan.real === 'keikaku'){ openKeikakuPanel(); }
 
   await wait(700);
 
@@ -759,6 +820,7 @@ function addDoc(plan){
     d.addEventListener('click', ()=>{
       if(plan.real==='shift') openShiftPanel();
       else if(plan.real==='henkou') openHenkouPanel();
+      else if(plan.real==='keikaku') openKeikakuPanel();
     }); }
   tray.prepend(d);
   while(tray.children.length>6) tray.lastChild.remove();
@@ -807,8 +869,8 @@ document.getElementById('cmd').addEventListener('keydown', e=>{ if(e.key==='Ente
 const CHIPS = [
   {t:'シフトを集計して', real:true},
   {t:'変更届作成して', real:true},
-  {t:'給与確認して'}, {t:'請求書作って'},
-  {t:'監査チェックして'}, {t:'工房売上を集計して'}
+  {t:'個別支援計画を作成して', real:true},
+  {t:'給与確認して'}, {t:'請求書作って'}, {t:'工房売上を集計して'}
 ];
 const chipBox = document.getElementById('chips');
 for(const c of CHIPS){
@@ -1696,6 +1758,153 @@ function hkAfterFill(hit, kind){
   logLine(`<b>文書AI</b>：${kind}様式へ ${hit}か所 差し込み → 「様式_記入済_…」を保存`);
 }
 /* ▲▲▲ 変更届モジュール ここまで ▲▲▲ */
+
+
+/* =========================================================================
+   ▼▼▼ 中身レイヤー：個別支援計画書（ポチパス 様式1-1 連携）▼▼▼
+   ・インポート：ポチパスExcelを読み込みフォームへ展開（SheetJS＝読むだけ）
+   ・エクスポート：様式のセルへJSZipで直接書き込み（罫線・結合・書式を完全保持）
+     印刷範囲外のポチパス連携用データ列（BN〜BU）にも同じ値を書き込む
+   ========================================================================= */
+
+// フォームID → 様式のセル（mirror＝ポチパス連携列）
+const KK_HEAD = [
+  ['k_name','I4'], ['k_kubun','AD4'], ['k_jigyosha','AY4'],
+  ['k_hogosha','I5'], ['k_zokugara','AD5'],
+  ['k_jukyu','I6'], ['k_tantou','AY6'],
+  ['k_chiiki','I7'], ['k_tsuusho','AD7'],
+  ['k_sakuseibi','I9'], ['k_monitoring','AD9'],
+];
+const KK_BODY = [
+  ['k_ikou','I11','BN11'], ['k_houshin','I12','BN12'],
+  ['k_choki','I13','BN13'], ['k_tanki','I14','BN14'],
+];
+// 優先順位行（18〜23行）：[fieldキー, 可視列, ミラー列]
+const KK_COLS = [
+  ['kadai','B','BO'], ['mokuhyo','K','BP'], ['tassei','T','BQ'],
+  ['service','X','BR'], ['yakuwari','AM','BS'], ['hyoka','AV','BT'], ['ryui','AZ','BU'],
+];
+const KK_COL_LABEL = {kadai:'解決すべき課題（本人のニーズ）', mokuhyo:'支援目標', tassei:'達成時期',
+  service:'福祉サービス等（種類・内容・量）', yakuwari:'本人の役割', hyoka:'評価時期', ryui:'その他留意事項'};
+
+// 優先順位1〜6の入力ブロックを生成
+(function(){
+  const box=document.getElementById('kkRows'); if(!box) return;
+  let html='';
+  for(let i=1;i<=6;i++){
+    html+=`<details class="savedprev" style="margin-bottom:6px" ${i<=2?'open':''}>
+      <summary style="cursor:pointer;font-weight:700;color:var(--olive-d);font-size:12.5px">優先順位 ${i}</summary>
+      <div class="hkForm" style="margin-top:6px">`;
+    for(const [key] of KK_COLS){
+      const short=(key==='tassei'||key==='hyoka');
+      const field = short
+        ? `<input id="kk_${i}_${key}">`
+        : `<textarea id="kk_${i}_${key}"></textarea>`;
+      html+=`<div class="hkField${short?'':' full'}"><label>${KK_COL_LABEL[key]}</label>${field}</div>`;
+    }
+    html+=`</div></details>`;
+  }
+  box.innerHTML=html;
+})();
+
+function kkVal(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
+function kkSet(id,v){ const el=document.getElementById(id); if(el) el.value=(v==null?'':String(v)); }
+
+function openKeikakuPanel(){ document.getElementById('keikakuPanel').hidden=false; }
+document.getElementById('kkClose').addEventListener('click', ()=>document.getElementById('keikakuPanel').hidden=true);
+document.getElementById('keikakuPanel').addEventListener('click', ev=>{ if(ev.target.id==='keikakuPanel') ev.target.hidden=true; });
+
+// サンプル（架空データ）
+document.getElementById('kkSample').addEventListener('click', ()=>{
+  kkSet('k_name','織部　太郎 様'); kkSet('k_kubun','区分４'); kkSet('k_jigyosha','おりーぶ庵西九条');
+  kkSet('k_jukyu','0000000000'); kkSet('k_tantou','畠　博思');
+  const now=new Date(); const ymd=`${now.getFullYear()}/${('0'+(now.getMonth()+1)).slice(-2)}/${('0'+now.getDate()).slice(-2)}`;
+  kkSet('k_sakuseibi',ymd);
+  kkSet('k_monitoring',`${ymd}～${now.getFullYear()}/`+('0'+(((now.getMonth()+6)%12)+1)).slice(-2)+'/末');
+  kkSet('k_ikou','安心して自分らしい生活を続けたい');
+  kkSet('k_houshin','福祉サービスの利用により、安心して暮らせるよう支援する');
+  kkSet('k_choki','安定した生活リズムをつくり、自分を出せる場所を増やす');
+  kkSet('k_tanki','規則正しい服薬と睡眠を続ける');
+  kkSet('kk_1_kadai','服薬を忘れず続けたい'); kkSet('kk_1_mokuhyo','定期薬を忘れないように飲んでいただく');
+  kkSet('kk_1_tassei','12ヶ月'); kkSet('kk_1_service','毎日定刻に支援者が声掛けし、確実な服薬を支援する');
+  kkSet('kk_1_yakuwari','決まった時間にお薬をもらう。不調時は伝える'); kkSet('kk_1_hyoka','6か月');
+  kkSet('kk_2_kadai','ゆっくり過ごしたい'); kkSet('kk_2_mokuhyo','スケジュールを中心とした落ち着いた生活ができる');
+  kkSet('kk_2_tassei','6ヶ月'); kkSet('kk_2_service','生活タイムスケジュールを一緒に指差し確認する');
+  kkSet('kk_2_yakuwari','スケジュールを確認しながら過ごす'); kkSet('kk_2_hyoka','6ヶ月');
+});
+
+// ---- インポート（読み込み）----
+document.getElementById('kkImport').addEventListener('click', ()=>{
+  if(typeof XLSX==='undefined'){ alert('Excelライブラリを読み込み中です。少し待ってからお試しください。'); return; }
+  document.getElementById('kkImportFile').click();
+});
+document.getElementById('kkImportFile').addEventListener('change', async function(){
+  const f=this.files[0]; this.value=''; if(!f) return;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const sn=wb.SheetNames.find(n=>n.includes('個別支援計画'))||wb.SheetNames[0];
+    const ws=wb.Sheets[sn];
+    const get=a=>{ const c=ws[a]; return c==null?'':String(c.w!=null?c.w:c.v==null?'':c.v); };
+    for(const [id,cell] of KK_HEAD) kkSet(id, get(cell));
+    for(const [id,cell] of KK_BODY) kkSet(id, get(cell));
+    for(let i=1;i<=6;i++){
+      const r=17+i;
+      for(const [key,col] of KK_COLS) kkSet(`kk_${i}_${key}`, get(col+r));
+    }
+    banner('📥 計画書を読み込みました');
+    say('看護','計画書を読み込みました',2400);
+    logLine(`<b>看護AI</b>：個別支援計画書を読み込み（${get('I4')||'氏名未設定'}）`);
+  }catch(e){ alert('読み込みエラー：'+e.message); }
+});
+
+// ---- エクスポート（書き出し・書式完全保持）----
+function kkXmlCell(xml, ref, value){
+  const re=new RegExp('<c r="'+ref+'"([^>]*?)(?:/>|>[\\s\\S]*?</c>)');
+  const m=xml.match(re); if(!m) return xml;
+  const attrs=m[1].replace(/\s+t="[^"]*"/,'');
+  if(value==null||value===''){ return xml.replace(re, '<c r="'+ref+'"'+attrs+'/>'); } // 空＝クリア（書式保持）
+  return xml.replace(re, '<c r="'+ref+'"'+attrs+' t="inlineStr"><is><t xml:space="preserve">'+hkXmlEscC(value)+'</t></is></c>');
+}
+document.getElementById('kkExport').addEventListener('click', ()=>{
+  if(typeof JSZip==='undefined'){ alert('ライブラリを読み込み中です。少し待ってからお試しください。'); return; }
+  document.getElementById('kkExportFile').click();
+});
+document.getElementById('kkExportFile').addEventListener('change', async function(){
+  const f=this.files[0]; this.value=''; if(!f) return;
+  try{
+    const zip=await JSZip.loadAsync(await f.arrayBuffer());
+    const path=await hkSheetPath(zip); // workbook.xmlからシート解決（既存関数を再利用）
+    let xml=await zip.file(path).async('string');
+    for(const [id,cell] of KK_HEAD) xml=kkXmlCell(xml, cell, kkVal(id));
+    for(const [id,cell,mirror] of KK_BODY){ const v=kkVal(id); xml=kkXmlCell(xml,cell,v); xml=kkXmlCell(xml,mirror,v); }
+    let rows=0;
+    for(let i=1;i<=6;i++){
+      const r=17+i; let has=false;
+      for(const [key,col,mir] of KK_COLS){
+        const v=kkVal(`kk_${i}_${key}`); if(v) has=true;
+        xml=kkXmlCell(xml, col+r, v); xml=kkXmlCell(xml, mir+r, v);
+      }
+      xml=kkXmlCell(xml, 'A'+r, has?String(i):''); if(has) rows++;
+    }
+    zip.file(path, xml);
+    const blob=await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const nm=(kkVal('k_name')||'記入済').replace(/\s|　/g,'').replace(/様$/,'');
+    const prev=`<h4>📘 個別支援計画書に記入した内容（プレビュー）</h4>
+      <table>
+        <tr><th>利用者氏名</th><td>${hkEsc(kkVal('k_name'))||'（未入力）'}</td></tr>
+        <tr><th>計画案作成日</th><td>${hkEsc(kkVal('k_sakuseibi'))||'（未入力）'}</td></tr>
+        <tr><th>モニタリング期間</th><td>${hkEsc(kkVal('k_monitoring'))||'（未入力）'}</td></tr>
+        <tr><th>意向</th><td>${hkEsc(kkVal('k_ikou'))||'（未入力）'}</td></tr>
+        <tr><th>支援内容</th><td>優先順位 ${rows} 件を記入（ポチパス連携列にも書き込み済み）</td></tr>
+      </table>`;
+    await aiosDeliver(blob, `個別支援計画_${nm}.xlsx`, 'kkResult', prev);
+    banner('📘 個別支援計画書を書き出しました');
+    say('看護','個別支援計画書を書き出しました',2600);
+    say('文書','様式・罫線はそのまま保持しています',2400);
+    logLine(`<b>看護AI</b>：個別支援計画書を書き出し（${kkVal('k_name')||'氏名未設定'}・支援内容${rows}件）`);
+  }catch(e){ alert('書き出しエラー：'+e.message); }
+});
+/* ▲▲▲ 個別支援計画書モジュール ここまで ▲▲▲ */
 
 /* ---- 最初のひとこと ---- */
 setTimeout(()=>{ say('秘書','おはようございます、社長！ご指示をどうぞ。', 3000);
