@@ -1,0 +1,1912 @@
+<!--
+  おりーぶ庵 AI-OS  ―  デモ画面（見た目レイヤー） Ver 0.1
+  ------------------------------------------------------------------
+  ★これは「見た目」だけのデモです。★
+  ・AI社員が会社マップの上を自律的に歩き回ります。
+  ・社長室の入力欄に指示を出すと、担当AIが集まって相談し、
+    成果物カードが「完成トレイ」に出てくる様子を再現します。
+  ・まだ本当の業務処理（実データの集計・書類作成）は入っていません。
+    それは次の段階で、1業務ずつ中身を入れていきます。
+
+  既存の index.html（シフト希望フォーム）とは独立した別ファイルです。
+  1ファイルで完結しているので、そのままブラウザで開けます。
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>おりーぶ庵 AI-OS（デモ）</title>
+<!-- Excel入出力ライブラリ（既存 index.html と同じSheetJS） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Word(.docx)差し込み用の ZIP ライブラリ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --olive:#5a7d3c; --olive-d:#3f5a29; --olive-l:#e8f0dd;
+    --ink:#26301c; --paper:#f6f8f1; --line:#d7e0c8;
+    --gold:#c99a2e;
+    /* 状態カラー */
+    --s-idle:#9aa38c; --s-move:#3d78c9; --s-work:#3a9d5d;
+    --s-talk:#8a5cc9; --s-done:#c99a2e; --s-rest:#2ea3a3; --s-err:#d0503f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+    color:var(--ink); background:#eef2e6; -webkit-text-size-adjust:100%;
+  }
+
+  /* ===== ヘッダー ===== */
+  header{
+    background:linear-gradient(180deg,var(--olive),var(--olive-d));
+    color:#fff; padding:10px 16px; display:flex; align-items:center; gap:14px;
+    flex-wrap:wrap;
+  }
+  header .logo{font-size:20px; font-weight:800; letter-spacing:.5px}
+  header .tag{font-size:11px; background:rgba(255,255,255,.18); padding:2px 8px; border-radius:999px}
+  header .tiles{display:flex; gap:8px; margin-left:auto; flex-wrap:wrap}
+  .tile{
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.25);
+    border-radius:10px; padding:6px 10px; min-width:78px; text-align:center;
+  }
+  .tile b{display:block; font-size:16px; line-height:1.1}
+  .tile span{font-size:10px; opacity:.9}
+
+  .wrap{max-width:1180px; margin:0 auto; padding:12px; display:grid;
+    grid-template-columns: 1fr 300px; gap:12px}
+  @media(max-width:880px){ .wrap{grid-template-columns:1fr} }
+
+  /* ===== フロア（会社マップ） ===== */
+  .stage{
+    position:relative; width:100%; aspect-ratio:16/10; min-height:380px;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #fbfdf7, #eef3e3 60%, #e3ebd4);
+    border:1px solid var(--line); border-radius:16px; overflow:hidden;
+    box-shadow:inset 0 0 0 6px #fff, 0 6px 20px rgba(60,80,40,.12);
+  }
+  /* うっすら床の格子 */
+  .stage::before{
+    content:""; position:absolute; inset:0;
+    background-image:linear-gradient(rgba(90,125,60,.06) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(90,125,60,.06) 1px,transparent 1px);
+    background-size:6.25% 10%; pointer-events:none;
+  }
+
+  /* 部屋・ゾーン */
+  .zone{position:absolute; transform:translate(-50%,-50%); text-align:center; pointer-events:none}
+  .plaque{
+    display:inline-block; background:#fff; border:1px solid var(--line);
+    border-radius:8px; padding:2px 8px; font-size:11px; font-weight:700;
+    color:var(--olive-d); box-shadow:0 2px 4px rgba(0,0,0,.06); white-space:nowrap;
+  }
+  .desk{font-size:20px; margin-top:2px; filter:drop-shadow(0 2px 1px rgba(0,0,0,.15))}
+
+  /* 社長室 */
+  .president{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:32%; min-width:230px; max-width:340px;
+    background:linear-gradient(180deg,#fffdf5,#fff7e4);
+    border:2px solid var(--gold); border-radius:16px; padding:10px 12px 12px;
+    box-shadow:0 8px 22px rgba(150,120,20,.20); z-index:5; text-align:center;
+  }
+  .president h2{margin:0 0 2px; font-size:14px; color:#7a5c12}
+  .president p{margin:0 0 8px; font-size:10.5px; color:#8a7333}
+  .cmdrow{display:flex; gap:6px}
+  .cmdrow input{
+    flex:1; border:1px solid var(--gold); border-radius:10px; padding:8px 10px;
+    font-size:13px; outline:none; background:#fff;
+  }
+  .cmdrow button{
+    border:none; background:var(--olive); color:#fff; font-weight:700;
+    border-radius:10px; padding:8px 12px; cursor:pointer; font-size:13px;
+  }
+  .cmdrow button:active{transform:translateY(1px)}
+  .chips{display:flex; gap:5px; flex-wrap:wrap; justify-content:center; margin-top:7px}
+  .chip{
+    font-size:10.5px; background:#fff; border:1px solid var(--line);
+    border-radius:999px; padding:3px 8px; cursor:pointer; color:var(--olive-d);
+  }
+  .chip:hover{background:var(--olive-l)}
+
+  /* ===== AI社員 ===== */
+  .staff{position:absolute; transform:translate(-50%,-50%); z-index:4;
+    text-align:center; transition:filter .2s; will-change:left,top}
+  .staff .avatar{font-size:26px; line-height:1; filter:drop-shadow(0 3px 2px rgba(0,0,0,.18))}
+  .staff.walking .avatar{animation:bob .45s infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  .staff .badge{
+    margin-top:1px; font-size:9.5px; font-weight:700; color:#fff;
+    background:var(--olive-d); border-radius:999px; padding:1px 6px; white-space:nowrap;
+    box-shadow:0 1px 2px rgba(0,0,0,.2)
+  }
+  .staff .state{
+    margin-top:2px; font-size:8.5px; font-weight:700; color:#fff;
+    border-radius:999px; padding:0 6px; display:inline-block;
+  }
+  .st-待機{background:var(--s-idle)} .st-移動{background:var(--s-move)}
+  .st-作業{background:var(--s-work)} .st-相談{background:var(--s-talk)}
+  .st-完成{background:var(--s-done)} .st-休憩{background:var(--s-rest)}
+  .st-エラー{background:var(--s-err)}
+
+  .staff .bubble{
+    position:absolute; left:50%; bottom:100%; transform:translate(-50%,-6px);
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:5px 9px; font-size:11px; width:max-content; max-width:170px;
+    box-shadow:0 4px 10px rgba(0,0,0,.14); opacity:0; pointer-events:none;
+    transition:opacity .2s, transform .2s; line-height:1.35; color:var(--ink);
+  }
+  .staff .bubble::after{
+    content:""; position:absolute; left:50%; top:100%; transform:translateX(-50%);
+    border:6px solid transparent; border-top-color:#fff;
+  }
+  .staff.say .bubble{opacity:1; transform:translate(-50%,-10px)}
+  .staff.spot{filter:drop-shadow(0 0 0 #fff)}
+  .staff.spot .avatar{animation:pop .5s}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+
+  /* ===== サイドパネル ===== */
+  .side{display:flex; flex-direction:column; gap:12px}
+  .card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:10px 12px}
+  .card h3{margin:0 0 8px; font-size:12.5px; color:var(--olive-d); display:flex; gap:6px; align-items:center}
+  .legend{display:flex; flex-wrap:wrap; gap:5px}
+  .legend span{font-size:9.5px; color:#fff; border-radius:999px; padding:1px 7px}
+
+  .log{list-style:none; margin:0; padding:0; max-height:180px; overflow:auto; font-size:11px}
+  .log li{padding:5px 0; border-bottom:1px dashed var(--line); color:#455038; line-height:1.4}
+  .log li b{color:var(--olive-d)}
+  .log li time{color:#9aa38c; font-size:9.5px; margin-right:5px}
+
+  .tray{display:flex; flex-direction:column; gap:7px; min-height:20px}
+  .doc{
+    background:linear-gradient(180deg,#fffef8,#fff6df); border:1px solid var(--gold);
+    border-radius:10px; padding:7px 10px; font-size:11.5px; color:#6a520f;
+    display:flex; align-items:center; gap:8px; animation:slidein .4s;
+  }
+  @keyframes slidein{from{opacity:0; transform:translateX(12px)}to{opacity:1}}
+  .doc .ic{font-size:18px}
+  .doc small{display:block; color:#a3833a; font-size:9.5px}
+
+  .banner{
+    position:absolute; left:50%; top:10px; transform:translateX(-50%);
+    background:var(--olive-d); color:#fff; padding:6px 14px; border-radius:999px;
+    font-size:12px; font-weight:700; z-index:8; opacity:0; transition:opacity .3s;
+    box-shadow:0 6px 16px rgba(0,0,0,.2)
+  }
+  .banner.show{opacity:1}
+
+  .demo-note{
+    font-size:10.5px; color:#6b7358; background:var(--olive-l);
+    border:1px dashed var(--olive); border-radius:8px; padding:6px 9px; line-height:1.5
+  }
+  .toolbar{display:flex; gap:6px; align-items:center; font-size:11px; color:#5c6a48}
+  .toolbar button{
+    border:1px solid var(--line); background:#fff; border-radius:8px;
+    padding:4px 9px; cursor:pointer; font-size:11px
+  }
+
+  /* ===== 業務パネル（本物の集計結果） ===== */
+  .modal{
+    position:fixed; inset:0; background:rgba(30,40,20,.45); z-index:20;
+    display:flex; align-items:center; justify-content:center; padding:14px;
+  }
+  .modal[hidden]{display:none}
+  .sheet{
+    background:var(--paper); border-radius:16px; width:100%; max-width:720px;
+    max-height:92vh; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 18px 50px rgba(0,0,0,.35)
+  }
+  .sheetHead{
+    display:flex; align-items:center; gap:10px; padding:11px 14px;
+    background:linear-gradient(180deg,var(--olive),var(--olive-d)); color:#fff;
+  }
+  .sheetHead b{font-size:14px} .sheetHead .grow{margin-left:auto}
+  .sheetHead button{
+    border:none; background:rgba(255,255,255,.2); color:#fff; width:28px; height:28px;
+    border-radius:8px; cursor:pointer; font-size:14px
+  }
+  .sheetBody{padding:14px; overflow:auto}
+  .real-badge{font-size:10px; background:#3a9d5d; color:#fff; padding:2px 8px; border-radius:999px}
+  .wpControls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:12px; margin-bottom:8px; color:#455038}
+  .wpControls input[type=date],.wpControls input[type=number]{
+    border:1px solid var(--line); border-radius:8px; padding:5px 7px; font-size:12px
+  }
+  .wpControls button, .wpBtn{
+    border:1px solid var(--olive); background:#fff; color:var(--olive-d);
+    border-radius:8px; padding:5px 10px; cursor:pointer; font-size:12px; font-weight:700
+  }
+  .wpBtn.primary{background:var(--olive); color:#fff; border-color:var(--olive)}
+  #wpPaste{
+    width:100%; min-height:70px; border:1px solid var(--line); border-radius:10px;
+    padding:8px; font-size:12px; font-family:inherit; resize:vertical; margin-bottom:8px
+  }
+  .kpis{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0}
+  .kpi{background:#fff; border:1px solid var(--line); border-radius:10px; padding:6px 12px; text-align:center; min-width:84px}
+  .kpi b{display:block; font-size:18px; color:var(--olive-d)} .kpi span{font-size:10px; color:#7a8567}
+  .kpi.warn b{color:var(--s-err)}
+  table.agg{border-collapse:collapse; width:100%; font-size:12px; margin-top:6px}
+  table.agg th, table.agg td{border:1px solid var(--line); padding:4px 6px; text-align:center}
+  table.agg th{background:var(--olive-l); color:var(--olive-d); position:sticky; top:0}
+  table.agg td.name{text-align:left; white-space:nowrap}
+  table.agg tr.sat td:first-child{color:#2f6fb3}
+  table.agg tr.sun td:first-child{color:#c0392b}
+  table.agg tr.short{background:#fdecea}
+  table.agg tr.short td:nth-child(4){color:var(--s-err); font-weight:800}
+  .names{list-style:none; padding:0; margin:8px 0 0; display:flex; flex-wrap:wrap; gap:6px}
+  .names li{background:#fff; border:1px solid var(--line); border-radius:999px; padding:3px 9px; font-size:11px}
+  .names li b{color:var(--olive-d)}
+  .wpNote{font-size:11px; color:#6b7358; margin-top:10px; line-height:1.5}
+  .tblwrap{max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:10px}
+
+  /* ===== 保存結果の表示 ===== */
+  .savednote{background:#eaf5ec; border:1px solid #b6ddc0; color:#1f6b39; border-radius:10px;
+    padding:8px 11px; font-size:12px; margin:10px 0 4px; line-height:1.5}
+  .savednote b{color:#155a2c}
+  .savednote .path{font-family:monospace; background:#fff; border:1px solid #cfe6d5; border-radius:5px; padding:0 5px}
+  .savedprev{background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px}
+  .savedprev h4{margin:0 0 6px; font-size:12px; color:var(--olive-d)}
+  .savedprev table{border-collapse:collapse; width:100%; font-size:11.5px}
+  .savedprev th,.savedprev td{border:1px solid var(--line); padding:3px 7px; text-align:left; vertical-align:top}
+  .savedprev th{background:var(--olive-l); color:var(--olive-d); white-space:nowrap; width:120px}
+  .savedprev td{white-space:pre-line}
+
+  /* ===== 変更届パネル ===== */
+  .hkForm{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px}
+  .hkForm .full{grid-column:1 / -1}
+  .hkField{display:flex; flex-direction:column; gap:2px}
+  .hkField label{font-size:10.5px; color:#5c6a48; font-weight:700}
+  .hkField input, .hkField select, .hkField textarea{
+    border:1px solid var(--line); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:inherit; width:100%
+  }
+  .hkField textarea{min-height:44px; resize:vertical}
+  .hkSep{grid-column:1/-1; font-size:11px; font-weight:800; color:var(--olive-d);
+    border-bottom:2px solid var(--olive-l); padding:6px 0 3px; margin-top:4px}
+  .hkChecks{grid-column:1/-1; display:flex; flex-wrap:wrap; gap:10px; font-size:11.5px; color:#455038}
+  .hkChecks label{display:flex; gap:4px; align-items:center}
+  /* A4下書きプレビュー */
+  .doc-preview{background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px 22px;
+    margin-top:12px; color:#1a1a1a; font-size:12.5px; line-height:1.7}
+  .doc-preview h2.dtitle{text-align:center; font-size:19px; letter-spacing:8px; margin:2px 0 16px; font-weight:800}
+  .doc-preview .dmeta{display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px}
+  .doc-preview .to{font-size:13px; font-weight:700; margin:10px 0 2px}
+  .doc-preview .lead{margin:12px 0}
+  .doc-preview table.dt{border-collapse:collapse; width:100%; margin:8px 0 4px}
+  .doc-preview table.dt th, .doc-preview table.dt td{border:1px solid #333; padding:5px 8px; font-size:12px; vertical-align:top}
+  .doc-preview table.dt th{background:#f0f0eb; width:120px; text-align:left; white-space:nowrap}
+  .doc-preview .sec{font-weight:800; margin:14px 0 4px; font-size:13px}
+  .doc-preview .beppyo{page-break-before:always; margin-top:22px}
+  .doc-preview .stamp{text-align:right; margin-top:6px; font-size:11px; color:#666}
+  @media print{
+    body * { visibility:hidden }
+    #hkPrintArea, #hkPrintArea * { visibility:visible }
+    #hkPrintArea{ position:absolute; left:0; top:0; width:100%; border:none; margin:0; padding:0 }
+  }
+
+  /* ============ スマホ・タブレット対応（レスポンシブ） ============ */
+  body{ overflow-x:hidden }
+  @media (max-width: 640px){
+    header{ padding:8px 10px; gap:8px }
+    header .logo{ font-size:15px }
+    header .tag{ display:none }
+    header .tiles{ width:100%; margin-left:0; gap:6px; justify-content:space-between }
+    .tile{ min-width:0; flex:1; padding:5px 4px }
+    .tile b{ font-size:14px } .tile span{ font-size:9px }
+
+    .wrap{ padding:8px; gap:8px }
+
+    /* 会社マップ：スマホは縦長にして高さを確保 */
+    .stage{ aspect-ratio:auto; height:64vh; min-height:430px;
+      box-shadow:inset 0 0 0 4px #fff, 0 4px 14px rgba(60,80,40,.12) }
+    .plaque{ font-size:9px; padding:1px 5px }
+    .desk{ font-size:16px }
+    .staff .avatar{ font-size:24px }
+    .staff .badge{ font-size:9px; padding:1px 5px }
+    .staff .state{ font-size:8px }
+    .staff .bubble{ font-size:11px; max-width:150px }
+
+    /* 社長室：大きく・入力は16pxでiOSの自動ズーム防止 */
+    .president{ width:82%; min-width:0; max-width:none; padding:9px 10px }
+    .president h2{ font-size:13px } .president p{ font-size:10px }
+    .cmdrow input, .cmdrow button{ font-size:16px; padding:9px 10px }
+    .chip{ font-size:12px; padding:4px 9px }
+
+    .toolbar{ font-size:12px }
+    .toolbar button{ font-size:12px; padding:6px 10px }
+
+    /* サイドの成果物・ログは読みやすいサイズに */
+    .card h3{ font-size:13px }
+    .log{ max-height:200px; font-size:12px }
+
+    /* モーダルを全画面寄りに */
+    .modal{ padding:6px }
+    .sheet{ max-width:100%; width:100%; max-height:96vh; border-radius:12px }
+    .sheetHead b{ font-size:13px }
+    .sheetBody{ padding:11px }
+    .wpControls{ gap:6px }
+    /* 入力系は16px（iOSズーム防止） */
+    .wpControls input, .wpControls select, #wpPaste,
+    .hkField input, .hkField select, .hkField textarea{ font-size:16px }
+    /* 変更届フォームは1列に */
+    .hkForm{ grid-template-columns:1fr }
+    table.agg th, table.agg td{ font-size:11px; padding:3px 4px }
+    .doc-preview{ padding:14px }
+    .doc-preview h2.dtitle{ font-size:16px; letter-spacing:5px }
+  }
+
+  /* iPad など中間サイズ：2カラムが窮屈な縦向きは1カラムに */
+  @media (min-width: 641px) and (max-width: 900px){
+    .wrap{ grid-template-columns:1fr }
+    .stage{ aspect-ratio:16/11; min-height:460px }
+  }
+</style>
+
+<header>
+  <span class="logo">🌿 おりーぶ庵 AI-OS</span>
+  <span class="tag">デモ / 見た目レイヤー</span>
+  <div class="tiles">
+    <div class="tile"><b id="t-ai">0</b><span>稼働AI</span></div>
+    <div class="tile"><b>3</b><span>本日の期限</span></div>
+    <div class="tile"><b>5</b><span>未処理</span></div>
+    <div class="tile"><b>92%</b><span>入居率</span></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- 会社マップ -->
+  <div>
+    <div class="stage" id="stage">
+      <div class="banner" id="banner"></div>
+
+      <!-- 社長室（中央・入力欄はここだけ） -->
+      <div class="president">
+        <h2>🏛 社長室</h2>
+        <p>あなたは社長です。ひとこと指示するだけ。</p>
+        <div class="cmdrow">
+          <input id="cmd" placeholder="例：変更届作成して" autocomplete="off">
+          <button id="go">指示</button>
+        </div>
+        <div class="chips" id="chips"></div>
+      </div>
+    </div>
+
+    <div class="toolbar" style="margin-top:8px">
+      <button id="pause">⏸ 自律モードを止める</button>
+      <span>放っておくとAI社員が自分で動きます。</span>
+    </div>
+    <div class="toolbar" style="margin-top:6px; flex-wrap:wrap">
+      <button id="setDir">📁 保存先フォルダを設定</button>
+      <button id="setBk">🗄 バックアップ先（任意）</button>
+      <label style="font-size:11px"><input type="checkbox" id="bkChk" checked> バックアップを作成</label>
+      <button id="clrDir">解除</button>
+      <span id="dirLabel">保存先：未設定（現在はダウンロードフォルダ）</span>
+    </div>
+  </div>
+
+  <!-- サイド -->
+  <aside class="side">
+    <div class="card">
+      <div class="demo-note">
+        ✅ <b>「シフトを集計して」</b>…フォーム(GAS)の希望を集計＋人手不足検出＋Excel反映。<br>
+        ✅ <b>「変更届作成して」</b>…管理者変更届の下書きを自動作成（印刷/PDF・保存）。<br>
+        その他（給与・請求など）はまだ<b>見た目のデモ</b>で、中身は1業務ずつ追加していきます。
+      </div>
+    </div>
+    <div class="card">
+      <h3>📥 完成トレイ</h3>
+      <div class="tray" id="tray"><div style="font-size:11px;color:#9aa38c">まだ成果物はありません</div></div>
+    </div>
+    <div class="card">
+      <h3>🔔 社内ログ</h3>
+      <ul class="log" id="log"></ul>
+    </div>
+    <div class="card">
+      <h3>🎨 状態の色</h3>
+      <div class="legend">
+        <span class="st-待機">待機</span><span class="st-移動">移動</span>
+        <span class="st-作業">作業</span><span class="st-相談">相談</span>
+        <span class="st-完成">完成</span><span class="st-休憩">休憩</span>
+        <span class="st-エラー">エラー</span>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ===== 業務パネル：本物のシフト集計 ===== -->
+<div class="modal" id="workPanel" hidden>
+  <div class="sheet">
+    <div class="sheetHead">
+      <b>🗓️ シフト集計</b>
+      <span class="real-badge">本物の処理</span>
+      <span class="grow"></span>
+      <button id="wpClose" title="閉じる">✕</button>
+    </div>
+    <div class="sheetBody">
+      <div class="wpControls">
+        <label>期間 <input type="date" id="wpStart"></label>
+        <span>〜</span>
+        <input type="date" id="wpEnd">
+        <label>最低人数 <input type="number" id="wpMin" value="2" min="1" style="width:56px"></label>
+        <button id="wpSample">サンプルで試す</button>
+        <button id="wpGAS">フォームから取得</button>
+      </div>
+      <textarea id="wpPaste" placeholder="シフト希望のテキストをここに貼り付けてもOK（○＝可 / △＝応相談 / ×＝不可）"></textarea>
+      <button id="wpRun" class="wpBtn primary">この内容で集計する</button>
+      <input type="file" id="wpTmpl" accept=".xlsx" style="display:none">
+      <div id="wpResult"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 業務パネル：変更届の下書き（行政AI） ===== -->
+<div class="modal" id="henkouPanel" hidden>
+  <div class="sheet">
+    <div class="sheetHead">
+      <b>📋 変更届の下書き</b>
+      <span class="real-badge">本物の処理</span>
+      <span class="grow"></span>
+      <button id="hkClose" title="閉じる">✕</button>
+    </div>
+    <div class="sheetBody">
+      <div class="wpControls" style="margin-bottom:10px">
+        <label>届出の種類
+          <select id="hkType">
+            <option value="kanrisha">管理者の変更届</option>
+            <option value="other" disabled>その他（名称/所在地/加算 …）準備中</option>
+          </select>
+        </label>
+        <button id="hkSample">サンプルを入れる</button>
+      </div>
+
+      <div class="hkForm" id="hkForm">
+        <div class="hkSep">① 提出先・届出日</div>
+        <div class="hkField"><label>提出先</label><input id="f_ate" value="大阪市長"></div>
+        <div class="hkField"><label>届出日</label><input id="f_todokede" type="date"></div>
+
+        <div class="hkSep">② 事業者（法人）</div>
+        <div class="hkField"><label>法人名称</label><input id="f_houjin" placeholder="社会福祉法人 ○○会"></div>
+        <div class="hkField"><label>代表者 職・氏名</label><input id="f_daihyo" placeholder="理事長 ○○ ○○"></div>
+        <div class="hkField full"><label>主たる事務所の所在地</label><input id="f_honten" placeholder="大阪市○○区○○ 1-2-3"></div>
+        <div class="hkField"><label>電話番号</label><input id="f_tel" placeholder="06-0000-0000"></div>
+
+        <div class="hkSep">③ 事業所</div>
+        <div class="hkField"><label>事業所名称</label><input id="f_jigyosho" placeholder="おりーぶ庵 ○○"></div>
+        <div class="hkField"><label>指定番号</label><input id="f_shitei" placeholder="2710000000"></div>
+        <div class="hkField"><label>サービス種類</label><input id="f_service" value="共同生活援助"></div>
+        <div class="hkField"><label>事業所所在地</label><input id="f_jusho" placeholder="大阪市此花区○○"></div>
+
+        <div class="hkSep">④ 変更内容（管理者）</div>
+        <div class="hkField"><label>変更年月日</label><input id="f_hendate" type="date"></div>
+        <div class="hkField"><label>変更の理由</label><input id="f_riyu" placeholder="前任者の退職に伴う"></div>
+        <div class="hkField"><label>【変更前】氏名</label><input id="f_old_name" placeholder="旧 太郎"></div>
+        <div class="hkField"><label>【変更後】氏名</label><input id="f_new_name" placeholder="新 花子"></div>
+        <div class="hkField"><label>【変更前】生年月日</label><input id="f_old_birth" placeholder="昭和50年1月1日"></div>
+        <div class="hkField"><label>【変更後】生年月日</label><input id="f_new_birth" placeholder="昭和55年5月5日"></div>
+        <div class="hkField full"><label>【変更前】住所</label><input id="f_old_addr" placeholder="大阪市○○区…"></div>
+        <div class="hkField full"><label>【変更後】住所</label><input id="f_new_addr" placeholder="大阪市○○区…"></div>
+
+        <div class="hkSep">⑤ 添付書類（チェックした書類を一覧に記載）</div>
+        <div class="hkChecks">
+          <label><input type="checkbox" id="a1" checked>管理者の経歴書</label>
+          <label><input type="checkbox" id="a2" checked>資格を証する書類の写し</label>
+          <label><input type="checkbox" id="a3">実務経験証明書</label>
+          <label><input type="checkbox" id="a4" checked>誓約書</label>
+        </div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+        <button class="wpBtn primary" id="hkMake">📝 下書きを作成</button>
+        <button class="wpBtn" id="hkPrint" style="display:none">🖨 印刷 / PDFで保存</button>
+        <button class="wpBtn" id="hkDl" style="display:none">⬇ HTMLで保存</button>
+      </div>
+
+      <div class="hkSep" style="margin-top:14px">⑥ 実際の様式に差し込む（推奨）</div>
+      <div class="wpNote">
+        お使いの様式（Excel/Word）の「値を入れたい場所」に、下のトークン（例 <code>{{事業所名称}}</code>）を書いておくと、
+        <b>その様式のまま</b>自動で記入して書き出します。<br>
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="wpBtn" id="hkTokens">🔖 トークン一覧を見る</button>
+          <button class="wpBtn primary" id="hkFillReal">📄 様式ファイル(.xlsx/.docx)を選んで差し込む</button>
+          <input type="file" id="hkTmpl" accept=".xlsx,.docx" style="display:none">
+        </div>
+      </div>
+
+      <div class="hkSep" style="margin-top:14px">⑦ 大阪市「様式第3号（変更届）」に直接記入</div>
+      <div class="wpNote">
+        御社の <b>様式第3号（.xlsx）</b> を選ぶと、上の入力（変更前/変更後の住所・氏名、変更年月日、変更理由、事業所所在地・種類）を
+        <b>該当セルに自動記入</b>して、体裁そのままで書き出します。※.xls の場合は一度 .xlsx で保存してからお使いください。
+        <div style="margin-top:8px">
+          <button class="wpBtn primary" id="hkY3">🏛 様式第3号(.xlsx)を選んで記入</button>
+          <input type="file" id="hkY3File" accept=".xlsx" style="display:none">
+        </div>
+      </div>
+      <div id="hkResult"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 業務パネル：個別支援計画書（ポチパス連携） ===== -->
+<div class="modal" id="keikakuPanel" hidden>
+  <div class="sheet">
+    <div class="sheetHead">
+      <b>📘 個別支援計画書</b>
+      <span class="real-badge">本物の処理</span>
+      <span class="grow"></span>
+      <button id="kkClose" title="閉じる">✕</button>
+    </div>
+    <div class="sheetBody">
+      <div class="wpNote" style="margin-bottom:10px">
+        ポチパスの「サービス等個別支援計画（様式1-1）」Excelと連携します。
+        <b>①既存Excelを読み込み → ②ここで編集 → ③Excelへ書き出し</b>（様式・罫線は完全保持、ポチパス連携用データ列にも書き込みます）。
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="wpBtn primary" id="kkImport">📥 ポチパスExcelを読み込む</button>
+          <button class="wpBtn" id="kkSample">サンプルを入れる</button>
+          <input type="file" id="kkImportFile" accept=".xlsx" style="display:none">
+        </div>
+      </div>
+
+      <div class="hkForm">
+        <div class="hkSep">① 利用者・事業所</div>
+        <div class="hkField"><label>利用者氏名</label><input id="k_name" placeholder="織部　太郎 様"></div>
+        <div class="hkField"><label>障害支援区分</label><input id="k_kubun" placeholder="区分４"></div>
+        <div class="hkField"><label>保護者氏名</label><input id="k_hogosha"></div>
+        <div class="hkField"><label>本人との続柄</label><input id="k_zokugara"></div>
+        <div class="hkField"><label>受給者証番号</label><input id="k_jukyu" placeholder="0000000000"></div>
+        <div class="hkField"><label>通所受給者証番号</label><input id="k_tsuusho"></div>
+        <div class="hkField"><label>地域相談支援受給者証番号</label><input id="k_chiiki"></div>
+        <div class="hkField"><label>支援事業者名</label><input id="k_jigyosha" placeholder="おりーぶ庵西九条"></div>
+        <div class="hkField"><label>計画作成担当者</label><input id="k_tantou"></div>
+        <div class="hkField"><label>計画案作成日</label><input id="k_sakuseibi" placeholder="2026/01/01"></div>
+        <div class="hkField full"><label>モニタリング期間</label><input id="k_monitoring" placeholder="2026/01/01～2026/06/30"></div>
+
+        <div class="hkSep">② 意向・方針・目標</div>
+        <div class="hkField full"><label>利用者及びその家族の生活に対する意向（希望する生活）</label><textarea id="k_ikou"></textarea></div>
+        <div class="hkField full"><label>総合的な援助の方針</label><textarea id="k_houshin"></textarea></div>
+        <div class="hkField full"><label>長期目標</label><textarea id="k_choki"></textarea></div>
+        <div class="hkField full"><label>短期目標</label><textarea id="k_tanki"></textarea></div>
+
+        <div class="hkSep">③ 支援内容（優先順位 1〜6）</div>
+        <div class="full" id="kkRows"></div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+        <button class="wpBtn primary" id="kkExport">📤 ポチパスExcelへ書き出す（様式を選択）</button>
+        <input type="file" id="kkExportFile" accept=".xlsx" style="display:none">
+      </div>
+      <div class="wpNote" style="margin-top:6px">
+        ※書き出し先には、ポチパスの様式1-1のExcel（今回読み込んだファイルでも可）を選んでください。
+        フォームの内容で該当セルを上書きし、元の書式のまま新しいファイルとして保存します（元ファイルは変更されません）。
+      </div>
+      <div id="kkResult"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   おりーぶ庵 AI-OS デモ ロジック
+   ・座標はすべて % （0〜100）。フロアの大きさが変わっても崩れません。
+   ========================================================================= */
+
+const stage = document.getElementById('stage');
+
+/* ---- AI社員の定義（名前・顔・担当・自席の位置） ---- */
+const STAFF = [
+  {id:'秘書',   name:'秘書AI',      face:'🧑‍💼', x:50, y:30, lines:['はい社長！内容を確認します','担当部署へ振り分けますね','こちらまとめました']},
+  {id:'行政',   name:'行政AI',      face:'🧑‍⚖️', x:15, y:16, lines:['大阪市の様式で作成します','加算要件を確認中…','様式を最新版に差し替えました']},
+  {id:'監査',   name:'監査AI',      face:'🔍',   x:15, y:42, lines:['不足書類をチェックします','ここ、リスクありです','自己点検クリアです']},
+  {id:'文書',   name:'文書AI',      face:'📝',   x:15, y:68, lines:['体裁を整えます','ドライブに保存しました','清書が完成しました']},
+  {id:'請求',   name:'請求AI',      face:'🧾',   x:85, y:16, lines:['国保連データを作ります','実績と突合します','返戻ゼロで通りそうです']},
+  {id:'経理',   name:'経理AI',      face:'💰',   x:85, y:42, lines:['数字を集計します','売上と経費を照合中','収支が出ました']},
+  {id:'人事',   name:'人事AI',      face:'🤝',   x:85, y:68, lines:['職員情報を確認します','資格・研修を照合','契約書式を用意しました']},
+  {id:'工房',   name:'工房AI',      face:'🛠️',  x:30, y:86, lines:['受注と納品を確認','工賃を計算します','作業実績まとめました']},
+  {id:'ホーム', name:'ホーム管理AI', face:'🏠',   x:50, y:89, lines:['各ホームの空室を確認','西九条・九条…集計中','入居状況を更新しました']},
+  {id:'看護',   name:'看護AI',      face:'🩺',   x:70, y:86, lines:['健康記録を確認します','受診予定を反映','看護記録OKです']},
+  {id:'DX',     name:'DX AI',       face:'💻',   x:88, y:89, lines:['自動化できます','スプレッドと連携','処理を高速化しました']},
+];
+
+/* ---- 施設ゾーン（背景の飾り） ---- */
+const ZONES = [
+  ...STAFF.map(s=>({x:s.x, y:s.y, label:s.name, desk:'🖥️'})),
+  {x:50, y:9,  label:'プリンター', desk:'🖨️'},
+  {x:8,  y:90, label:'休憩室',    desk:'☕'},
+  {x:92, y:9,  label:'書類棚',    desk:'🗄️'},
+  {x:50, y:72, label:'会議室',    desk:'📊'},
+];
+
+/* ---- 業務プラン（キーワード → 担当AIの流れ＋成果物） ---- */
+const PLANS = [
+  {key:['変更届','管理者'], title:'管理者変更届を作成中…', icon:'📋',
+   output:'管理者変更届（下書き）', outNote:'行政AI・人事AI・監査AI・文書AI 連携', real:'henkou',
+   flow:['秘書','行政','人事','監査','文書','秘書']},
+  {key:['給与','賃金'], title:'給与を確認中…', icon:'💴',
+   output:'給与確認レポート', outNote:'経理AI・人事AI 連携',
+   flow:['秘書','経理','人事','経理']},
+  {key:['請求','国保連'], title:'請求データを作成中…', icon:'🧾',
+   output:'国保連 請求データ（案）', outNote:'請求AI・経理AI・監査AI 連携',
+   flow:['秘書','請求','経理','監査','請求']},
+  {key:['監査','点検','運営指導'], title:'自己点検を実施中…', icon:'✅',
+   output:'自己点検チェックリスト', outNote:'監査AI・行政AI・文書AI 連携',
+   flow:['秘書','監査','行政','文書']},
+  {key:['個別支援計画','支援計画'], title:'個別支援計画書を作成中…', icon:'📘',
+   output:'個別支援計画書', outNote:'看護AI・ホーム管理AI・文書AI 連携', real:'keikaku',
+   flow:['秘書','ホーム','看護','文書']},
+  {key:['利用者','入居','登録'], title:'利用者情報を登録中…', icon:'🧑‍🦽',
+   output:'利用者登録票', outNote:'ホーム管理AI・人事AI・文書AI 連携',
+   flow:['秘書','ホーム','人事','文書']},
+  {key:['工房','受注','工賃','売上'], title:'工房の売上を集計中…', icon:'🛠️',
+   output:'工房 売上集計', outNote:'工房AI・経理AI 連携',
+   flow:['秘書','工房','経理']},
+  {key:['シフト','勤務'], title:'シフトを集計中…', icon:'🗓️',
+   output:'シフト集計表', outNote:'秘書AI・人事AI 連携', real:'shift',
+   flow:['秘書','人事','秘書']},
+  {key:['看護','健康','受診'], title:'健康記録を確認中…', icon:'🩺',
+   output:'看護記録サマリ', outNote:'看護AI・人事AI 連携',
+   flow:['秘書','看護','人事']},
+];
+
+const MEET = {x:50, y:72}; // 会議室（集合地点）
+
+/* ---- 状態管理 ---- */
+const S = {}; // id -> {el, x, y, tx, ty, state, moving, resolve, home}
+let busy = false;         // 業務ワークフロー実行中か
+let autonomous = true;    // 自律モード
+
+/* ---- DOM生成：ゾーン ---- */
+for(const z of ZONES){
+  const d = document.createElement('div');
+  d.className='zone'; d.style.left=z.x+'%'; d.style.top=(z.y+7)+'%';
+  d.innerHTML = `<div class="desk">${z.desk}</div><div class="plaque">${z.label}</div>`;
+  stage.appendChild(d);
+}
+
+/* ---- DOM生成：AI社員 ---- */
+for(const s of STAFF){
+  const el = document.createElement('div');
+  el.className='staff';
+  el.innerHTML = `<div class="bubble"></div><div class="avatar">${s.face}</div>
+                  <div class="badge">${s.name}</div><div class="state st-待機">待機</div>`;
+  el.style.left=s.x+'%'; el.style.top=s.y+'%';
+  stage.appendChild(el);
+  S[s.id] = {def:s, el, x:s.x, y:s.y, tx:s.x, ty:s.y, state:'待機',
+             moving:false, resolve:null, home:{x:s.x,y:s.y},
+             avatar:el.querySelector('.avatar'),
+             stateEl:el.querySelector('.state'),
+             bubbleEl:el.querySelector('.bubble')};
+}
+document.getElementById('t-ai').textContent = STAFF.length;
+
+/* ---- 状態変更 ---- */
+function setState(id, st){
+  const o = S[id]; o.state = st;
+  o.stateEl.className = 'state st-'+st;
+  o.stateEl.textContent = st;
+}
+/* ---- 吹き出し ---- */
+function say(id, text, ms=1600){
+  const o = S[id];
+  o.bubbleEl.textContent = text;
+  o.el.classList.add('say');
+  clearTimeout(o._sayT);
+  o._sayT = setTimeout(()=>o.el.classList.remove('say'), ms);
+}
+/* ---- 目的地をセット（移動開始） ---- */
+function moveTo(id, x, y){
+  const o = S[id];
+  o.tx = x; o.ty = y; o.moving = true;
+  setState(id,'移動'); o.el.classList.add('walking');
+  // 進む向きに応じて顔を反転
+  o.avatar.style.transform = (x < o.x) ? 'scaleX(-1)' : 'scaleX(1)';
+  return new Promise(res=>{ o.resolve = res; });
+}
+
+/* ---- メインループ：全AIを毎フレーム少しずつ動かす ---- */
+let last = performance.now();
+function tick(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  const speed = 16; // %/秒
+  for(const id in S){
+    const o = S[id];
+    if(!o.moving) continue;
+    const dx = o.tx-o.x, dy = o.ty-o.y;
+    const dist = Math.hypot(dx,dy);
+    const step = speed*dt;
+    if(dist <= step){
+      o.x = o.tx; o.y = o.ty; o.moving = false;
+      o.el.classList.remove('walking');
+      o.el.style.left=o.x+'%'; o.el.style.top=o.y+'%';
+      if(o.state==='移動') setState(id,'待機');
+      if(o.resolve){ const r=o.resolve; o.resolve=null; r(); }
+    }else{
+      o.x += dx/dist*step; o.y += dy/dist*step;
+      o.el.style.left=o.x+'%'; o.el.style.top=o.y+'%';
+    }
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+/* ---- ユーティリティ ---- */
+const wait = ms => new Promise(r=>setTimeout(r,ms));
+function logLine(html){
+  const ul = document.getElementById('log');
+  const li = document.createElement('li');
+  const t = new Date();
+  const hh = String(t.getHours()).padStart(2,'0');
+  const mm = String(t.getMinutes()).padStart(2,'0');
+  li.innerHTML = `<time>${hh}:${mm}</time>${html}`;
+  ul.prepend(li);
+  while(ul.children.length>40) ul.lastChild.remove();
+}
+function banner(text){
+  const b = document.getElementById('banner');
+  b.textContent = text; b.classList.add('show');
+  clearTimeout(b._t); b._t = setTimeout(()=>b.classList.remove('show'), 2600);
+}
+function pickLine(id, i){ const L=S[id].def.lines; return L[Math.min(i,L.length-1)]; }
+
+/* ---- 業務ワークフロー実行 ---- */
+function resolvePlan(text){
+  for(const p of PLANS){ if(p.key.some(k=>text.includes(k))) return p; }
+  return null;
+}
+async function runWorkflow(text){
+  if(busy) return;
+  const plan = resolvePlan(text);
+  if(!plan){
+    // 分からないときは秘書AIが聞き返す
+    setState('秘書','エラー');
+    say('秘書','「変更届」「給与」「請求」「工房売上」など、もう一度お願いします🙏', 3200);
+    logLine(`<b>秘書AI</b>：指示を認識できませんでした`);
+    setTimeout(()=>setState('秘書','待機'),1500);
+    return;
+  }
+  busy = true;
+  banner(plan.title);
+  logLine(`👑 <b>社長</b>：「${text}」`);
+
+  // 秘書AIがまず反応
+  spotlight('秘書');
+
+  let prev = null;
+  for(let i=0;i<plan.flow.length;i++){
+    const id = plan.flow[i];
+    // 集合地点の周りに少しずらして並ぶ
+    const angle = (i/plan.flow.length)*Math.PI*2;
+    const tx = MEET.x + Math.cos(angle)*13;
+    const ty = MEET.y + Math.sin(angle)*8;
+    await moveTo(id, tx, ty);
+    setState(id, i===plan.flow.length-1 ? '完成' : '相談');
+    const line = (id==='秘書' && i>0) ? pickLine(id,2) : pickLine(id, i===0?0:1);
+    say(id, line, 1700);
+    logLine(`<b>${S[id].def.name}</b>：${line}`);
+    if(prev){ say(prev, '→ お願いします', 900); }
+    prev = id;
+    await wait(1150);
+  }
+
+  // 成果物を完成トレイへ
+  addDoc(plan);
+  banner('✅ 完成しました');
+  logLine(`📄 成果物「<b>${plan.output}</b>」が完成`);
+
+  // ★中身のある業務は、ここで本物の処理パネルを開く
+  if(plan.real === 'shift'){ openShiftPanel(); }
+  else if(plan.real === 'henkou'){ openHenkouPanel(); }
+  else if(plan.real === 'keikaku'){ openKeikakuPanel(); }
+
+  await wait(700);
+
+  // 全員自席へ帰る
+  for(const id of plan.flow){ goHome(id); }
+  await wait(600);
+  busy = false;
+}
+
+function spotlight(id){
+  const o=S[id]; o.el.classList.add('spot');
+  setTimeout(()=>o.el.classList.remove('spot'),600);
+}
+function goHome(id){
+  const o=S[id];
+  moveTo(id, o.home.x, o.home.y).then(()=>setState(id,'待機'));
+}
+function addDoc(plan){
+  const tray = document.getElementById('tray');
+  if(tray.dataset.empty!=='0'){ tray.innerHTML=''; tray.dataset.empty='0'; }
+  const d = document.createElement('div');
+  d.className='doc';
+  const openable = plan.real ? '　▶ 開く' : '';
+  d.innerHTML = `<span class="ic">${plan.icon}</span>
+     <div><div>${plan.output}${openable}</div><small>${plan.outNote}</small></div>`;
+  if(plan.real){ d.style.cursor='pointer'; d.title='クリックで開く';
+    d.addEventListener('click', ()=>{
+      if(plan.real==='shift') openShiftPanel();
+      else if(plan.real==='henkou') openHenkouPanel();
+      else if(plan.real==='keikaku') openKeikakuPanel();
+    }); }
+  tray.prepend(d);
+  while(tray.children.length>6) tray.lastChild.remove();
+}
+
+/* ---- 自律モード：手が空いていると勝手に動く ---- */
+const IDLE_SPOTS = [
+  {x:50,y:16,act:'プリンターへ'}, {x:8,y:84,act:'休憩室へ'},
+  {x:92,y:16,act:'書類棚へ'}, {x:50,y:66,act:'会議室へ'},
+];
+setInterval(()=>{
+  if(busy || !autonomous) return;
+  for(const id in S){
+    const o = S[id];
+    if(o.moving || o.state!=='待機') continue;
+    const r = Math.random();
+    if(r < 0.12){
+      // ぶらっと移動
+      const spot = IDLE_SPOTS[Math.floor(Math.random()*IDLE_SPOTS.length)];
+      const jx = spot.x + (Math.random()*8-4);
+      const jy = spot.y + (Math.random()*6-3);
+      moveTo(id, jx, jy).then(()=>{
+        if(Math.random()<0.5){ setState(id,'作業'); say(id,'📄 作業中…',1400);
+          setTimeout(()=>{ setState(id,'待機'); goHome(id); }, 1800); }
+        else { setState(id,'休憩'); setTimeout(()=>{setState(id,'待機'); goHome(id);},1500); }
+      });
+    }else if(r < 0.17){
+      // ひとりごと
+      say(id, o.def.lines[0], 1300);
+    }
+  }
+}, 2200);
+
+/* ---- 入力ハンドラ ---- */
+function submit(){
+  const inp = document.getElementById('cmd');
+  const v = inp.value.trim();
+  if(!v) return;
+  inp.value='';
+  runWorkflow(v);
+}
+document.getElementById('go').addEventListener('click', submit);
+document.getElementById('cmd').addEventListener('keydown', e=>{ if(e.key==='Enter') submit(); });
+
+/* ---- クイック指示チップ ---- */
+const CHIPS = [
+  {t:'シフトを集計して', real:true},
+  {t:'変更届作成して', real:true},
+  {t:'個別支援計画を作成して', real:true},
+  {t:'給与確認して'}, {t:'請求書作って'}, {t:'工房売上を集計して'}
+];
+const chipBox = document.getElementById('chips');
+for(const c of CHIPS){
+  const b=document.createElement('button'); b.className='chip';
+  b.innerHTML = c.real ? `${c.t} <b style="color:#3a9d5d">●本物</b>` : c.t;
+  b.addEventListener('click',()=>runWorkflow(c.t));
+  chipBox.appendChild(b);
+}
+
+/* ---- 自律モード ON/OFF ---- */
+document.getElementById('pause').addEventListener('click', e=>{
+  autonomous = !autonomous;
+  e.target.textContent = autonomous ? '⏸ 自律モードを止める' : '▶ 自律モードを動かす';
+});
+
+/* =========================================================================
+   共通：ファイル保存（保存先を選べる場合は選択ダイアログ）＋画面プレビュー
+   ========================================================================= */
+/* ---- 保存先フォルダ（記憶式）＋バックアップ ---- */
+let aiosMainDir = null;   // 保存先フォルダ（例：\\...\AI作成\aishain をドライブ割当したもの）
+let aiosBackupDir = null; // バックアップ先フォルダ（任意）
+let aiosBackupOn = true;
+
+// IndexedDB にフォルダハンドルを記憶
+function idbOpen(){ return new Promise((res,rej)=>{ const o=indexedDB.open('aios_fs',1);
+  o.onupgradeneeded=()=>o.result.createObjectStore('h'); o.onsuccess=()=>res(o.result); o.onerror=()=>rej(o.error); }); }
+async function idbGet(k){ const db=await idbOpen(); return new Promise((res,rej)=>{ const g=db.transaction('h','readonly').objectStore('h').get(k); g.onsuccess=()=>res(g.result); g.onerror=()=>rej(g.error); }); }
+async function idbSet(k,v){ const db=await idbOpen(); return new Promise((res,rej)=>{ const tx=db.transaction('h','readwrite'); tx.objectStore('h').put(v,k); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+
+function aiosStamp(){ const d=new Date(), p=n=>('0'+n).slice(-2);
+  return ''+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds()); }
+
+async function aiosDirPerm(h){ if(!h) return false; const opt={mode:'readwrite'};
+  try{ if((await h.queryPermission(opt))==='granted') return true; return (await h.requestPermission(opt))==='granted'; }catch(e){ return false; } }
+
+async function aiosPickDir(which){
+  if(!window.showDirectoryPicker){ alert('保存先フォルダの指定は、Edge/Chromeで「公開URL(https)」または「localhost」から開いた場合に使えます。\nファイルを直接開いた状態では、ダウンロードフォルダに保存されます。'); return; }
+  try{
+    const h=await window.showDirectoryPicker({mode:'readwrite', id:'aios-'+which});
+    if(which==='main'){ aiosMainDir=h; await idbSet('mainDir',h); }
+    else { aiosBackupDir=h; await idbSet('backupDir',h); }
+    aiosUpdateDirLabel();
+  }catch(e){ if(e.name!=='AbortError') alert('フォルダ設定エラー：'+e.message); }
+}
+async function aiosClearDir(){ aiosMainDir=null; aiosBackupDir=null; try{ await idbSet('mainDir',null); await idbSet('backupDir',null);}catch(e){} aiosUpdateDirLabel(); }
+
+// フォルダへ書き込み（＋バックアップ）
+async function aiosWriteToDir(dir, filename, blob){
+  const fh=await dir.getFileHandle(filename,{create:true});
+  const w=await fh.createWritable(); await w.write(blob); await w.close();
+}
+async function aiosBackupWrite(filename, blob){
+  const dot=filename.lastIndexOf('.');
+  const bname = (dot>0? filename.slice(0,dot):filename)+'_'+aiosStamp()+(dot>0?filename.slice(dot):'');
+  if(aiosBackupDir && await aiosDirPerm(aiosBackupDir)){ await aiosWriteToDir(aiosBackupDir, bname, blob); return {name:bname, where:aiosBackupDir.name}; }
+  if(aiosMainDir && await aiosDirPerm(aiosMainDir)){ const sub=await aiosMainDir.getDirectoryHandle('バックアップ',{create:true}); const fh=await sub.getFileHandle(bname,{create:true}); const w=await fh.createWritable(); await w.write(blob); await w.close(); return {name:bname, where:aiosMainDir.name+'／バックアップ'}; }
+  return null;
+}
+
+async function aiosSaveBlob(blob, filename){
+  // ① 記憶した保存先フォルダがあればそこへ（＋バックアップ）
+  if(aiosMainDir && await aiosDirPerm(aiosMainDir)){
+    try{
+      await aiosWriteToDir(aiosMainDir, filename, blob);
+      let bk=null; if(aiosBackupOn){ try{ bk=await aiosBackupWrite(filename, blob); }catch(e){} }
+      return { ok:true, name:filename, folder:aiosMainDir.name, backup:bk };
+    }catch(e){ /* 失敗時は下へフォールバック */ }
+  }
+  // ② 対応ブラウザなら保存先を選べる
+  if(window.showSaveFilePicker){
+    try{
+      const handle = await window.showSaveFilePicker({ suggestedName: filename });
+      const w = await handle.createWritable(); await w.write(blob); await w.close();
+      return { ok:true, name:handle.name||filename, picked:true };
+    }catch(e){ if(e && e.name==='AbortError') return { ok:false, aborted:true }; }
+  }
+  // ③ 通常ダウンロード
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=filename; a.click(); URL.revokeObjectURL(a.href);
+  return { ok:true, name:filename, picked:false };
+}
+// 保存して、対象要素の先頭に「保存先＋プレビュー」を表示
+async function aiosDeliver(blob, filename, targetId, previewHtml){
+  const res = await aiosSaveBlob(blob, filename);
+  if(res.aborted){ banner('保存をキャンセルしました'); return res; }
+  const el = document.getElementById(targetId);
+  if(el){
+    const where = res.folder ? ('フォルダ「'+res.folder+'」')
+                : res.picked ? 'お選びの保存先'
+                : 'ブラウザのダウンロードフォルダ';
+    const bk = res.backup ? `<br>🗄 バックアップ：<span class="path">${res.backup.where} ／ ${res.backup.name}</span>` : '';
+    const note = `<div class="savednote">💾 <b>${filename}</b> を保存しました
+      <br>保存先：<span class="path">${where}</span>${bk}</div>`;
+    el.insertAdjacentHTML('afterbegin', note + (previewHtml ? `<div class="savedprev">${previewHtml}</div>` : ''));
+    el.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+  return res;
+}
+
+// 保存先設定UIの配線
+function aiosUpdateDirLabel(){
+  const el=document.getElementById('dirLabel'); if(!el) return;
+  if(aiosMainDir){
+    el.innerHTML='保存先：<b>'+aiosMainDir.name+'</b>'
+      + (aiosBackupDir ? '（バックアップ先：'+aiosBackupDir.name+'）'
+         : (aiosBackupOn ? '（＋サブフォルダ「バックアップ」に自動保存）' : '（バックアップOFF）'));
+  } else el.textContent='保存先：未設定（現在はダウンロードフォルダ）';
+}
+document.getElementById('setDir').addEventListener('click', ()=>aiosPickDir('main'));
+document.getElementById('setBk').addEventListener('click', ()=>aiosPickDir('backup'));
+document.getElementById('clrDir').addEventListener('click', aiosClearDir);
+document.getElementById('bkChk').addEventListener('change', e=>{ aiosBackupOn=e.target.checked; aiosUpdateDirLabel(); });
+// 前回設定したフォルダを復元（次の保存時に許可を確認）
+(async ()=>{ try{
+  const m=await idbGet('mainDir'); if(m) aiosMainDir=m;
+  const b=await idbGet('backupDir'); if(b) aiosBackupDir=b;
+  aiosUpdateDirLabel();
+}catch(e){} })();
+
+/* =========================================================================
+   ▼▼▼ 中身レイヤー：本物のシフト集計モジュール ▼▼▼
+   既存 index.html（シフト希望フォーム）と同じ解析ロジックを再利用しています。
+   データ元は3通り：(1)フォーム(GAS)から取得 (2)テキスト貼り付け (3)サンプル
+   ========================================================================= */
+
+// 既存フォームと同じGASエンドポイント（読み取り専用・JSONP）
+const SHIFT_GAS_URL = "https://script.google.com/macros/s/AKfycbwG__KMZmGaeF7S1wwqJokyijgjfOVHYNKmG7huHApz5H9KxpKC1KsPHNRH9TfqX0SvjQ/exec";
+const WDOW = ["日","月","火","水","木","金","土"];
+
+// ---- 記号・氏名・日付マークの抽出（index.html と同一ロジック） ----
+function shNormSym(s){
+  if(!s) return "";
+  if(/[○◯⭕✅◎〇]/.test(s)) return "○";
+  if(/[×✕✖❌☓✗]/.test(s)) return "×";
+  if(/[△▲]/.test(s)) return "△";
+  return "";
+}
+function shExtractName(block){
+  let m = block.match(/【[^】]*】\s*([^\n\r]{1,30})/);
+  if(m){ const n=m[1].trim(); if(n && !/^[\d\/]/.test(n)) return n; }
+  m = block.match(/[）\)]\s*([^\n\r（()]{1,30})/);
+  if(m && m[1].trim().length>0) return m[1].trim();
+  m = block.match(/(?:お名前[^\n]*?ください|お名前)[　\s]+([^\n\r]+)/);
+  if(m) return m[1].trim();
+  const first = block.split(/\n/).map(x=>x.trim()).filter(Boolean)[0] || "";
+  if(first && !/\d+\/\d+/.test(first) && first.length<=30)
+    return first.replace(/[）\)（\(🍀🌼🌸🕊️🌿📝【】]/g,"").trim();
+  return "（不明）";
+}
+function shExtractMarks(block, y){
+  const res = {};
+  // 記号のあとに続く 💬コメント も拾う。末尾は「次の日付／改行／文末」の手前で止める
+  // （1行に複数日をスペース区切りで書いても全日拾えるように堅牢化）
+  const re = /(\d{1,2})\/(\d{1,2})\s*(?:[（(][^）)]*[）)])?\s*([○◯⭕✅◎〇×✕✖❌☓✗△▲])([^\n\r]*?)(?=\s*\d{1,2}\/\d{1,2}|[\r\n]|$)/g;
+  let m;
+  while((m = re.exec(block)) !== null){
+    const sym = shNormSym(m[3]); if(!sym) continue;
+    const key = `${y}-${("0"+parseInt(m[1])).slice(-2)}-${("0"+parseInt(m[2])).slice(-2)}`;
+    res[key] = sym;
+    const cmt = (m[4]||"").match(/💬(.+)/);
+    if(cmt) res[key+"__comment"] = cmt[1].trim();
+  }
+  return res;
+}
+function shParse(raw, year){
+  const blocks = raw.split(/\n\s*\n+/).map(x=>x.trim()).filter(Boolean);
+  const byName = {};
+  for(const b of blocks){
+    const name  = shExtractName(b);
+    const marks = shExtractMarks(b, year);
+    if(Object.keys(marks).length === 0) continue;
+    byName[name] = Object.assign(byName[name]||{}, marks);
+  }
+  return byName;
+}
+
+// ---- 日付ユーティリティ ----
+function shFmt(d){ return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function shParseYMD(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
+function shDefaultRange(){
+  const t=new Date(), y=t.getFullYear(), m=t.getMonth();
+  const sM = t.getDate()>=16 ? m+1 : m;               // 16日始まりの給与/シフト期間に合わせる
+  return [ new Date(y,sM,16), new Date(y,sM+1,15) ];
+}
+
+// ---- パネルの開閉 ----
+let shGasCache = null; // フォームから取得した生テキストを保持
+function openShiftPanel(){
+  const p = document.getElementById('workPanel');
+  const s = document.getElementById('wpStart'), e = document.getElementById('wpEnd');
+  if(!s.value || !e.value){ const [a,b]=shDefaultRange(); s.value=shFmt(a); e.value=shFmt(b); }
+  p.hidden = false;
+}
+document.getElementById('wpClose').addEventListener('click', ()=> document.getElementById('workPanel').hidden = true);
+document.getElementById('workPanel').addEventListener('click', ev=>{ if(ev.target.id==='workPanel') ev.target.hidden=true; });
+
+// ---- データ元ボタン ----
+document.getElementById('wpSample').addEventListener('click', ()=>{
+  const s = shParseYMD(document.getElementById('wpStart').value);
+  const m = s.getMonth()+1, d = s.getDate();
+  // ※ 氏名はテンプレート「シフト集計」の名簿と一致させてあります（Excel反映を確認できます）
+  document.getElementById('wpPaste').value =
+`【シフト希望】竹政　高
+${m}/${d}○ ${m}/${d+1}× ${m}/${d+2}○ ${m}/${d+3}△ ${m}/${d+4}○
+
+（お名前）黒田　栄光
+${m}/${d}⭕💬午前のみ ${m}/${d+1}❌ ${m}/${d+2}⭕ ${m}/${d+3}△ ${m}/${d+4}❌
+
+向原　忍
+${m}/${d}〇 ${m}/${d+1}○ ${m}/${d+2}× ${m}/${d+3}○ ${m}/${d+4}○
+
+浅野　和子
+${m}/${d}× ${m}/${d+1}○ ${m}/${d+2}○ ${m}/${d+3}○ ${m}/${d+4}△`;
+  shRun();
+});
+document.getElementById('wpGAS').addEventListener('click', async ()=>{
+  const btn = document.getElementById('wpGAS');
+  btn.textContent = '取得中…'; btn.disabled = true;
+  try{
+    const data = await shFetchGAS();
+    if(!data || data.length===0){ alert('フォームにデータがありません。従業員に希望を送信してもらってください。'); }
+    else{
+      shGasCache = data.map(d=>d.text).join("\n\n");
+      document.getElementById('wpPaste').value = shGasCache;
+      logLine(`<b>秘書AI</b>：フォームから${data.length}名分を取得`);
+      shRun();
+    }
+  }catch(err){
+    alert('フォームから取得できませんでした（'+err.message+'）。\nテキスト貼り付けかサンプルでお試しください。');
+  }finally{ btn.textContent = 'フォームから取得'; btn.disabled = false; }
+});
+document.getElementById('wpRun').addEventListener('click', shRun);
+
+// JSONPでGASからシフト希望を取得（index.html と同一方式）
+function shFetchGAS(){
+  return new Promise((resolve, reject)=>{
+    const cb = "_aiosShiftCb_" + Date.now();
+    const sc = document.createElement('script');
+    const to = setTimeout(()=>{ delete window[cb]; sc.remove(); reject(new Error('タイムアウト')); }, 10000);
+    window[cb] = json => { clearTimeout(to); delete window[cb]; sc.remove(); resolve(json.data||[]); };
+    sc.onerror = ()=>{ clearTimeout(to); delete window[cb]; sc.remove(); reject(new Error('接続エラー')); };
+    sc.src = SHIFT_GAS_URL + "?callback=" + cb;
+    document.body.appendChild(sc);
+  });
+}
+
+// ---- 集計本体 ----
+let shLastRows = null; // CSV用
+function shRun(){
+  const startEl = document.getElementById('wpStart'), endEl = document.getElementById('wpEnd');
+  const start = shParseYMD(startEl.value), end = shParseYMD(endEl.value);
+  const minStaff = Math.max(1, parseInt(document.getElementById('wpMin').value)||1);
+  const raw = document.getElementById('wpPaste').value.trim();
+  const out = document.getElementById('wpResult');
+  if(!raw){ out.innerHTML = '<p class="wpNote">データがありません。「サンプルで試す」か「フォームから取得」を押すか、テキストを貼り付けてください。</p>'; return; }
+  if(end < start){ out.innerHTML = '<p class="wpNote">期間が逆になっています。開始日と終了日を確認してください。</p>'; return; }
+
+  const byName = shParse(raw, start.getFullYear());
+  const names = Object.keys(byName);
+  if(names.length === 0){ out.innerHTML = '<p class="wpNote">氏名やシフト記号（○△×）を読み取れませんでした。書式をご確認ください。</p>'; return; }
+
+  // 日付ごとに集計
+  const rows = [];
+  let shortDays = 0;
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    const key = shFmt(d);
+    const avail = [], maybe = [];
+    for(const n of names){
+      const v = byName[n][key];
+      if(v === '○') avail.push(n);
+      else if(v === '△') maybe.push(n);
+    }
+    const isShort = avail.length < minStaff;
+    if(isShort) shortDays++;
+    rows.push({ key, dow:d.getDay(), day:`${d.getMonth()+1}/${d.getDate()}`,
+                avail, maybe, count:avail.length, short:isShort });
+  }
+  shLastRows = { rows, names, minStaff };
+  // Excel反映用に集計結果を保持（dates配列＋名前別マップ）
+  window._aiosAgg = { dates: rows.map(r=>shParseYMD(r.key)), byName };
+
+  // 個人別の出勤可能日数
+  const perName = names.map(n=>{
+    let o=0, s=0;
+    for(const k in byName[n]){ if(byName[n][k]==='○') o++; else if(byName[n][k]==='△') s++; }
+    return { name:n, o, s };
+  }).sort((a,b)=> b.o - a.o);
+
+  // 描画
+  let html = `<div class="kpis">
+    <div class="kpi"><b>${names.length}</b><span>提出人数</span></div>
+    <div class="kpi"><b>${rows.length}</b><span>対象日数</span></div>
+    <div class="kpi ${shortDays?'warn':''}"><b>${shortDays}</b><span>人手不足の日</span></div>
+    <div class="kpi"><b>${minStaff}</b><span>最低人数の設定</span></div>
+  </div>`;
+
+  html += `<div class="tblwrap"><table class="agg"><thead><tr>
+      <th>日付</th><th>曜</th><th>出勤可(○)</th><th>応相談(△)</th><th>可能な人</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const cls = (r.dow===0?'sun':r.dow===6?'sat':'') + (r.short?' short':'');
+    html += `<tr class="${cls.trim()}">
+      <td>${r.day}</td><td>${WDOW[r.dow]}</td>
+      <td>${r.count}${r.short?' ⚠':''}</td><td>${r.maybe.length}</td>
+      <td class="name">${r.avail.join('、')||'—'}</td></tr>`;
+  }
+  html += `</tbody></table></div>`;
+
+  html += `<ul class="names">` +
+    perName.map(p=>`<li><b>${p.name}</b> ○${p.o}日${p.s?` / △${p.s}日`:''}</li>`).join('') +
+    `</ul>`;
+
+  html += `<div class="wpNote">
+     ⚠ の日は「出勤可(○)」が最低人数（${minStaff}名）に足りていません。
+     <br>この結果はブラウザ内で集計したものです（会社のデータは変更しません）。
+     </div>
+     <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+       <button class="wpBtn primary" id="wpXlsx">📊 このシフト集計Excelに反映</button>
+       <button class="wpBtn" id="wpCsv">CSVダウンロード</button>
+     </div>`;
+
+  out.innerHTML = html;
+  document.getElementById('wpCsv').addEventListener('click', shDownloadCsv);
+  document.getElementById('wpXlsx').addEventListener('click', ()=>{
+    if(typeof XLSX === 'undefined'){
+      alert('Excelライブラリを読み込み中です。少し待つか、ページをブラウザ／公開URLで開くと反映できます。'); return;
+    }
+    document.getElementById('wpTmpl').click(); // テンプレのシフト集計Excelを選ぶ
+  });
+
+  // AI社員の反応＆ログに実データを反映
+  banner(`✅ 集計完了：${names.length}名 / 人手不足 ${shortDays}日`);
+  say('人事', `${names.length}名分、集計しました`, 2600);
+  if(shortDays>0) say('監査', `${shortDays}日が人手不足です⚠`, 2600);
+  logLine(`<b>人事AI</b>：シフト集計完了（${names.length}名・対象${rows.length}日・人手不足${shortDays}日）`);
+}
+
+// テンプレート(.xlsx)を選んだら反映処理を実行
+document.getElementById('wpTmpl').addEventListener('change', function(){
+  const f = this.files[0]; this.value = '';
+  if(f) shExportExcel(f);
+});
+
+/* ---- 集計結果を「シフト集計」Excelテンプレートに反映して出力 ----
+   ロジックは既存 index.html の writeToShuukei() を移植・再利用。
+   テンプレートをコピーして「YYYY年M月」シートを作り、
+   氏名×日付で ○/△/× を書き込み、出勤可能回数・備考・ログを付与。 */
+async function shExportExcel(file){
+  const agg = window._aiosAgg;
+  if(!agg){ alert('先に「集計する」を実行してください'); return; }
+  if(typeof XLSX === 'undefined'){ alert('Excelライブラリを読み込めませんでした。ブラウザ／公開URLで開くと動きます。'); return; }
+  try{
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf, {type:'array', cellDates:false, cellStyles:true});
+
+    const tmplName = wb.SheetNames.find(n=>n.includes('シフト')||n.includes('集計')) || wb.SheetNames[0];
+    const tmpl = wb.Sheets[tmplName];
+
+    const d0 = agg.dates[0];
+    const newSheetName = `${d0.getFullYear()}年${d0.getMonth()+1}月`;
+    if(wb.SheetNames.includes(newSheetName)){
+      if(!confirm(`「${newSheetName}」シートが既にあります。上書きしますか？`)) return;
+      delete wb.Sheets[newSheetName];
+      wb.SheetNames.splice(wb.SheetNames.indexOf(newSheetName),1);
+    }
+
+    // テンプレートをディープコピーして新シート化
+    const ws = {};
+    for(const key of Object.keys(tmpl)){
+      ws[key] = key.startsWith('!') ? JSON.parse(JSON.stringify(tmpl[key])) : {...tmpl[key]};
+    }
+    wb.SheetNames.push(newSheetName); wb.Sheets[newSheetName] = ws;
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    if(!data || data.length===0) throw new Error('シートが空です');
+
+    // 「氏名」ヘッダー行を探す
+    let hdrRowIdx = -1;
+    for(let r=0; r<Math.min(6,data.length); r++){
+      const v = data[r] && data[r][0];
+      if(typeof v==='string' && v.includes('氏名')){ hdrRowIdx=r; break; }
+    }
+    if(hdrRowIdx===-1) throw new Error('「氏名」ヘッダー行が見つかりません');
+
+    // 日付見出し（B列から）を集計期間で書き換え
+    const dateColMap={}, mdToFmt={};
+    agg.dates.forEach((d,i)=>{
+      const col=i+1; const md=`${d.getMonth()+1}/${d.getDate()}`;
+      dateColMap[md]=col; mdToFmt[md]=shFmt(d);
+      const addr=XLSX.utils.encode_cell({r:hdrRowIdx,c:col});
+      const st = ws[addr] ? ws[addr].s : undefined;
+      ws[addr]={t:'s',v:md,w:md}; if(st!==undefined) ws[addr].s=st;
+    });
+    const cmtColIdx = agg.dates.length+1;
+    ws[XLSX.utils.encode_cell({r:hdrRowIdx,c:cmtColIdx})]={t:'s',v:'備考・コメント',w:'備考・コメント'};
+
+    // 「出勤可能人数」の集計行を特定（職員名としては扱わない）
+    let sumRowIdx = -1;
+    for(let r=hdrRowIdx+1; r<data.length; r++){
+      const v = data[r] && data[r][0];
+      if(typeof v==='string' && v.replace(/[\s　]/g,'').includes('出勤可能人数')){ sumRowIdx=r; break; }
+    }
+
+    // A列の氏名 → 行番号（集計行は除外）
+    const nameRowMap={};
+    for(let r=hdrRowIdx+1; r<data.length; r++){
+      if(r===sumRowIdx) continue;
+      const nm=data[r]&&data[r][0];
+      if(!nm||typeof nm!=='string') continue;
+      const clean=nm.replace(/[\s　]/g,'');
+      if(!clean || clean.includes('出勤可能人数')) continue;
+      nameRowMap[clean]=r;
+    }
+
+    // 書き込み（氏名は空白除去で照合、姓一致・末尾1字違いもフォロー）
+    let written=0; const skipped=[];
+    Object.keys(agg.byName).forEach(csvName=>{
+      const csvClean=csvName.replace(/[\s　]/g,'');
+      let targetRow=nameRowMap[csvClean];
+      if(targetRow===undefined){
+        for(const [nm,ri] of Object.entries(nameRowMap)){
+          if(nm.startsWith(csvClean)||csvClean.startsWith(nm)){ targetRow=ri; break; }
+        }
+      }
+      if(targetRow===undefined && csvClean.length>=3){
+        const pre=csvClean.slice(0,-1);
+        for(const [nm,ri] of Object.entries(nameRowMap)){
+          if(nm.startsWith(pre)&&Math.abs(nm.length-csvClean.length)<=1){ targetRow=ri; break; }
+        }
+      }
+      if(targetRow===undefined){ skipped.push(csvName); return; }
+
+      const commentParts=[];
+      Object.entries(dateColMap).forEach(([md,colIdx])=>{
+        const fmtKey=mdToFmt[md]; if(!fmtKey) return;
+        const v=agg.byName[csvName][fmtKey]||'';
+        // Excelに書く記号：出勤可は細い「〇」(U+3007)。太丸(⭕️)や白丸(○)は使わない
+        const mark = v==='○'?'〇' : v==='×'?'×' : v==='△'?'△' : '';
+        const addr=XLSX.utils.encode_cell({r:targetRow,c:colIdx});
+        if(!ws[addr]){
+          const ref=ws[XLSX.utils.encode_cell({r:targetRow,c:0})];
+          ws[addr]={t:'s',v:''}; if(ref&&ref.s) ws[addr].s=ref.s;
+        }
+        ws[addr].t='s'; ws[addr].v=mark; ws[addr].w=mark; if(mark) written++;
+        const cmt=agg.byName[csvName][fmtKey+'__comment']; if(cmt) commentParts.push(`${md}：${cmt}`);
+      });
+      if(commentParts.length){
+        const a=XLSX.utils.encode_cell({r:targetRow,c:cmtColIdx});
+        const ref=ws[XLSX.utils.encode_cell({r:targetRow,c:0})];
+        ws[a]={t:'s',v:commentParts.join(' ／ '),w:commentParts.join(' ／ ')};
+        if(ref&&ref.s) ws[a].s=ref.s;
+      }
+    });
+
+    // 出勤可能回数（○の数）列
+    let countColIdx=-1;
+    for(let c=0;c<200;c++){
+      const a=XLSX.utils.encode_cell({r:hdrRowIdx,c}); const v=ws[a]&&ws[a].v;
+      if(v&&String(v).includes('回数')){ countColIdx=c; break; }
+      if(v&&String(v).includes('出勤可能')){ countColIdx=c; }
+    }
+    if(countColIdx<0) countColIdx=cmtColIdx+1;
+    const chdr=XLSX.utils.encode_cell({r:hdrRowIdx,c:countColIdx});
+    if(!ws[chdr]) ws[chdr]={}; ws[chdr].t='s'; ws[chdr].v='出勤可能回数'; ws[chdr].w='出勤可能回数';
+
+    // 集計はすべて「〇」を数える COUNTIF 数式に統一（手修正しても自動再計算）。
+    // 併せてキャッシュ値(v)も持たせ、Excelで開いた瞬間から数値が見えるようにする。
+    const cntMaru = (r,cols)=>{ let n=0; for(const ci of cols){ const c=ws[XLSX.utils.encode_cell({r,c:ci})]; if(c&&c.v==='〇') n++; } return n; };
+    const dateCols = Object.values(dateColMap);
+    const lastDateCol = XLSX.utils.encode_col(agg.dates.length); // 最終日付列（B=1列目）
+    // ① 個人別・出勤可能回数（各職員行）
+    Object.keys(nameRowMap).forEach(cn=>{
+      const ri=nameRowMap[cn]; const R=ri+1; // 1始まりの行番号
+      const a=XLSX.utils.encode_cell({r:ri,c:countColIdx});
+      const ref=ws[XLSX.utils.encode_cell({r:ri,c:0})];
+      const cnt=cntMaru(ri, dateCols);
+      ws[a]={t:'n', f:`COUNTIF(B${R}:${lastDateCol}${R},"〇")`, v:cnt, w:String(cnt)};
+      if(ref&&ref.s) ws[a].s=ref.s;
+    });
+    // ② 日別・出勤可能人数（集計行）
+    if(sumRowIdx>=0){
+      const firstStaff = hdrRowIdx+2;  // 最初の職員行（1始まり）
+      const lastStaff  = sumRowIdx;    // 集計行の直前まで（1始まり）
+      const staffRows = Object.values(nameRowMap);
+      Object.values(dateColMap).forEach(ci=>{
+        const L=XLSX.utils.encode_col(ci);
+        const a=XLSX.utils.encode_cell({r:sumRowIdx,c:ci});
+        const st=ws[a]?ws[a].s:undefined;
+        let cnt=0; for(const ri of staffRows){ const c=ws[XLSX.utils.encode_cell({r:ri,c:ci})]; if(c&&c.v==='〇') cnt++; }
+        ws[a]={t:'n', f:`COUNTIF(${L}${firstStaff}:${L}${lastStaff},"〇")`, v:cnt, w:String(cnt)};
+        if(st!==undefined) ws[a].s=st;
+      });
+    }
+
+    // 期間外に残るテンプレの旧日付列（備考列と回数列の間）を掃除
+    for(let c=cmtColIdx+1; c<countColIdx; c++){
+      for(let r=0; r<data.length; r++) delete ws[XLSX.utils.encode_cell({r,c})];
+    }
+
+    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:data.length-1, c:Math.max(cmtColIdx,countColIdx)}});
+
+    // 罫線・フォント（12pt / thin）
+    const thinB={style:'thin',color:{auto:1}};
+    const mkBorder=()=>({top:thinB,bottom:thinB,left:thinB,right:thinB});
+    for(let r=hdrRowIdx; r<data.length; r++){
+      for(let c=0; c<=Math.max(cmtColIdx,countColIdx); c++){
+        if(c>cmtColIdx && c<countColIdx) continue; // 掃除した空き列は枠線を引かない
+        const a=XLSX.utils.encode_cell({r,c}); if(!ws[a]) ws[a]={t:'s',v:''};
+        const isHdr=r===hdrRowIdx, isName=c===0, isCount=c===countColIdx;
+        ws[a].s={ font:{name:'Arial',bold:isHdr||isCount,sz:12}, border:mkBorder(),
+          alignment:{horizontal:isName&&!isHdr?'left':'center',vertical:'center',wrapText:isName||isCount||isHdr} };
+      }
+    }
+
+    // ログシート
+    if(wb.SheetNames.includes('ログ')){ delete wb.Sheets['ログ']; wb.SheetNames.splice(wb.SheetNames.indexOf('ログ'),1); }
+    const logWs={};
+    XLSX.utils.sheet_add_aoa(logWs,[
+      ['項目','内容'],
+      ['処理日時', new Date().toLocaleString('ja-JP')],
+      ['名簿人数', Object.keys(nameRowMap).length],
+      ['日付列数', Object.keys(dateColMap).length],
+      ['書き込み件数', written],
+      ['照合OK数', Object.keys(agg.byName).length - skipped.length],
+      ['照合NG数', skipped.length],
+      ['照合できなかった名前', skipped.join('、')],
+    ],{origin:'A1'});
+    logWs['!cols']=[{wch:20},{wch:50}];
+    wb.SheetNames.push('ログ'); wb.Sheets['ログ']=logWs;
+
+    // ダウンロード
+    const outBuf=XLSX.write(wb,{type:'array',bookType:'xlsx',cellStyles:true});
+    const blob=new Blob([outBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    await aiosDeliver(blob, `シフト集計_反映済_${shFmt(agg.dates[0])}.xlsx`, 'wpResult', null);
+
+    banner(`✅ Excelに${written}セル反映`);
+    say('文書', `Excelに${written}件反映しました`, 2800);
+    logLine(`<b>文書AI</b>：シフト集計Excelに${written}セル反映${skipped.length?`（照合NG ${skipped.length}名）`:''}`);
+    if(skipped.length) alert(`反映しました（${written}セル）。\n照合できなかった名前：${skipped.join('、')}\n※テンプレートA列の名簿と氏名を合わせてください。`);
+  }catch(e){ alert('Excel処理エラー：'+e.message); }
+}
+
+async function shDownloadCsv(){
+  if(!shLastRows) return;
+  const { rows } = shLastRows;
+  const lines = [['日付','曜日','出勤可人数','応相談人数','可能な人']];
+  for(const r of rows){ lines.push([r.day, WDOW[r.dow], r.count, r.maybe.length, r.avail.join(' ')]); }
+  const csv = "﻿" + lines.map(l=> l.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  await aiosDeliver(blob, 'シフト集計.csv', 'wpResult', null);
+  logLine(`<b>文書AI</b>：シフト集計.csv を出力`);
+}
+/* ▲▲▲ シフト集計モジュール ここまで ▲▲▲ */
+
+
+/* =========================================================================
+   ▼▼▼ 中身レイヤー：変更届の下書き（行政AI）▼▼▼
+   入力内容から「管理者の変更届出書」の下書きを組み立て、印刷/PDF・保存する。
+   ※あくまで下書きです。実際の提出前に大阪市の最新様式・記載要領をご確認ください。
+   ========================================================================= */
+function hkEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function hkVal(id){ const el=document.getElementById(id); return el ? el.value.trim() : ''; }
+function hkWareki(ymd){ // "2026-08-06" → 令和8年8月6日
+  if(!ymd) return '　　年　　月　　日';
+  const [y,m,d]=ymd.split('-').map(Number);
+  if(y>=2019){ const r=y-2018; return `令和${r===1?'元':r}年${m}月${d}日`; }
+  return `${y}年${m}月${d}日`;
+}
+
+function openHenkouPanel(){
+  const p = document.getElementById('henkouPanel');
+  const t = document.getElementById('f_todokede');
+  if(!t.value){ const now=new Date(); t.value=`${now.getFullYear()}-${('0'+(now.getMonth()+1)).slice(-2)}-${('0'+now.getDate()).slice(-2)}`; }
+  p.hidden = false;
+}
+document.getElementById('hkClose').addEventListener('click', ()=> document.getElementById('henkouPanel').hidden=true);
+document.getElementById('henkouPanel').addEventListener('click', ev=>{ if(ev.target.id==='henkouPanel') ev.target.hidden=true; });
+
+document.getElementById('hkSample').addEventListener('click', ()=>{
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.value=v;};
+  set('f_ate','大阪市長'); set('f_houjin','社会福祉法人おりーぶ会');
+  set('f_daihyo','理事長　織部　一郎'); set('f_honten','大阪市此花区西九条○丁目○番○号');
+  set('f_tel','06-0000-0000'); set('f_jigyosho','おりーぶ庵　西九条'); set('f_shitei','2710000000');
+  set('f_service','共同生活援助'); set('f_jusho','大阪市此花区西九条○丁目○番○号');
+  set('f_riyu','前任管理者の退職に伴うため');
+  set('f_old_name','織部　太郎'); set('f_new_name','織部　花子');
+  set('f_old_birth','昭和50年1月1日'); set('f_new_birth','昭和55年5月5日');
+  set('f_old_addr','大阪市此花区○○'); set('f_new_addr','大阪市西区○○');
+  const now=new Date(), iso=`${now.getFullYear()}-${('0'+(now.getMonth()+1)).slice(-2)}-${('0'+now.getDate()).slice(-2)}`;
+  document.getElementById('f_todokede').value=iso; document.getElementById('f_hendate').value=iso;
+});
+
+// 下書き本文（プレビュー/印刷/保存で共通利用）を組み立て
+function buildHenkouInner(){
+  const g=hkVal;
+  const atts=[];
+  if(document.getElementById('a1').checked) atts.push('管理者の経歴書');
+  if(document.getElementById('a2').checked) atts.push('資格を証する書類の写し');
+  if(document.getElementById('a3').checked) atts.push('実務経験証明書');
+  if(document.getElementById('a4').checked) atts.push('誓約書');
+  const row=(k,a,b)=>`<tr><th>${k}</th><td>${hkEsc(a)||'&nbsp;'}</td><td>${hkEsc(b)||'&nbsp;'}</td></tr>`;
+  return `
+    <h2 class="dtitle">変更届出書</h2>
+    <div class="dmeta"><span></span><span>${hkWareki(g('f_todokede'))}</span></div>
+    <div class="to">${hkEsc(g('f_ate')||'大阪市長')}　様</div>
+    <table class="dt" style="margin-top:4px">
+      <tr><th>届出者（法人）</th><td>${hkEsc(g('f_houjin'))||'&nbsp;'}</td></tr>
+      <tr><th>代表者職・氏名</th><td>${hkEsc(g('f_daihyo'))||'&nbsp;'}　　　　㊞</td></tr>
+      <tr><th>主たる事務所</th><td>${hkEsc(g('f_honten'))||'&nbsp;'}</td></tr>
+      <tr><th>電話番号</th><td>${hkEsc(g('f_tel'))||'&nbsp;'}</td></tr>
+    </table>
+    <p class="lead">下記のとおり、指定障害福祉サービス事業者に係る事項に変更があったので、関係法令の規定により届け出ます。</p>
+    <div style="text-align:center; font-weight:800; letter-spacing:4px">記</div>
+
+    <div class="sec">１．事業所</div>
+    <table class="dt">
+      <tr><th>事業所の名称</th><td>${hkEsc(g('f_jigyosho'))||'&nbsp;'}</td></tr>
+      <tr><th>所在地</th><td>${hkEsc(g('f_jusho'))||'&nbsp;'}</td></tr>
+      <tr><th>指定番号</th><td>${hkEsc(g('f_shitei'))||'&nbsp;'}</td></tr>
+      <tr><th>サービスの種類</th><td>${hkEsc(g('f_service'))||'&nbsp;'}</td></tr>
+    </table>
+
+    <div class="sec">２．変更があった事項</div>
+    <table class="dt">
+      <tr><th>変更事項</th><td>管理者</td></tr>
+      <tr><th>変更年月日</th><td>${hkWareki(g('f_hendate'))}</td></tr>
+      <tr><th>変更の理由</th><td>${hkEsc(g('f_riyu'))||'&nbsp;'}</td></tr>
+    </table>
+
+    <div class="sec beppyo">（別紙）変更事項の内容　―　管理者</div>
+    <table class="dt">
+      <tr><th style="width:110px">項目</th><th style="width:auto;text-align:center">変更前</th><th style="width:auto;text-align:center">変更後</th></tr>
+      ${row('氏名', g('f_old_name'), g('f_new_name'))}
+      ${row('生年月日', g('f_old_birth'), g('f_new_birth'))}
+      ${row('住所', g('f_old_addr'), g('f_new_addr'))}
+    </table>
+
+    <div class="sec">３．添付書類</div>
+    <div>${atts.length? atts.map((a,i)=>`（${i+1}）${hkEsc(a)}`).join('　') : '（なし）'}</div>
+
+    <div class="stamp">※ 本書はAIが作成した下書きです。提出前に大阪市の最新様式・記載要領をご確認ください。</div>
+  `;
+}
+
+document.getElementById('hkMake').addEventListener('click', ()=>{
+  if(!hkVal('f_houjin') || !hkVal('f_jigyosho')){
+    alert('少なくとも「法人名称」と「事業所名称」を入力してください。'); return;
+  }
+  const inner = buildHenkouInner();
+  document.getElementById('hkResult').innerHTML =
+    `<div class="doc-preview" id="hkPrintArea">${inner}</div>`;
+  document.getElementById('hkPrint').style.display='';
+  document.getElementById('hkDl').style.display='';
+  banner('📋 変更届の下書きができました');
+  say('行政', '変更届の下書きを作成しました', 2800);
+  say('監査', '記載漏れがないかご確認を', 2400);
+  logLine(`<b>行政AI</b>：管理者変更届の下書きを作成`);
+  document.getElementById('hkResult').scrollIntoView({behavior:'smooth', block:'nearest'});
+});
+
+document.getElementById('hkPrint').addEventListener('click', ()=> window.print());
+
+document.getElementById('hkDl').addEventListener('click', async ()=>{
+  const inner = buildHenkouInner();
+  const full = `<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<title>変更届出書（下書き）</title>
+<style>
+  @page{ size:A4; margin:18mm }
+  body{ font-family:"Yu Mincho","Hiragino Mincho ProN","MS Mincho",serif; color:#111; line-height:1.8; font-size:12pt }
+  h2.dtitle{ text-align:center; font-size:20pt; letter-spacing:10px; margin:0 0 18px }
+  .dmeta{ display:flex; justify-content:flex-end; font-size:11pt; margin-bottom:6px }
+  .to{ font-size:13pt; font-weight:700; margin:10px 0 2px }
+  .lead{ margin:14px 0 }
+  table.dt{ border-collapse:collapse; width:100%; margin:8px 0 }
+  table.dt th, table.dt td{ border:1px solid #333; padding:6px 9px; font-size:11pt; vertical-align:top }
+  table.dt th{ background:#f0f0eb; width:130px; text-align:left; white-space:nowrap }
+  .sec{ font-weight:800; margin:16px 0 4px }
+  .beppyo{ page-break-before:always; margin-top:24px }
+  .stamp{ text-align:right; margin-top:8px; font-size:9pt; color:#666 }
+</style></head><body>${inner}</body></html>`;
+  const blob = new Blob([full], {type:'text/html;charset=utf-8'});
+  await aiosDeliver(blob, '変更届出書_下書き.html', 'hkResult', null);
+  logLine(`<b>文書AI</b>：変更届出書_下書き.html を保存`);
+});
+/* ---- 実様式への差し込み（Excel .xlsx / Word .docx） ---- */
+// トークン → 現在の入力値（届出日・変更年月日は和暦に変換）
+function hkTokenPairs(){
+  return [
+    ['{{提出先}}',       hkVal('f_ate')],
+    ['{{届出日}}',       hkWareki(hkVal('f_todokede'))],
+    ['{{法人名称}}',     hkVal('f_houjin')],
+    ['{{代表者}}',       hkVal('f_daihyo')],
+    ['{{主たる事務所}}', hkVal('f_honten')],
+    ['{{電話番号}}',     hkVal('f_tel')],
+    ['{{事業所名称}}',   hkVal('f_jigyosho')],
+    ['{{指定番号}}',     hkVal('f_shitei')],
+    ['{{サービス種類}}', hkVal('f_service')],
+    ['{{事業所所在地}}', hkVal('f_jusho')],
+    ['{{変更年月日}}',   hkWareki(hkVal('f_hendate'))],
+    ['{{変更理由}}',     hkVal('f_riyu')],
+    ['{{変更前氏名}}',   hkVal('f_old_name')],
+    ['{{変更後氏名}}',   hkVal('f_new_name')],
+    ['{{変更前生年月日}}', hkVal('f_old_birth')],
+    ['{{変更後生年月日}}', hkVal('f_new_birth')],
+    ['{{変更前住所}}',   hkVal('f_old_addr')],
+    ['{{変更後住所}}',   hkVal('f_new_addr')],
+  ];
+}
+// トークン一覧を表示
+document.getElementById('hkTokens').addEventListener('click', ()=>{
+  const rows = hkTokenPairs().map(([tk,val])=>
+    `<tr><td style="font-family:monospace">${hkEsc(tk)}</td><td>${hkEsc(val)||'<span style="color:#aaa">（未入力）</span>'}</td></tr>`).join('');
+  document.getElementById('hkResult').innerHTML =
+    `<div class="card" style="margin-top:12px"><h3>🔖 差し込みトークン一覧</h3>
+     <div class="wpNote">お使いの様式の「値を入れたい場所」に、左のトークンをそのまま貼り付けてください（セル内・文中どちらでも可）。
+     現在の入力値が右です。</div>
+     <div class="tblwrap" style="margin-top:8px"><table class="agg"><thead>
+       <tr><th>トークン</th><th>差し込まれる値</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  document.getElementById('hkResult').scrollIntoView({behavior:'smooth', block:'nearest'});
+});
+// ファイル選択→差し込み
+document.getElementById('hkFillReal').addEventListener('click', ()=> document.getElementById('hkTmpl').click());
+document.getElementById('hkTmpl').addEventListener('change', function(){
+  const f=this.files[0]; this.value=''; if(!f) return;
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  if(ext==='xlsx') hkFillXlsx(f);
+  else if(ext==='docx') hkFillDocx(f);
+  else alert('Excel(.xlsx) か Word(.docx) の様式を選んでください。');
+});
+
+function hkDownload(blob, name){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+// Excel様式：全セルのトークンを置換
+async function hkFillXlsx(file){
+  if(typeof XLSX==='undefined'){ alert('Excelライブラリを読み込めませんでした。ブラウザ／公開URLで開くと動きます。'); return; }
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellStyles:true});
+    const pairs=hkTokenPairs(); let hit=0;
+    wb.SheetNames.forEach(sn=>{ const ws=wb.Sheets[sn];
+      Object.keys(ws).forEach(addr=>{ if(addr[0]==='!') return; const c=ws[addr];
+        if(c && typeof c.v==='string' && c.v.indexOf('{{')>=0){
+          let s=c.v; pairs.forEach(([tk,val])=>{ if(s.indexOf(tk)>=0){ s=s.split(tk).join(val); hit++; } });
+          c.v=s; c.w=s; c.t='s';
+        }});
+    });
+    const out=XLSX.write(wb,{type:'array',bookType:'xlsx',cellStyles:true});
+    await aiosDeliver(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), '様式_記入済_'+file.name, 'hkResult', null);
+    hkAfterFill(hit, 'Excel');
+  }catch(e){ alert('Excel様式の差し込みでエラー：'+e.message); }
+}
+// Word様式：document.xml のトークンを置換（Wordがタグで分割していても拾う）
+async function hkFillDocx(file){
+  if(typeof JSZip==='undefined'){ alert('Word用ライブラリを読み込めませんでした。ブラウザ／公開URLで開くと動きます。'); return; }
+  try{
+    const zip=await JSZip.loadAsync(await file.arrayBuffer());
+    const targets=Object.keys(zip.files).filter(n=>/^word\/(document|header\d*|footer\d*)\.xml$/.test(n));
+    const pairs=hkTokenPairs(); let hit=0;
+    for(const name of targets){
+      let xml=await zip.file(name).async('string');
+      pairs.forEach(([tk,val])=>{
+        const re=hkTokenRegex(tk); const before=xml;
+        xml=xml.replace(re, hkXmlEsc(val));
+        if(xml!==before) hit++;
+      });
+      zip.file(name, xml);
+    }
+    const out=await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    await aiosDeliver(out, '様式_記入済_'+file.name, 'hkResult', null);
+    hkAfterFill(hit, 'Word');
+  }catch(e){ alert('Word様式の差し込みでエラー：'+e.message); }
+}
+// トークン文字の間にXMLタグが割り込んでいても一致する正規表現
+function hkTokenRegex(tk){
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const parts=Array.from(tk).map(ch=>esc(ch));
+  return new RegExp(parts.join('(?:<[^>]*>)*'),'g');
+}
+function hkXmlEsc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+// 大阪市「様式第3号（変更届）」に直接セル記入（管理者変更）
+document.getElementById('hkY3').addEventListener('click', ()=>{
+  if(typeof XLSX==='undefined'){ alert('Excelライブラリを読み込み中です。ブラウザ／公開URLで開くと動きます。'); return; }
+  document.getElementById('hkY3File').click();
+});
+document.getElementById('hkY3File').addEventListener('change', function(){
+  const f=this.files[0]; this.value=''; if(f) hkFillYoushiki3(f);
+});
+// ★大阪市フォーマットを一切崩さないため、SheetJSではなく JSZip で
+//   「該当セルの値だけ」XMLに書き込む（罫線・結合・書式=styles.xmlに触れない）
+function hkXmlEscC(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function hkXmlCell(xml, ref, value, isNum){
+  if(value==null || value==='') return xml;
+  const re=new RegExp('<c r="'+ref+'"([^>]*?)(?:/>|>[\\s\\S]*?</c>)');
+  const m=xml.match(re);
+  if(!m) return xml; // テンプレに無いセルはスキップ
+  const attrs=m[1].replace(/\s+t="[^"]*"/,''); // 既存t除去・s(スタイル)は保持
+  const inner=isNum ? ('<v>'+value+'</v>') : ('<is><t xml:space="preserve">'+hkXmlEscC(value)+'</t></is>');
+  const tAttr=isNum ? '' : ' t="inlineStr"';
+  return xml.replace(re, '<c r="'+ref+'"'+attrs+tAttr+'>'+inner+'</c>');
+}
+async function hkSheetPath(zip){
+  try{
+    const wbx=await zip.file('xl/workbook.xml').async('string');
+    const sheets=[...wbx.matchAll(/<sheet[^>]*\bname="([^"]*)"[^>]*\br:id="([^"]*)"[^>]*\/>/g)];
+    let rid = (sheets.find(s=>/様式第|変更届/.test(s[1]))||sheets[0]||[])[2];
+    if(rid){
+      const rels=await zip.file('xl/_rels/workbook.xml.rels').async('string');
+      const rm=rels.match(new RegExp('<Relationship[^>]*Id="'+rid+'"[^>]*Target="([^"]*)"'));
+      if(rm){ let t=rm[1].replace(/^\//,''); return t.indexOf('xl/')===0 ? t : ('xl/'+t); }
+    }
+  }catch(e){}
+  return 'xl/worksheets/sheet1.xml';
+}
+function hkInjectOnePage(x){
+  if(!/<sheetPr[ >]/.test(x)) x=x.replace(/(<worksheet[^>]*>)/,'$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+  else if(!/<pageSetUpPr/.test(x)) x=x.replace(/(<sheetPr[^>]*>)/,'$1<pageSetUpPr fitToPage="1"/>');
+  if(!/<pageSetup[ >]/.test(x)){
+    if(/<pageMargins[^>]*\/>/.test(x)) x=x.replace(/(<pageMargins[^>]*\/>)/,'$1<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>');
+    else x=x.replace(/(<\/worksheet>)/,'<pageMargins left="0.3" right="0.3" top="0.4" bottom="0.4" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>$1');
+  }
+  return x;
+}
+async function hkFillYoushiki3(file){
+  if(typeof JSZip==='undefined'){ alert('ライブラリを読み込めませんでした。ブラウザ／公開URLで開くと動きます。'); return; }
+  try{
+    const box=(addr,name)=> ('管理者\n'+(addr||'')+'\n'+(name||'')).replace(/\n+$/,'');
+    const hd=hkVal('f_hendate');
+    const zip=await JSZip.loadAsync(await file.arrayBuffer());
+    const path=await hkSheetPath(zip);
+    let xml=await zip.file(path).async('string');
+    // 変更前 / 変更後（管理者）
+    xml=hkXmlCell(xml,'N32', box(hkVal('f_old_addr'), hkVal('f_old_name')), false);
+    xml=hkXmlCell(xml,'N64', box(hkVal('f_new_addr'), hkVal('f_new_name')), false);
+    // 変更年月日（西暦の 年/月/日）
+    if(hd){ const p=hd.split('-').map(Number); xml=hkXmlCell(xml,'S91',p[0],true); xml=hkXmlCell(xml,'V91',p[1],true); xml=hkXmlCell(xml,'Y91',p[2],true); }
+    // 変更理由（未入力なら定型文）
+    const riyu = hkVal('f_riyu') || (hd? (hkWareki(hd)+'付で、管理者を下記のとおり変更いたしましたので届出いたします。') : '');
+    xml=hkXmlCell(xml,'N92', riyu, false);
+    // 事業所 所在地／種類（任意）
+    xml=hkXmlCell(xml,'R25', hkVal('f_jusho'), false);
+    xml=hkXmlCell(xml,'R26', hkVal('f_service'), false);
+    // A4・1ページ設定を注入（無ければ）
+    xml=hkInjectOnePage(xml);
+    zip.file(path, xml);
+    const blob=await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    // 画面プレビュー用（何を記入したか）
+    const hd2=hd;
+    const prev = `<h4>📋 様式第3号に記入した内容（プレビュー）</h4>
+      <table>
+        <tr><th>変更事項</th><td>管理者（変更事項 9）</td></tr>
+        <tr><th>変更前</th><td>${hkEsc(box(hkVal('f_old_addr'), hkVal('f_old_name')))}</td></tr>
+        <tr><th>変更後</th><td>${hkEsc(box(hkVal('f_new_addr'), hkVal('f_new_name')))}</td></tr>
+        <tr><th>変更年月日</th><td>${hd2?hkWareki(hd2):'（未入力）'}</td></tr>
+        <tr><th>変更理由</th><td>${hkEsc(hkVal('f_riyu')|| (hd2? (hkWareki(hd2)+'付で、管理者を下記のとおり変更いたしましたので届出いたします。'):'（未入力）'))}</td></tr>
+      </table>`;
+    await aiosDeliver(blob, '様式第3号_記入済.xlsx', 'hkResult', prev);
+    banner('🏛 様式第3号に記入しました');
+    say('行政','様式第3号に記入しました',2600);
+    say('監査','変更前後・年月日をご確認を',2400);
+    logLine('<b>行政AI</b>：様式第3号（変更届）へ記入 → 様式第3号_記入済.xlsx を保存');
+  }catch(e){ alert('様式第3号の記入でエラー：'+e.message); }
+}
+// 生成した.xlsxに「A4・1ページに収める」用紙設定を注入（SheetJSは用紙設定を書けないため）
+async function xlsxSetOnePage(u8){
+  if(typeof JSZip==='undefined') return new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const zip=await JSZip.loadAsync(u8);
+  const names=Object.keys(zip.files).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n));
+  for(const nm of names){
+    let x=await zip.file(nm).async('string');
+    if(!/<sheetPr[ >]/.test(x)) x=x.replace(/(<worksheet[^>]*>)/, '$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+    else if(!/<pageSetUpPr/.test(x)) x=x.replace(/(<sheetPr[^>]*>)/, '$1<pageSetUpPr fitToPage="1"/>');
+    if(!/<pageSetup[ >]/.test(x)){
+      if(/<pageMargins[^>]*\/>/.test(x)) x=x.replace(/(<pageMargins[^>]*\/>)/, '$1<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>');
+      else x=x.replace(/(<\/worksheet>)/, '<pageMargins left="0.3" right="0.3" top="0.4" bottom="0.4" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>$1');
+    }
+    zip.file(nm, x);
+  }
+  return await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function hkAfterFill(hit, kind){
+  if(hit===0){
+    alert('この様式にトークンが見つかりませんでした。\n「🔖 トークン一覧を見る」のトークンを、様式の記入したい場所に貼り付けてから、もう一度お試しください。');
+    return;
+  }
+  banner(`✅ ${kind}様式に差し込みました`);
+  say('文書', `${kind}様式に記入しました`, 2600);
+  logLine(`<b>文書AI</b>：${kind}様式へ ${hit}か所 差し込み → 「様式_記入済_…」を保存`);
+}
+/* ▲▲▲ 変更届モジュール ここまで ▲▲▲ */
+
+
+/* =========================================================================
+   ▼▼▼ 中身レイヤー：個別支援計画書（ポチパス 様式1-1 連携）▼▼▼
+   ・インポート：ポチパスExcelを読み込みフォームへ展開（SheetJS＝読むだけ）
+   ・エクスポート：様式のセルへJSZipで直接書き込み（罫線・結合・書式を完全保持）
+     印刷範囲外のポチパス連携用データ列（BN〜BU）にも同じ値を書き込む
+   ========================================================================= */
+
+// フォームID → 様式のセル（mirror＝ポチパス連携列）
+const KK_HEAD = [
+  ['k_name','I4'], ['k_kubun','AD4'], ['k_jigyosha','AY4'],
+  ['k_hogosha','I5'], ['k_zokugara','AD5'],
+  ['k_jukyu','I6'], ['k_tantou','AY6'],
+  ['k_chiiki','I7'], ['k_tsuusho','AD7'],
+  ['k_sakuseibi','I9'], ['k_monitoring','AD9'],
+];
+const KK_BODY = [
+  ['k_ikou','I11','BN11'], ['k_houshin','I12','BN12'],
+  ['k_choki','I13','BN13'], ['k_tanki','I14','BN14'],
+];
+// 優先順位行（18〜23行）：[fieldキー, 可視列, ミラー列]
+const KK_COLS = [
+  ['kadai','B','BO'], ['mokuhyo','K','BP'], ['tassei','T','BQ'],
+  ['service','X','BR'], ['yakuwari','AM','BS'], ['hyoka','AV','BT'], ['ryui','AZ','BU'],
+];
+const KK_COL_LABEL = {kadai:'解決すべき課題（本人のニーズ）', mokuhyo:'支援目標', tassei:'達成時期',
+  service:'福祉サービス等（種類・内容・量）', yakuwari:'本人の役割', hyoka:'評価時期', ryui:'その他留意事項'};
+
+// 優先順位1〜6の入力ブロックを生成
+(function(){
+  const box=document.getElementById('kkRows'); if(!box) return;
+  let html='';
+  for(let i=1;i<=6;i++){
+    html+=`<details class="savedprev" style="margin-bottom:6px" ${i<=2?'open':''}>
+      <summary style="cursor:pointer;font-weight:700;color:var(--olive-d);font-size:12.5px">優先順位 ${i}</summary>
+      <div class="hkForm" style="margin-top:6px">`;
+    for(const [key] of KK_COLS){
+      const short=(key==='tassei'||key==='hyoka');
+      const field = short
+        ? `<input id="kk_${i}_${key}">`
+        : `<textarea id="kk_${i}_${key}"></textarea>`;
+      html+=`<div class="hkField${short?'':' full'}"><label>${KK_COL_LABEL[key]}</label>${field}</div>`;
+    }
+    html+=`</div></details>`;
+  }
+  box.innerHTML=html;
+})();
+
+function kkVal(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
+function kkSet(id,v){ const el=document.getElementById(id); if(el) el.value=(v==null?'':String(v)); }
+
+function openKeikakuPanel(){ document.getElementById('keikakuPanel').hidden=false; }
+document.getElementById('kkClose').addEventListener('click', ()=>document.getElementById('keikakuPanel').hidden=true);
+document.getElementById('keikakuPanel').addEventListener('click', ev=>{ if(ev.target.id==='keikakuPanel') ev.target.hidden=true; });
+
+// サンプル（架空データ）
+document.getElementById('kkSample').addEventListener('click', ()=>{
+  kkSet('k_name','織部　太郎 様'); kkSet('k_kubun','区分４'); kkSet('k_jigyosha','おりーぶ庵西九条');
+  kkSet('k_jukyu','0000000000'); kkSet('k_tantou','畠　博思');
+  const now=new Date(); const ymd=`${now.getFullYear()}/${('0'+(now.getMonth()+1)).slice(-2)}/${('0'+now.getDate()).slice(-2)}`;
+  kkSet('k_sakuseibi',ymd);
+  kkSet('k_monitoring',`${ymd}～${now.getFullYear()}/`+('0'+(((now.getMonth()+6)%12)+1)).slice(-2)+'/末');
+  kkSet('k_ikou','安心して自分らしい生活を続けたい');
+  kkSet('k_houshin','福祉サービスの利用により、安心して暮らせるよう支援する');
+  kkSet('k_choki','安定した生活リズムをつくり、自分を出せる場所を増やす');
+  kkSet('k_tanki','規則正しい服薬と睡眠を続ける');
+  kkSet('kk_1_kadai','服薬を忘れず続けたい'); kkSet('kk_1_mokuhyo','定期薬を忘れないように飲んでいただく');
+  kkSet('kk_1_tassei','12ヶ月'); kkSet('kk_1_service','毎日定刻に支援者が声掛けし、確実な服薬を支援する');
+  kkSet('kk_1_yakuwari','決まった時間にお薬をもらう。不調時は伝える'); kkSet('kk_1_hyoka','6か月');
+  kkSet('kk_2_kadai','ゆっくり過ごしたい'); kkSet('kk_2_mokuhyo','スケジュールを中心とした落ち着いた生活ができる');
+  kkSet('kk_2_tassei','6ヶ月'); kkSet('kk_2_service','生活タイムスケジュールを一緒に指差し確認する');
+  kkSet('kk_2_yakuwari','スケジュールを確認しながら過ごす'); kkSet('kk_2_hyoka','6ヶ月');
+});
+
+// ---- インポート（読み込み）----
+document.getElementById('kkImport').addEventListener('click', ()=>{
+  if(typeof XLSX==='undefined'){ alert('Excelライブラリを読み込み中です。少し待ってからお試しください。'); return; }
+  document.getElementById('kkImportFile').click();
+});
+document.getElementById('kkImportFile').addEventListener('change', async function(){
+  const f=this.files[0]; this.value=''; if(!f) return;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const sn=wb.SheetNames.find(n=>n.includes('個別支援計画'))||wb.SheetNames[0];
+    const ws=wb.Sheets[sn];
+    const get=a=>{ const c=ws[a]; return c==null?'':String(c.w!=null?c.w:c.v==null?'':c.v); };
+    for(const [id,cell] of KK_HEAD) kkSet(id, get(cell));
+    for(const [id,cell] of KK_BODY) kkSet(id, get(cell));
+    for(let i=1;i<=6;i++){
+      const r=17+i;
+      for(const [key,col] of KK_COLS) kkSet(`kk_${i}_${key}`, get(col+r));
+    }
+    banner('📥 計画書を読み込みました');
+    say('看護','計画書を読み込みました',2400);
+    logLine(`<b>看護AI</b>：個別支援計画書を読み込み（${get('I4')||'氏名未設定'}）`);
+  }catch(e){ alert('読み込みエラー：'+e.message); }
+});
+
+// ---- エクスポート（書き出し・書式完全保持）----
+function kkXmlCell(xml, ref, value){
+  const re=new RegExp('<c r="'+ref+'"([^>]*?)(?:/>|>[\\s\\S]*?</c>)');
+  const m=xml.match(re); if(!m) return xml;
+  const attrs=m[1].replace(/\s+t="[^"]*"/,'');
+  if(value==null||value===''){ return xml.replace(re, '<c r="'+ref+'"'+attrs+'/>'); } // 空＝クリア（書式保持）
+  return xml.replace(re, '<c r="'+ref+'"'+attrs+' t="inlineStr"><is><t xml:space="preserve">'+hkXmlEscC(value)+'</t></is></c>');
+}
+document.getElementById('kkExport').addEventListener('click', ()=>{
+  if(typeof JSZip==='undefined'){ alert('ライブラリを読み込み中です。少し待ってからお試しください。'); return; }
+  document.getElementById('kkExportFile').click();
+});
+document.getElementById('kkExportFile').addEventListener('change', async function(){
+  const f=this.files[0]; this.value=''; if(!f) return;
+  try{
+    const zip=await JSZip.loadAsync(await f.arrayBuffer());
+    const path=await hkSheetPath(zip); // workbook.xmlからシート解決（既存関数を再利用）
+    let xml=await zip.file(path).async('string');
+    for(const [id,cell] of KK_HEAD) xml=kkXmlCell(xml, cell, kkVal(id));
+    for(const [id,cell,mirror] of KK_BODY){ const v=kkVal(id); xml=kkXmlCell(xml,cell,v); xml=kkXmlCell(xml,mirror,v); }
+    let rows=0;
+    for(let i=1;i<=6;i++){
+      const r=17+i; let has=false;
+      for(const [key,col,mir] of KK_COLS){
+        const v=kkVal(`kk_${i}_${key}`); if(v) has=true;
+        xml=kkXmlCell(xml, col+r, v); xml=kkXmlCell(xml, mir+r, v);
+      }
+      xml=kkXmlCell(xml, 'A'+r, has?String(i):''); if(has) rows++;
+    }
+    zip.file(path, xml);
+    const blob=await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const nm=(kkVal('k_name')||'記入済').replace(/\s|　/g,'').replace(/様$/,'');
+    const prev=`<h4>📘 個別支援計画書に記入した内容（プレビュー）</h4>
+      <table>
+        <tr><th>利用者氏名</th><td>${hkEsc(kkVal('k_name'))||'（未入力）'}</td></tr>
+        <tr><th>計画案作成日</th><td>${hkEsc(kkVal('k_sakuseibi'))||'（未入力）'}</td></tr>
+        <tr><th>モニタリング期間</th><td>${hkEsc(kkVal('k_monitoring'))||'（未入力）'}</td></tr>
+        <tr><th>意向</th><td>${hkEsc(kkVal('k_ikou'))||'（未入力）'}</td></tr>
+        <tr><th>支援内容</th><td>優先順位 ${rows} 件を記入（ポチパス連携列にも書き込み済み）</td></tr>
+      </table>`;
+    await aiosDeliver(blob, `個別支援計画_${nm}.xlsx`, 'kkResult', prev);
+    banner('📘 個別支援計画書を書き出しました');
+    say('看護','個別支援計画書を書き出しました',2600);
+    say('文書','様式・罫線はそのまま保持しています',2400);
+    logLine(`<b>看護AI</b>：個別支援計画書を書き出し（${kkVal('k_name')||'氏名未設定'}・支援内容${rows}件）`);
+  }catch(e){ alert('書き出しエラー：'+e.message); }
+});
+/* ▲▲▲ 個別支援計画書モジュール ここまで ▲▲▲ */
+
+/* ---- 最初のひとこと ---- */
+setTimeout(()=>{ say('秘書','おはようございます、社長！ご指示をどうぞ。', 3000);
+  logLine('🌿 AI-OS を起動しました'); }, 600);
+</script>
