@@ -1840,11 +1840,13 @@ async function writeToShuukei(input){
     ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:data.length-1, c:cmtColIdx}});
 
     // ── A列の氏名インデックスを作る ──
-    const nameRowMap = {}; // {スペース除去した名前: rowIdx}
+    // 𠮷(U+20BB7)など拡張漢字を常用漢字に正規化して照合ミスを防ぐ
+    const normalizeN = (s) => (s||"").replace(/[\s　]/g,"").replace(/\uD842\uDFB7/g,"\u5409");
+    const nameRowMap = {}; // {正規化した名前: rowIdx}
     for(let r=hdrRowIdx+1; r<data.length; r++){
       const nm = data[r]&&data[r][0];
       if(!nm||typeof nm!=="string") continue;
-      const clean = nm.replace(/[\s　]/g,"");
+      const clean = normalizeN(nm);
       if(clean) nameRowMap[clean]=r;
     }
 
@@ -1855,7 +1857,7 @@ async function writeToShuukei(input){
     const skipped=[];
 
     Object.keys(agg.byName).forEach(csvName=>{
-      const csvClean = csvName.replace(/[\s　]/g,"");
+      const csvClean = normalizeN(csvName);
       let targetRow = nameRowMap[csvClean];
 
       // 前方一致フォールバック（姓のみ）
@@ -1965,7 +1967,7 @@ async function writeToShuukei(input){
         // 罫線を確実に付与
         s.border = mkBorder();
         // フォントサイズを維持（未設定なら12pt）
-        if(!s.font) s.font = {name:'Arial', sz:12};
+        if(!s.font) s.font = {name:'BIZ UDゴシック', sz:12};
         else if(!s.font.sz) s.font.sz = 12;
         // 配置
         if(!s.alignment) s.alignment = {};
