@@ -43,8 +43,8 @@ body{
   display:flex;align-items:center;justify-content:center;
   font-size:22px;flex-shrink:0;
 }
-.hdr-title{color:#fff;font-size:20px;font-weight:700}
-.hdr-sub{color:rgba(255,255,255,.72);font-size:14px;margin-top:2px}
+.hdr-title{color:#111111;font-size:20px;font-weight:700}
+.hdr-sub{color:#111111;font-size:14px;margin-top:2px}
 
 /* タブ */
 .tabs{display:none}
@@ -66,17 +66,18 @@ main{padding:16px 12px;max-width:560px;margin:0 auto}
   background:var(--gr);border-radius:var(--r);
   padding:16px;margin-bottom:14px;
 }
-.banner h2{color:#fff;font-size:21px;font-weight:700;margin-bottom:4px}
-.banner p{color:rgba(255,255,255,.8);font-size:15px;line-height:1.5}
+.banner h2{color:#111111;font-size:21px;font-weight:700;margin-bottom:4px}
+.banner p{color:#111111;font-size:15px;line-height:1.5}
 .sbar{
   display:flex;margin-top:12px;
   background:rgba(255,255,255,.12);border-radius:9px;overflow:hidden;
 }
 .si{
+  color:#111111;
   flex:1;text-align:center;padding:10px 4px;
   font-size:13px;font-weight:600;color:rgba(255,255,255,.6);
 }
-.si.on{background:rgba(255,255,255,.18);color:#fff}
+.si.on{background:rgba(255,255,255,.18);color:#111111}
 .si-n{display:block;font-size:22px;font-weight:800;margin-bottom:2px}
 .si.on .si-n{color:#a5d6a7}
 
@@ -129,7 +130,7 @@ main{padding:16px 12px;max-width:560px;margin:0 auto}
 .hint-box{
   background:var(--sand);border-radius:9px;
   padding:12px 14px;font-size:15px;
-  color:var(--sub);margin-bottom:12px;line-height:1.6;
+  color:#111111;font-weight:600;margin-bottom:12px;line-height:1.6;
 }
 .cal-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px}
 .cal-period{font-size:18px;font-weight:700}
@@ -338,13 +339,13 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
   <div class="card">
     <div class="card-h">
       <span class="card-hn">②</span>
-      <div><div class="card-hl">日付をタップして希望を選ぶ</div><div class="card-hs" style="font-weight:700;font-size:15px;color:var(--text)">タップするたびに記号が変わります</div></div>
+      <div><div class="card-hl" style="color:#e53935">日付をタップして希望を選ぶ</div><div class="card-hs" style="font-weight:700;font-size:15px;color:var(--text)">タップするたびに記号が変わります</div></div>
     </div>
     <div class="card-b">
       <div class="legend">
         <div class="leg m">○ 出勤できる</div>
-        <div class="leg s">△ 要相談</div>
         <div class="leg b">× 出勤できない</div>
+        <div class="leg s">△ 要相談</div>
         <button onclick="openCommentModal(null)" style="
           display:flex;align-items:center;gap:5px;
           padding:7px 13px;border-radius:100px;
@@ -355,7 +356,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
           -webkit-tap-highlight-color:transparent;
         ">💬 コメント</button>
       </div>
-      <div class="hint-box">👆 日付をタップ → ○ → △ → × → 空白 の順で変わります</div>
+      <div class="hint-box">👆 日付をタップ → ○ → × → △ → 空白 の順で変わります</div>
       <div class="cal-meta">
         <span class="cal-period" id="calRange">—</span>
         <span class="cal-days" id="calCount">—</span>
@@ -383,7 +384,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
   <div class="card">
     <div class="card-h">
       <span class="card-hn">③</span>
-      <div><div class="card-hl">送信する</div><div class="card-hs">ボタンをタップすると送信完了！と表示されます</div></div>
+      <div><div class="card-hl" style="color:#111111">送信する</div><div class="card-hs">ボタンをタップすると送信完了！と表示されます</div></div>
     </div>
     <div class="card-b">
       <div class="preview" id="preview">名前と日付を入力してから送信ボタンを押してください。</div>
@@ -929,7 +930,7 @@ function buildCal(){
   updateCount();
 }
 
-const CYCLE=["","○","△","×"];
+const CYCLE=["","○","×","△"];
 function cycleCell(k){
   const cur=state[k]||"",next=CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length];
   if(next)state[k]=next;else delete state[k];
@@ -1777,13 +1778,16 @@ async function writeToShuukei(input){
       wb.SheetNames.splice(wb.SheetNames.indexOf(newSheetName), 1);
     }
 
-    // テンプレートをディープコピーして新シート作成
+    // ── テンプレートを完全ディープコピーして新シート作成 ──
     const ws = {};
     for(const key of Object.keys(tmpl)){
       if(key.startsWith("!")){
         ws[key] = JSON.parse(JSON.stringify(tmpl[key]));
       } else {
-        ws[key] = {...tmpl[key]};
+        // セルのスタイル(s)を含めて完全コピー
+        const cell = tmpl[key];
+        ws[key] = Object.assign({}, cell);
+        if(cell.s) ws[key].s = JSON.parse(JSON.stringify(cell.s));
       }
     }
     wb.SheetNames.push(newSheetName);
@@ -1799,7 +1803,20 @@ async function writeToShuukei(input){
     }
     if(hdrRowIdx===-1) throw new Error("「氏名」ヘッダー行が見つかりません。A列に「氏名」と書かれた行が必要です");
 
-    // ── 集計期間の日付をヘッダー行に書き込む（毎月自動対応）──
+    // ── ベーステンプレートの罫線スタイルを取得 ──
+    const getBaseStyle = (r, c) => {
+      // 同行A列のスタイルを基準にする
+      const refAddr = XLSX.utils.encode_cell({r, c:0});
+      const refCell = ws[refAddr];
+      if(refCell && refCell.s) return JSON.parse(JSON.stringify(refCell.s));
+      // ヘッダー行のスタイル
+      const hdrAddr = XLSX.utils.encode_cell({r:hdrRowIdx, c:1});
+      const hdrCell = ws[hdrAddr];
+      if(hdrCell && hdrCell.s) return JSON.parse(JSON.stringify(hdrCell.s));
+      return null;
+    };
+
+    // ── 集計期間の日付をヘッダー行に書き込む（スタイル維持）──
     const dateColMap = {};
     const mdToFmt = {};
     agg.dates.forEach((d, i)=>{
@@ -1807,16 +1824,18 @@ async function writeToShuukei(input){
       const md = `${d.getMonth()+1}/${d.getDate()}`;
       dateColMap[md] = col;
       mdToFmt[md] = fmt(d);
-      // ヘッダーに日付テキストを書き込む
       const addr = XLSX.utils.encode_cell({r: hdrRowIdx, c: col});
-      const existStyle = ws[addr] ? ws[addr].s : undefined;
+      // 既存スタイルを保持したまま値だけ更新
+      const existStyle = (ws[addr] && ws[addr].s) ? JSON.parse(JSON.stringify(ws[addr].s)) : getBaseStyle(hdrRowIdx, col);
       ws[addr] = {t:"s", v:md, w:md};
-      if(existStyle !== undefined) ws[addr].s = existStyle;
+      if(existStyle) ws[addr].s = existStyle;
     });
     // 備考・コメント列ヘッダーを追加（日付列の次）
     const cmtColIdx = agg.dates.length + 1;
     const cmtHdrAddr = XLSX.utils.encode_cell({r: hdrRowIdx, c: cmtColIdx});
+    const cmtHdrStyle = getBaseStyle(hdrRowIdx, 1);
     ws[cmtHdrAddr] = {t:"s", v:"備考・コメント", w:"備考・コメント"};
+    if(cmtHdrStyle) ws[cmtHdrAddr].s = cmtHdrStyle;
     // シート範囲を更新（備考列を含む）
     ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:data.length-1, c:cmtColIdx}});
 
@@ -1872,7 +1891,10 @@ async function writeToShuukei(input){
           ws[addr]={t:"s",v:""};
           if(refCell&&refCell.s) ws[addr].s=refCell.s;
         }
+        // 既存スタイルを維持したまま値だけ更新
+        const existS = ws[addr] ? ws[addr].s : undefined;
         ws[addr].t="s"; ws[addr].v=mark; ws[addr].w=mark;
+        if(existS) ws[addr].s = existS;
         if(mark) written++;
         // コメントを収集
         const cmt = agg.byName[csvName][fmtKey+"__comment"];
@@ -1928,28 +1950,28 @@ async function writeToShuukei(input){
       e:{r:data.length-1, c:Math.max(cmtColIdx, countColIdx)}
     });
 
-    // ── 罫線・書式を整備（フォント12pt・thin罫線） ──
+    // ── 罫線・書式を整備（ベーススタイルを維持・thin罫線を確実に付与）──
     const thinB = {style:'thin',color:{auto:1}};
     const mkBorder = ()=>({top:thinB,bottom:thinB,left:thinB,right:thinB});
-    const mkFont = (bold,sz)=>({name:'Arial',bold,sz});
 
-    // 全セルに罫線・フォント12ptを適用
+    // 全セルに罫線を確実に付与（既存スタイルを上書きせず罫線だけ追加）
+    const maxC = Math.max(cmtColIdx, countColIdx>=0?countColIdx:0);
     for(let r=hdrRowIdx; r<data.length; r++){
-      for(let c=0; c<=Math.max(cmtColIdx, countColIdx>=0?countColIdx:0); c++){
+      for(let c=0; c<=maxC; c++){
         const a=XLSX.utils.encode_cell({r,c});
         if(!ws[a]) ws[a]={t:'s',v:''};
-        const isHdr = r===hdrRowIdx;
-        const isNameCol = c===0;
-        const isCountCol = c===countColIdx;
-        ws[a].s={
-          font: mkFont(isHdr||isCountCol, 12),
-          border: mkBorder(),
-          alignment:{
-            horizontal: isNameCol&&!isHdr?'left':'center',
-            vertical:'center',
-            wrapText: isNameCol||isCountCol||isHdr
-          }
-        };
+        // 既存スタイルを取得（なければベーステンプレートから）
+        let s = ws[a].s ? JSON.parse(JSON.stringify(ws[a].s)) : (getBaseStyle(r,c)||{});
+        // 罫線を確実に付与
+        s.border = mkBorder();
+        // フォントサイズを維持（未設定なら12pt）
+        if(!s.font) s.font = {name:'Arial', sz:12};
+        else if(!s.font.sz) s.font.sz = 12;
+        // 配置
+        if(!s.alignment) s.alignment = {};
+        s.alignment.horizontal = (c===0&&r!==hdrRowIdx)?'left':'center';
+        s.alignment.vertical = 'center';
+        ws[a].s = s;
       }
     }
 
