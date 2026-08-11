@@ -578,6 +578,99 @@
   </div>
 </div>
 
+<!-- ===== 業務パネル：付表12（GH指定記載事項・大阪市） ===== -->
+<div class="modal" id="f12Panel" hidden>
+  <div class="sheet">
+    <div class="sheetHead">
+      <b>🏢 付表12（GH指定記載事項）</b>
+      <span class="real-badge">本物の処理</span>
+      <span class="grow"></span>
+      <button id="f12Close" title="閉じる">✕</button>
+    </div>
+    <div class="sheetBody">
+      <div class="wpNote" style="margin-bottom:10px">
+        大阪市「付表12　共同生活援助事業所の指定等に係る記載事項」に、様式そのままで記入します。
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="wpBtn primary" id="f12Import">📥 記入済みの付表12を読み込む</button>
+          <button class="wpBtn" id="f12Sample">サンプルを入れる</button>
+          <input type="file" id="f12ImportFile" accept=".xlsx" style="display:none">
+        </div>
+      </div>
+
+      <div class="hkForm">
+        <div class="hkSep">① 主たる事業所</div>
+        <div class="hkField"><label>フリガナ</label><input id="f12_kana"></div>
+        <div class="hkField"><label>名称</label><input id="f12_name"></div>
+        <div class="hkField"><label>郵便番号（3桁-4桁）</label>
+          <div style="display:flex;gap:4px;align-items:center"><input id="f12_zip1" style="width:70px" maxlength="3">-<input id="f12_zip2" style="width:90px" maxlength="4"></div></div>
+        <div class="hkField"><label>電話番号</label><input id="f12_tel"></div>
+        <div class="hkField full"><label>所在地</label><input id="f12_addr"></div>
+        <div class="hkField full"><label>E-Mail</label><input id="f12_mail"></div>
+
+        <div class="hkSep">② 管理者</div>
+        <div class="hkField"><label>フリガナ</label><input id="f12_m_kana"></div>
+        <div class="hkField"><label>氏名</label><input id="f12_m_name"></div>
+        <div class="hkField"><label>生年月日（西暦 年/月/日）</label>
+          <div style="display:flex;gap:4px;align-items:center"><input id="f12_m_y" style="width:70px">/<input id="f12_m_m" style="width:52px">/<input id="f12_m_d" style="width:52px"></div></div>
+        <div class="hkField"><label>郵便番号</label>
+          <div style="display:flex;gap:4px;align-items:center"><input id="f12_m_zip1" style="width:70px" maxlength="3">-<input id="f12_m_zip2" style="width:90px" maxlength="4"></div></div>
+        <div class="hkField full"><label>住所</label><input id="f12_m_addr"></div>
+        <div class="hkField full"><label>当該事業所で兼務する他の職種</label><input id="f12_m_kenmu"></div>
+        <div class="hkField"><label>他の事業所等の名称（兼務時）</label><input id="f12_m_taJigyo"></div>
+        <div class="hkField"><label>兼務する職種・勤務時間等</label><input id="f12_m_taShokushu"></div>
+
+        <div class="hkSep">③ サービス管理責任者</div>
+        <div class="hkField"><label>フリガナ</label><input id="f12_s_kana"></div>
+        <div class="hkField"><label>氏名</label><input id="f12_s_name"></div>
+        <div class="hkField"><label>生年月日（西暦 年/月/日）</label>
+          <div style="display:flex;gap:4px;align-items:center"><input id="f12_s_y" style="width:70px">/<input id="f12_s_m" style="width:52px">/<input id="f12_s_d" style="width:52px"></div></div>
+        <div class="hkField"><label>郵便番号</label>
+          <div style="display:flex;gap:4px;align-items:center"><input id="f12_s_zip1" style="width:70px" maxlength="3">-<input id="f12_s_zip2" style="width:90px" maxlength="4"></div></div>
+        <div class="hkField full"><label>住所</label><input id="f12_s_addr"></div>
+
+        <div class="hkSep">④ 従業者の職種・員数</div>
+        <div class="full">
+          <div class="tblwrap"><table class="agg"><thead>
+            <tr><th></th><th>居宅介護等 専従</th><th>居宅介護等 兼務</th><th>その他 専従</th><th>その他 兼務</th></tr></thead><tbody>
+            <tr><td>常勤(人)</td><td><input id="f12_j_ck" style="width:64px"></td><td><input id="f12_j_kk" style="width:64px"></td><td><input id="f12_j_sk" style="width:64px"></td><td><input id="f12_j_skk" style="width:64px"></td></tr>
+            <tr><td>非常勤(人)</td><td><input id="f12_h_ck" style="width:64px"></td><td><input id="f12_h_kk" style="width:64px"></td><td><input id="f12_h_sk" style="width:64px"></td><td><input id="f12_h_skk" style="width:64px"></td></tr>
+            <tr><td>常勤換算後(人)</td><td colspan="2"><input id="f12_e_c" style="width:80px"></td><td colspan="2"><input id="f12_e_s" style="width:80px"></td></tr>
+            <tr><td>基準上の必要人数(人)</td><td colspan="2"><input id="f12_k_c" style="width:80px"></td><td colspan="2"><input id="f12_k_s" style="width:80px"></td></tr>
+          </tbody></table></div>
+        </div>
+
+        <div class="hkSep">⑤ 運営</div>
+        <div class="hkField"><label>サービスの提供形態</label>
+          <select id="f12_keitai"><option value="">（選択）</option><option value="hokatsu">介護サービス包括型</option><option value="nichu">日中サービス支援型</option><option value="gaibu">外部サービス利用型</option></select></div>
+        <div class="hkField"><label>生活支援員業務の外部委託</label>
+          <select id="f12_itaku"><option value="">（選択）</option><option value="ari">有</option><option value="nashi">無</option></select></div>
+        <div class="hkField"><label>有の場合の月間時間数</label><input id="f12_itaku_jikan"></div>
+        <div class="hkField"><label>利用定員(人)</label><input id="f12_teiin"></div>
+        <div class="hkField"><label>利用者の推定数(人)</label><input id="f12_suitei"></div>
+        <div class="hkField"><label>連携する施設の種別</label><input id="f12_renkei_shubetsu"></div>
+        <div class="hkField"><label>連携する施設名</label><input id="f12_renkei_name"></div>
+        <div class="hkField full"><label>支援体制の概要</label><textarea id="f12_renkei_gaiyo"></textarea></div>
+        <div class="hkField"><label>協力医療機関 名称</label><input id="f12_med_name"></div>
+        <div class="hkField"><label>診療科名</label><input id="f12_med_ka"></div>
+        <div class="hkField full"><label>協力歯科医療機関 名称</label><input id="f12_dent_name"></div>
+
+        <div class="hkSep">⑥ 共同生活住居 ①〜③</div>
+        <div class="full" id="f12Homes"></div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+        <button class="wpBtn primary" id="f12Export">📤 付表12（様式）へ書き出す</button>
+        <input type="file" id="f12ExportFile" accept=".xlsx" style="display:none">
+      </div>
+      <div class="wpNote" style="margin-top:6px">
+        書き出し先には大阪市の「付表12」様式（.xlsx）を選んでください。書式・罫線・結合は一切変更せず、
+        該当セルにのみ記入した新しいファイルとして保存します（元ファイルは変更されません）。
+      </div>
+      <div id="f12Result"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* =========================================================================
@@ -628,6 +721,9 @@ const PLANS = [
   {key:['個別支援計画','支援計画'], title:'個別支援計画書を作成中…', icon:'📘',
    output:'個別支援計画書', outNote:'看護AI・ホーム管理AI・文書AI 連携', real:'keikaku',
    flow:['秘書','ホーム','看護','文書']},
+  {key:['付表12','付表１２','記載事項'], title:'付表12を作成中…', icon:'🏢',
+   output:'付表12（GH指定記載事項）', outNote:'行政AI・ホーム管理AI・文書AI 連携', real:'f12',
+   flow:['秘書','行政','ホーム','文書']},
   {key:['利用者','入居','登録'], title:'利用者情報を登録中…', icon:'🧑‍🦽',
    output:'利用者登録票', outNote:'ホーム管理AI・人事AI・文書AI 連携',
    flow:['秘書','ホーム','人事','文書']},
@@ -791,6 +887,7 @@ async function runWorkflow(text){
   if(plan.real === 'shift'){ openShiftPanel(); }
   else if(plan.real === 'henkou'){ openHenkouPanel(); }
   else if(plan.real === 'keikaku'){ openKeikakuPanel(); }
+  else if(plan.real === 'f12'){ openF12Panel(); }
 
   await wait(700);
 
@@ -821,6 +918,7 @@ function addDoc(plan){
       if(plan.real==='shift') openShiftPanel();
       else if(plan.real==='henkou') openHenkouPanel();
       else if(plan.real==='keikaku') openKeikakuPanel();
+      else if(plan.real==='f12') openF12Panel();
     }); }
   tray.prepend(d);
   while(tray.children.length>6) tray.lastChild.remove();
@@ -870,7 +968,8 @@ const CHIPS = [
   {t:'シフトを集計して', real:true},
   {t:'変更届作成して', real:true},
   {t:'個別支援計画を作成して', real:true},
-  {t:'給与確認して'}, {t:'請求書作って'}, {t:'工房売上を集計して'}
+  {t:'付表12を作成して', real:true},
+  {t:'給与確認して'}, {t:'工房売上を集計して'}
 ];
 const chipBox = document.getElementById('chips');
 for(const c of CHIPS){
@@ -1669,11 +1768,12 @@ function hkXmlCell(xml, ref, value, isNum){
   const tAttr=isNum ? '' : ' t="inlineStr"';
   return xml.replace(re, '<c r="'+ref+'"'+attrs+tAttr+'>'+inner+'</c>');
 }
-async function hkSheetPath(zip){
+async function hkSheetPath(zip, nameRe){
+  const re = nameRe || /様式第|変更届/;
   try{
     const wbx=await zip.file('xl/workbook.xml').async('string');
     const sheets=[...wbx.matchAll(/<sheet[^>]*\bname="([^"]*)"[^>]*\br:id="([^"]*)"[^>]*\/>/g)];
-    let rid = (sheets.find(s=>/様式第|変更届/.test(s[1]))||sheets[0]||[])[2];
+    let rid = (sheets.find(s=>re.test(s[1]))||sheets[0]||[])[2];
     if(rid){
       const rels=await zip.file('xl/_rels/workbook.xml.rels').async('string');
       const rm=rels.match(new RegExp('<Relationship[^>]*Id="'+rid+'"[^>]*Target="([^"]*)"'));
@@ -1905,6 +2005,194 @@ document.getElementById('kkExportFile').addEventListener('change', async functio
   }catch(e){ alert('書き出しエラー：'+e.message); }
 });
 /* ▲▲▲ 個別支援計画書モジュール ここまで ▲▲▲ */
+
+
+/* =========================================================================
+   ▼▼▼ 中身レイヤー：付表12（大阪市・GH指定記載事項）▼▼▼
+   書式・罫線・結合(380)に一切触れず、該当セルの値のみ JSZip で書き込む。
+   ========================================================================= */
+
+// 単一値フィールド（フォームID → セル）
+const F12_MAP = [
+  ['f12_kana','C3'],['f12_name','C4'],['f12_zip1','D5'],['f12_zip2','F5'],['f12_addr','C7'],['f12_tel','C8'],['f12_mail','C9'],
+  ['f12_m_kana','C10'],['f12_m_name','C11'],['f12_m_y','G10'],['f12_m_m','I10'],['f12_m_d','K10'],
+  ['f12_m_zip1','D12'],['f12_m_zip2','F12'],['f12_m_addr','C14'],['f12_m_kenmu','H15'],['f12_m_taJigyo','F16'],['f12_m_taShokushu','F17'],
+  ['f12_s_kana','C19'],['f12_s_name','C20'],['f12_s_y','G19'],['f12_s_m','I19'],['f12_s_d','K19'],
+  ['f12_s_zip1','D21'],['f12_s_zip2','F21'],['f12_s_addr','C23'],
+  ['f12_j_ck','C28'],['f12_j_kk','D28'],['f12_j_sk','E28'],['f12_j_skk','F28'],
+  ['f12_h_ck','C29'],['f12_h_kk','D29'],['f12_h_sk','E29'],['f12_h_skk','F29'],
+  ['f12_e_c','C30'],['f12_e_s','E30'],['f12_k_c','C31'],['f12_k_s','E31'],
+  ['f12_itaku_jikan','L34'],
+  ['f12_teiin','C36'],['f12_suitei','C37'],
+  ['f12_renkei_shubetsu','E38'],['f12_renkei_name','H38'],['f12_renkei_gaiyo','D39'],
+  ['f12_med_name','D40'],['f12_med_ka','I40'],['f12_dent_name','D41'],
+];
+// ○マーク：提供形態（C33/C34/C35）・外部委託（有I33／無L33）
+const F12_KEITAI = {hokatsu:'C33', nichu:'C34', gaibu:'C35'};
+const F12_ITAKU  = {ari:'I33', nashi:'L33'};
+// 共同生活住居ブロック（基準行：①44 ②60 ③76）※①の名称/所在地等は「前頁に記載」のため入力なし
+const F12_HOME_BASE = {1:44, 2:60, 3:76};
+const F12_HOME_LABEL = {kana:'フリガナ', name:'名称', zip:'郵便番号', addr:'所在地', tel:'電話番号',
+  owner:'建物所有者名', yachin:'家賃月額(円)', kikan1:'契約期間（開始）', kikan2:'契約期間（終了）',
+  teiin:'利用定員(人)', shitsu:'居室数', koshitsu:'うち個室', menseki:'居室の最小床面積(㎡)', satellite:'サテライト型住居数'};
+
+// 住居①〜③の入力ブロックを生成
+(function(){
+  const box=document.getElementById('f12Homes'); if(!box) return;
+  let html='';
+  for(let i=1;i<=3;i++){
+    html+=`<details class="savedprev" style="margin-bottom:6px" ${i===1?'open':''}>
+      <summary style="cursor:pointer;font-weight:700;color:var(--olive-d);font-size:12.5px">共同生活住居 ${'①②③'[i-1]}${i===1?'（主たる事業所）':''}</summary>
+      <div class="hkForm" style="margin-top:6px">`;
+    if(i===1){
+      html+=`<div class="hkField full"><label style="color:#8a7333">※名称・所在地・連絡先は「前頁に記載」（①欄と同じ）のため入力不要です</label></div>`;
+    }else{
+      html+=`<div class="hkField"><label>フリガナ</label><input id="f12h${i}_kana"></div>
+        <div class="hkField"><label>名称</label><input id="f12h${i}_name"></div>
+        <div class="hkField"><label>郵便番号（3桁-4桁）</label>
+          <div style="display:flex;gap:4px;align-items:center"><input id="f12h${i}_zip1" style="width:70px" maxlength="3">-<input id="f12h${i}_zip2" style="width:90px" maxlength="4"></div></div>
+        <div class="hkField"><label>電話番号</label><input id="f12h${i}_tel"></div>
+        <div class="hkField full"><label>所在地</label><input id="f12h${i}_addr"></div>`;
+    }
+    html+=`<div class="hkField"><label>住居区分</label>
+        <select id="f12h${i}_kubun"><option value="">（選択）</option><option value="ikkodate">一戸建て</option><option value="apart">アパート</option><option value="mansion">マンション</option><option value="sonota">その他</option></select></div>
+      <div class="hkField"><label>建物所有者名</label><input id="f12h${i}_owner"></div>
+      <div class="hkField"><label>家賃月額(円)</label><input id="f12h${i}_yachin"></div>
+      <div class="hkField"><label>契約期間</label>
+        <div style="display:flex;gap:4px;align-items:center"><input id="f12h${i}_kikan1" style="width:110px">～<input id="f12h${i}_kikan2" style="width:110px"></div></div>
+      <div class="hkField"><label>利用定員(人)</label><input id="f12h${i}_teiin" style="width:80px"></div>
+      <div class="hkField"><label>居室数／うち個室</label>
+        <div style="display:flex;gap:4px;align-items:center"><input id="f12h${i}_shitsu" style="width:64px">室／<input id="f12h${i}_koshitsu" style="width:64px">室</div></div>
+      <div class="hkField"><label>最小床面積(㎡)</label><input id="f12h${i}_menseki" style="width:90px"></div>
+      <div class="hkField"><label>サテライト型住居数</label><input id="f12h${i}_satellite" style="width:80px"></div>
+      <div class="hkChecks"><span style="font-weight:700;color:#5c6a48">主たる対象者：</span>
+        <label><input type="checkbox" id="f12h${i}_t_shintai">身体障害</label>
+        <label><input type="checkbox" id="f12h${i}_t_chiteki">知的障害</label>
+        <label><input type="checkbox" id="f12h${i}_t_seishin">精神障害</label>
+        <label><input type="checkbox" id="f12h${i}_t_nanbyo">難病等対象者</label></div>
+      </div></details>`;
+  }
+  box.innerHTML=html;
+})();
+
+function openF12Panel(){ document.getElementById('f12Panel').hidden=false; }
+document.getElementById('f12Close').addEventListener('click', ()=>document.getElementById('f12Panel').hidden=true);
+document.getElementById('f12Panel').addEventListener('click', ev=>{ if(ev.target.id==='f12Panel') ev.target.hidden=true; });
+
+// サンプル（事業所情報は公開情報、人物は架空）
+document.getElementById('f12Sample').addEventListener('click', ()=>{
+  kkSet('f12_kana','オリーブアンニシクジョウ'); kkSet('f12_name','おりーぶ庵西九条');
+  kkSet('f12_zip1','554'); kkSet('f12_zip2','0012'); kkSet('f12_addr','大阪市此花区西九条4-8-25');
+  kkSet('f12_tel','06-0000-0000');
+  kkSet('f12_m_kana','オリベ　タロウ'); kkSet('f12_m_name','織部　太郎');
+  kkSet('f12_m_y','1975'); kkSet('f12_m_m','1'); kkSet('f12_m_d','1');
+  kkSet('f12_s_kana','オリベ　ハナコ'); kkSet('f12_s_name','織部　花子');
+  kkSet('f12_teiin','20'); kkSet('f12_suitei','18');
+  document.getElementById('f12_keitai').value='hokatsu';
+  document.getElementById('f12_itaku').value='nashi';
+  kkSet('f12h2_kana','オリーブアンクジョウ'); kkSet('f12h2_name','おりーぶ庵九条');
+  kkSet('f12h2_zip1','550'); kkSet('f12h2_zip2','0027'); kkSet('f12h2_addr','大阪市西区九条○丁目');
+  document.getElementById('f12h1_kubun').value='ikkodate';
+  document.getElementById('f12h2_kubun').value='mansion';
+  kkSet('f12h1_teiin','7'); kkSet('f12h1_shitsu','7'); kkSet('f12h1_koshitsu','7');
+  kkSet('f12h2_teiin','6'); kkSet('f12h2_shitsu','6'); kkSet('f12h2_koshitsu','6');
+  document.getElementById('f12h1_t_seishin').checked=true;
+  document.getElementById('f12h2_t_seishin').checked=true;
+  document.getElementById('f12h2_t_chiteki').checked=true;
+});
+
+// 住居ブロックの可変セル（基準行 b からのオフセット）
+function f12HomeCells(i){
+  const b=F12_HOME_BASE[i];
+  const c={ kubun:{ikkodate:'D'+(b+6), apart:'G'+(b+6), mansion:'D'+(b+7), sonota:'G'+(b+7)},
+    owner:'D'+(b+8), yachin:'F'+(b+9), kikan1:'E'+(b+10), kikan2:'H'+(b+10),
+    teiin:'D'+(b+11), shitsu:'H'+(b+11), koshitsu:'L'+(b+11), menseki:'F'+(b+12), satellite:'F'+(b+13),
+    taisho:{shintai:'D'+(b+14), chiteki:'G'+(b+14), seishin:'D'+(b+15), nanbyo:'G'+(b+15)} };
+  if(i>1){ c.kana='C'+b; c.name='C'+(b+1); c.zip1='D'+(b+2); c.zip2='F'+(b+2); c.addr='C'+(b+4); c.tel='C'+(b+5); }
+  return c;
+}
+
+// ---- インポート（記入済みの付表12を読む）----
+document.getElementById('f12Import').addEventListener('click', ()=>{
+  if(typeof XLSX==='undefined'){ alert('Excelライブラリを読み込み中です。少し待ってからお試しください。'); return; }
+  document.getElementById('f12ImportFile').click();
+});
+document.getElementById('f12ImportFile').addEventListener('change', async function(){
+  const f=this.files[0]; this.value=''; if(!f) return;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const sn=wb.SheetNames.find(n=>n.indexOf('付表')>=0)||wb.SheetNames[0];
+    const ws=wb.Sheets[sn];
+    const get=a=>{ const c=ws[a]; return c==null?'':String(c.w!=null?c.w:c.v==null?'':c.v).trim(); };
+    for(const [id,cell] of F12_MAP) kkSet(id, get(cell));
+    // ○の読み取り（提供形態・外部委託）
+    const selK=Object.entries(F12_KEITAI).find(([k,a])=>get(a)); document.getElementById('f12_keitai').value=selK?selK[0]:'';
+    const selI=Object.entries(F12_ITAKU).find(([k,a])=>get(a));  document.getElementById('f12_itaku').value=selI?selI[0]:'';
+    for(let i=1;i<=3;i++){
+      const c=f12HomeCells(i);
+      if(i>1){ ['kana','name','zip1','zip2','addr','tel'].forEach(k=>kkSet(`f12h${i}_${k}`, get(c[k]))); }
+      const kb=Object.entries(c.kubun).find(([k,a])=>get(a)); document.getElementById(`f12h${i}_kubun`).value=kb?kb[0]:'';
+      ['owner','yachin','kikan1','kikan2','teiin','shitsu','koshitsu','menseki','satellite'].forEach(k=>kkSet(`f12h${i}_${k}`, get(c[k])));
+      for(const [k,a] of Object.entries(c.taisho)) document.getElementById(`f12h${i}_t_${k}`).checked=!!get(a);
+    }
+    banner('📥 付表12を読み込みました');
+    say('行政','付表12を読み込みました',2400);
+    logLine(`<b>行政AI</b>：付表12を読み込み（${get('C4')||'名称未設定'}）`);
+  }catch(e){ alert('読み込みエラー：'+e.message); }
+});
+
+// ---- エクスポート（様式へ書き出し・書式完全保持）----
+document.getElementById('f12Export').addEventListener('click', ()=>{
+  if(typeof JSZip==='undefined'){ alert('ライブラリを読み込み中です。少し待ってからお試しください。'); return; }
+  document.getElementById('f12ExportFile').click();
+});
+document.getElementById('f12ExportFile').addEventListener('change', async function(){
+  const f=this.files[0]; this.value=''; if(!f) return;
+  try{
+    const zip=await JSZip.loadAsync(await f.arrayBuffer());
+    const path=await hkSheetPath(zip, /付表/);
+    let xml=await zip.file(path).async('string');
+    for(const [id,cell] of F12_MAP) xml=kkXmlCell(xml, cell, kkVal(id));
+    // 提供形態・外部委託の○（選択のみ○、他はクリア）
+    const kSel=document.getElementById('f12_keitai').value;
+    for(const [k,a] of Object.entries(F12_KEITAI)) xml=kkXmlCell(xml, a, k===kSel?'○':'');
+    const iSel=document.getElementById('f12_itaku').value;
+    for(const [k,a] of Object.entries(F12_ITAKU)) xml=kkXmlCell(xml, a, k===iSel?'○':'');
+    let homes=0;
+    for(let i=1;i<=3;i++){
+      const c=f12HomeCells(i); let has=false;
+      if(i>1){ for(const k of ['kana','name','zip1','zip2','addr','tel']){ const v=kkVal(`f12h${i}_${k}`); if(v) has=true; xml=kkXmlCell(xml, c[k], v); } }
+      const kb=document.getElementById(`f12h${i}_kubun`).value;
+      for(const [k,a] of Object.entries(c.kubun)) xml=kkXmlCell(xml, a, k===kb?'○':'');
+      if(kb) has=true;
+      for(const k of ['owner','yachin','kikan1','kikan2','teiin','shitsu','koshitsu','menseki','satellite']){
+        const v=kkVal(`f12h${i}_${k}`); if(v) has=true; xml=kkXmlCell(xml, c[k], v);
+      }
+      for(const [k,a] of Object.entries(c.taisho)){
+        const on=document.getElementById(`f12h${i}_t_${k}`).checked; if(on) has=true;
+        xml=kkXmlCell(xml, a, on?'○':'');
+      }
+      if(has) homes++;
+    }
+    zip.file(path, xml);
+    const blob=await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const nm=(kkVal('f12_name')||'記入済').replace(/\s|　/g,'');
+    const prev=`<h4>🏢 付表12に記入した内容（プレビュー）</h4>
+      <table>
+        <tr><th>事業所名称</th><td>${hkEsc(kkVal('f12_name'))||'（未入力）'}</td></tr>
+        <tr><th>管理者</th><td>${hkEsc(kkVal('f12_m_name'))||'（未入力）'}</td></tr>
+        <tr><th>サービス管理責任者</th><td>${hkEsc(kkVal('f12_s_name'))||'（未入力）'}</td></tr>
+        <tr><th>利用定員</th><td>${hkEsc(kkVal('f12_teiin'))||'（未入力）'} 人</td></tr>
+        <tr><th>共同生活住居</th><td>${homes} 件を記入</td></tr>
+      </table>`;
+    await aiosDeliver(blob, `付表12_${nm}.xlsx`, 'f12Result', prev);
+    banner('🏢 付表12を書き出しました');
+    say('行政','付表12を書き出しました',2600);
+    say('文書','様式・罫線はそのまま保持しています',2400);
+    logLine(`<b>行政AI</b>：付表12を書き出し（${kkVal('f12_name')||'名称未設定'}・住居${homes}件）`);
+  }catch(e){ alert('書き出しエラー：'+e.message); }
+});
+/* ▲▲▲ 付表12モジュール ここまで ▲▲▲ */
 
 /* ---- 最初のひとこと ---- */
 setTimeout(()=>{ say('秘書','おはようございます、社長！ご指示をどうぞ。', 3000);
