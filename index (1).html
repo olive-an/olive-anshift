@@ -1,0 +1,2416 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>シフト希望 | おりーぶ庵</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:18px;-webkit-text-size-adjust:100%}
+:root{
+  --gr:#2e7d32; --gr2:#388e3c; --gr-bg:#e8f5e9; --gr-bdr:#66bb6a;
+  --cream:#f7f6f2; --sand:#f0ede4; --bdr:#ddd8cc;
+  --text:#1a1a1a; --sub:#666; --white:#fff;
+  --m:#1b5e20; --m-bg:#c8e6c9; --m-bd:#4caf50;
+  --s:#bf360c; --s-bg:#ffe0b2; --s-bd:#ff8f00;
+  --b:#b71c1c; --b-bg:#ffcdd2; --b-bd:#e53935;
+  --sat:#0d47a1; --sat-bg:#e3f2fd;
+  --sun:#b71c1c; --sun-bg:#ffebee;
+  --hol-bg:#fce4ec;
+  --r:14px;
+}
+body{
+  font-family:-apple-system,'Hiragino Sans','Hiragino Kaku Gothic ProN',
+    'Yu Gothic','Meiryo',sans-serif;
+  background:var(--cream);
+  color:var(--text);
+  min-height:100vh;
+  padding-bottom:40px;
+}
+
+/* ヘッダー */
+.hdr{
+  background:var(--gr);
+  padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:50;
+  box-shadow:0 2px 10px rgba(0,0,0,.2);
+}
+.hdr-logo{
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(255,255,255,.18);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;
+}
+.hdr-title{color:#111111;font-size:20px;font-weight:700}
+.hdr-sub{color:#111111;font-size:14px;margin-top:2px}
+
+/* タブ */
+.tabs{display:none}
+.tab{
+  flex:1;padding:14px 0;
+  border:none;background:none;cursor:pointer;
+  color:rgba(255,255,255,.6);font-size:16px;font-weight:600;
+  font-family:inherit;
+  border-bottom:3px solid transparent;transition:.15s;
+}
+.tab.on{color:#fff;border-bottom-color:#a5d6a7}
+.tab:active{background:rgba(255,255,255,.08)}
+
+/* メイン */
+main{padding:16px 12px;max-width:560px;margin:0 auto}
+
+/* ステップバナー */
+.banner{
+  background:var(--gr);border-radius:var(--r);
+  padding:16px;margin-bottom:14px;
+}
+.banner h2{color:#111111;font-size:21px;font-weight:700;margin-bottom:4px}
+.banner p{color:#111111;font-size:15px;line-height:1.5}
+.sbar{
+  display:flex;margin-top:12px;
+  background:rgba(255,255,255,.12);border-radius:9px;overflow:hidden;
+}
+.si{
+  color:#111111;
+  flex:1;text-align:center;padding:10px 4px;
+  font-size:13px;font-weight:600;color:rgba(255,255,255,.6);
+}
+.si.on{background:rgba(255,255,255,.18);color:#111111}
+.si-n{display:block;font-size:22px;font-weight:800;margin-bottom:2px}
+.si.on .si-n{color:#a5d6a7}
+
+/* カード */
+.card{
+  background:var(--white);
+  border:1px solid var(--bdr);
+  border-radius:var(--r);
+  margin-bottom:12px;overflow:hidden;
+}
+.card-h{
+  background:var(--sand);padding:12px 16px;
+  border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;gap:9px;
+}
+.card-hn{font-size:24px}
+.card-hl{font-size:17px;font-weight:700;color:var(--gr)}
+.card-hs{font-size:13px;color:var(--sub);margin-top:1px}
+.card-b{padding:16px}
+
+/* 入力 */
+.field{margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.lbl{display:block;font-size:17px;font-weight:700;margin-bottom:10px}
+.req{color:#c62828;font-size:13px;margin-left:4px}
+.inp{
+  width:100%;font-size:19px;font-weight:500;font-family:inherit;
+  padding:14px 16px;border:2px solid var(--bdr);border-radius:11px;
+  background:#fff;color:var(--text);outline:none;
+  transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+.inp:focus{border-color:var(--gr2);box-shadow:0 0 0 3px rgba(56,142,60,.12)}
+.inp::placeholder{color:#bbb;font-size:15px}
+.period-row{display:flex;align-items:center;gap:8px}
+.period-row .inp{flex:1;font-size:15px;padding:13px 14px}
+.period-sep{font-size:16px;font-weight:700;color:var(--sub);flex-shrink:0}
+
+/* 凡例 */
+.legend{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.leg{
+  display:flex;align-items:center;gap:5px;
+  padding:9px 16px;border-radius:100px;
+  font-size:16px;font-weight:700;border:2px solid;
+}
+.leg.m{background:var(--m-bg);color:var(--m);border-color:var(--m-bd)}
+.leg.s{background:var(--s-bg);color:var(--s);border-color:var(--s-bd)}
+.leg.b{background:var(--b-bg);color:var(--b);border-color:var(--b-bd)}
+
+.hint-box{
+  background:var(--sand);border-radius:9px;
+  padding:12px 14px;font-size:15px;
+  color:#111111;font-weight:600;margin-bottom:12px;line-height:1.6;
+}
+.cal-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+.cal-period{font-size:18px;font-weight:700}
+.cal-days{font-size:14px;color:var(--sub)}
+
+/* カレンダー */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;width:100%;-webkit-user-select:none;user-select:none}
+.dow{text-align:center;font-size:14px;font-weight:700;padding:7px 0;color:var(--sub);min-width:0;overflow:hidden}
+.dow.sun{color:var(--sun)} .dow.sat{color:var(--sat)}
+.day{
+  height:58px;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  border-radius:9px;border:2px solid var(--bdr);
+  background:#fff;cursor:pointer;
+  transition:transform .1s,border-color .1s,background .1s;
+  overflow:hidden;touch-action:manipulation;
+  width:100%;box-sizing:border-box;min-width:0;
+}
+.day:active{transform:scale(.91)}
+.day.out{border-color:transparent;background:transparent;pointer-events:none}
+.day.sun{background:var(--sun-bg);border-color:#ffcdd2}
+.day.sat{background:var(--sat-bg);border-color:#bbdefb}
+.day.hol{background:var(--hol-bg);border-color:#f8bbd0}
+.day.vm{background:var(--m-bg);border-color:var(--m-bd)}
+.day.vs{background:var(--s-bg);border-color:var(--s-bd)}
+.day.vb{background:var(--b-bg);border-color:var(--b-bd)}
+.dn{font-size:13px;font-weight:600;color:var(--sub);line-height:1;margin-bottom:3px}
+.day.sun .dn{color:var(--sun)} .day.sat .dn{color:var(--sat)} .day.hol .dn{color:var(--sun)}
+.ds{font-size:24px;line-height:1;font-weight:700;min-height:25px}
+.day.vm .ds{color:var(--m)} .day.vs .ds{color:var(--s)} .day.vb .ds{color:var(--b)}
+
+/* カウンター */
+.counter{
+  display:flex;margin-top:12px;
+  border:1px solid var(--bdr);border-radius:10px;overflow:hidden;
+}
+.cnt{flex:1;text-align:center;padding:10px 4px;border-right:1px solid var(--bdr)}
+.cnt:last-child{border-right:none}
+.cn{display:block;font-size:28px;font-weight:800;line-height:1}
+.cl{font-size:13px;color:var(--sub);display:block;margin-top:4px}
+
+/* ボタン */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:18px;border-radius:12px;
+  font-size:20px;font-weight:700;font-family:inherit;
+  cursor:pointer;border:none;
+  transition:transform .1s,filter .1s;
+  margin-bottom:10px;touch-action:manipulation;
+}
+.btn:last-child{margin-bottom:0}
+.btn:active{transform:scale(.97);filter:brightness(.9)}
+.btn-gr{background:var(--gr);color:#fff;box-shadow:0 4px 16px rgba(46,125,50,.3)}
+.btn-ln{background:#06c755;color:#fff;box-shadow:0 4px 16px rgba(6,199,85,.3)}
+.btn-ol{background:#fff;color:var(--gr);border:2px solid var(--gr)}
+.btn-cl{background:#fff;color:#c62828;border:2px solid #ffcdd2;font-size:17px;padding:15px}
+.btn-sm{display:flex;gap:8px;margin-bottom:10px}
+.btn-sm .btn{margin-bottom:0;font-size:16px;padding:15px 8px}
+
+/* プレビュー */
+.preview{
+  background:var(--sand);border:1.5px solid var(--bdr);
+  border-radius:10px;padding:14px 16px;
+  font-size:15px;line-height:1.9;
+  white-space:pre-wrap;word-break:break-all;
+  max-height:180px;overflow-y:auto;
+  color:var(--text);margin-bottom:14px;
+}
+
+
+
+/* 管理者 */
+.pw-wrap{padding:36px 16px;text-align:center}
+.pw-icon{font-size:52px;margin-bottom:12px;display:block}
+.pw-title{font-size:20px;font-weight:700;margin-bottom:6px}
+.pw-sub{font-size:13px;color:var(--sub);margin-bottom:20px;line-height:1.6}
+.pw-inp{
+  text-align:center;letter-spacing:.4em;font-size:26px;
+  max-width:180px;margin:0 auto 18px;display:block;
+}
+.pw-err{color:#c62828;font-size:13px;margin-top:10px;display:none}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.agg{border-collapse:separate;border-spacing:0;font-size:14px;width:100%;min-width:460px}
+table.agg th,table.agg td{padding:9px 5px;text-align:center;border-bottom:1px solid var(--bdr);border-right:1px solid var(--bdr);background:#fff}
+table.agg th:first-child,table.agg td:first-child{text-align:left;padding-left:10px;font-weight:600;position:sticky;left:0;background:#fafaf7;min-width:80px;z-index:1}
+table.agg thead th{background:var(--sand);font-weight:700;position:sticky;top:0;z-index:2;font-size:13px}
+table.agg thead th:first-child{z-index:3;background:var(--sand)}
+table.agg th.sat{color:var(--sat)} table.agg th.sun{color:var(--sun)}
+table.agg td.m{background:var(--m-bg);color:var(--m);font-weight:700}
+table.agg td.s{background:var(--s-bg);color:var(--s);font-weight:700}
+table.agg td.b{background:var(--b-bg);color:var(--b);font-weight:700}
+table.agg tr.sum td{background:var(--sand);font-weight:700}
+
+/* トースト */
+.toast{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%) translateY(40px);
+  background:#222;color:#fff;
+  padding:14px 26px;border-radius:100px;
+  font-size:16px;font-weight:600;
+  opacity:0;transition:.25s;pointer-events:none;z-index:300;
+  white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.28);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--gr)} .toast.err{background:#c62828}
+
+.hidden{display:none!important}
+.day.has-comment::after{
+  content:"💬";position:absolute;top:1px;right:1px;
+  font-size:9px;line-height:1;
+}
+.comment-modal{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:150;display:none;
+  align-items:center;justify-content:center;padding:16px;
+}
+.comment-modal.show{display:flex}
+.comment-box{
+  background:#fff;border-radius:18px;
+  padding:22px 18px;max-width:360px;width:100%;
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+}
+footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top:1px solid var(--bdr);margin-top:8px}
+
+/* スタッフ・ホーム管理テーブル */
+.staff-tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:9px;border:1px solid var(--bdr)}
+.staff-tbl table{border-collapse:collapse;font-size:14px;width:100%;min-width:360px}
+.staff-tbl th,.staff-tbl td{padding:8px 4px;text-align:center;border-bottom:1px solid var(--bdr);border-right:1px solid var(--bdr)}
+.staff-tbl th:last-child,.staff-tbl td:last-child{border-right:none}
+.staff-tbl th:first-child,.staff-tbl td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;background:#fafaf7;min-width:80px;z-index:1;font-weight:600;border-right:2px solid var(--bdr)}
+.staff-tbl thead th{background:var(--sand);font-weight:700;font-size:11px;position:sticky;top:0;z-index:2}
+.staff-tbl thead th:first-child{z-index:3;background:var(--sand)}
+.staff-tbl tr:last-child td{border-bottom:none}
+.hcell{width:38px;height:34px;border-radius:7px;cursor:pointer;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto;border:2px solid var(--bdr);background:#fff;transition:.1s;-webkit-tap-highlight-color:transparent;user-select:none}
+.hcell.maru{background:var(--m-bg);color:var(--m);border-color:var(--m-bd)}
+.hcell.fixed{background:var(--gr);color:#fff;border-color:var(--gr2)}
+.hcell:active{transform:scale(.85)}
+
+/* レスポンシブ */
+@media(max-width:360px){
+  .day{height:52px!important} .ds{font-size:20px}
+  .btn{font-size:17px;padding:15px}
+}
+@media(min-width:480px){
+  .day{height:64px!important} .ds{font-size:26px}
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">🌿</div>
+  <div>
+    <div class="hdr-title">シフト希望フォーム</div>
+    <div class="hdr-sub">おりーぶ庵株式会社</div>
+  </div>
+  <button id="adminToggleBtn" onclick="toggleAdminMode()" style="margin-left:auto;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;">⚙️ 管理</button>
+</div>
+<div class="tabs">
+  <button class="tab on" id="tab-input" onclick="switchMode('input')">📅 シフト希望</button>
+  <button class="tab" id="tab-admin" onclick="switchMode('admin')">📊 管理者メニュー</button>
+</div>
+
+<!-- ===== 職員入力 ===== -->
+<main id="view-input">
+
+  <div class="banner">
+    <h2>🌿 シフト希望</h2>
+    <p>3ステップで完了します。全部タップするだけです！</p>
+    <div class="sbar">
+      <div class="si on" id="s1"><span class="si-n">①</span>名前</div>
+      <div class="si" id="s2"><span class="si-n">②</span>日付</div>
+      <div class="si" id="s3"><span class="si-n">③</span>送信</div>
+    </div>
+  </div>
+
+  <!-- STEP1 -->
+  <div class="card">
+    <div class="card-h">
+      <span class="card-hn">①</span>
+      <div><div class="card-hl">お名前を入力</div><div class="card-hs">フルネームで入力してください</div></div>
+    </div>
+    <div class="card-b">
+      <div class="field">
+        <label class="lbl" for="empName">お名前<span class="req">（必須・フルネーム）</span></label>
+        <input class="inp" type="text" id="empName" placeholder="例：岩久保太郎"
+          autocomplete="name" inputmode="text">
+      </div>
+      <div class="field">
+        <label class="lbl">対象期間</label>
+        <div class="period-row" style="pointer-events:none;opacity:0.7">
+          <input class="inp" type="date" id="dateStart" readonly tabindex="-1">
+          <span class="period-sep">〜</span>
+          <input class="inp" type="date" id="dateEnd" readonly tabindex="-1">
+        </div>
+        <p style="font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5">
+          ※ 対象期間は管理者が設定します。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP2 -->
+  <div class="card">
+    <div class="card-h">
+      <span class="card-hn">②</span>
+      <div><div class="card-hl" style="color:#e53935">日付をタップして希望を選ぶ</div><div class="card-hs" style="font-weight:700;font-size:15px;color:var(--text)">タップするたびに記号が変わります</div></div>
+    </div>
+    <div class="card-b">
+      <div class="legend">
+        <div class="leg m">○ 出勤できる</div>
+        <div class="leg b">× 出勤できない</div>
+        <div class="leg s">△ 要相談</div>
+        <button onclick="openCommentModal(null)" style="
+          display:flex;align-items:center;gap:5px;
+          padding:7px 13px;border-radius:100px;
+          font-size:13px;font-weight:700;
+          background:#fff9c4;color:#f57f17;
+          border:2px solid #f9a825;
+          cursor:pointer;font-family:inherit;
+          -webkit-tap-highlight-color:transparent;
+        ">💬 コメント</button>
+      </div>
+      <div class="hint-box">👆 日付をタップ → ○ → × → △ → 空白 の順で変わります</div>
+      <div class="cal-meta">
+        <span class="cal-period" id="calRange">—</span>
+        <span class="cal-days" id="calCount">—</span>
+      </div>
+      <div class="cal" id="calGrid"></div>
+      <div class="counter">
+        <div class="cnt"><span class="cn" id="cnt-m" style="color:var(--m)">0</span><span class="cl">○ 出勤可</span></div>
+        <div class="cnt"><span class="cn" id="cnt-s" style="color:var(--s)">0</span><span class="cl">△ 要相談</span></div>
+        <div class="cnt"><span class="cn" id="cnt-b" style="color:var(--b)">0</span><span class="cl">× 不可</span></div>
+        <div class="cnt"><span class="cn" id="cnt-u" style="color:var(--sub)">0</span><span class="cl">未入力</span></div>
+      </div>
+      <div class="btn-sm" style="margin-top:12px">
+        <button class="btn btn-ol" onclick="allMaru()">○ 全日出勤可</button>
+        <button class="btn" onclick="allBatsu()" style="background:#fff;color:var(--b);border:2px solid var(--b-bd);font-size:16px;padding:15px 8px;margin-bottom:0">✕ 全日出勤不可</button>
+      </div>
+      <button class="btn btn-ol" onclick="openCommentModal(null)" style="margin-top:8px;font-size:13px;padding:11px">
+        💬 日付を選んでコメントを追加
+      </button>
+      <button class="btn btn-cl" onclick="clearAll()" style="margin-top:8px">🗑 クリア（全消去）</button>
+      <div id="commentList" style="margin-top:8px;font-size:12px;color:var(--sub);line-height:1.8"></div>
+    </div>
+  </div>
+
+  <!-- STEP3 -->
+  <div class="card">
+    <div class="card-h">
+      <span class="card-hn">③</span>
+      <div><div class="card-hl" style="color:#111111">送信する</div><div class="card-hs">ボタンをタップすると送信完了！と表示されます</div></div>
+    </div>
+    <div class="card-b">
+      <div class="preview" id="preview">名前と日付を入力してから送信ボタンを押してください。</div>
+
+      <button class="btn" id="sendBtn" onclick="doSend()" style="
+        background:var(--gr);color:#fff;
+        font-size:20px;font-weight:700;
+        padding:20px;border-radius:14px;
+        box-shadow:0 6px 20px rgba(46,125,50,.35);
+        margin-top:10px;
+        width:100%;
+      ">📨　送　信</button>
+
+
+
+      <div id="sentDone" style="display:none;background:#e8f5e9;border-radius:12px;padding:20px;margin-top:12px;text-align:center">
+        <p style="font-size:22px;font-weight:800;color:var(--gr)">✅ 送信完了！</p>
+        <p style="font-size:13px;color:var(--sub);margin-top:6px">ご提出ありがとうございました🌿</p>
+      </div>
+
+      <!-- 送信履歴 -->
+      <div id="historyWrap" style="margin-top:16px;display:none">
+        <div style="font-size:14px;font-weight:700;color:var(--gr);margin-bottom:8px">📜 送信履歴</div>
+        <div id="historyList"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>© おりーぶ庵株式会社　シフト希望フォーム<br>Googleアカウント不要・アプリ不要</footer>
+</main>
+
+<!-- ===== 管理者 ===== -->
+<main class="hidden" id="view-admin">
+
+  <div class="card" id="pwCard">
+    <div class="card-b">
+      <div class="pw-wrap">
+        <span class="pw-icon">🔐</span>
+        <div class="pw-title">管理者専用画面</div>
+        <div class="pw-sub">パスコードを入力してください</div>
+        <input class="inp pw-inp" type="password" id="pwInput"
+          inputmode="numeric" maxlength="4" placeholder="••••"
+          onkeydown="if(event.key==='Enter')pwCheck()">
+        <button class="btn btn-gr" style="max-width:200px;margin:0 auto" onclick="pwCheck()">解除する</button>
+        <div class="pw-err" id="pwErr">パスコードが違います</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hidden" id="adminBody">
+
+    <!-- メニュー選択 -->
+    <div class="card" id="adminMenu">
+      <div class="card-h">
+        <span class="card-hn">🔓</span>
+        <div><div class="card-hl">管理者メニュー</div><div class="card-hs">① 集計 → ② 転記 の順で操作してください</div></div>
+      </div>
+      <div class="card-b">
+
+        <!-- 使用ファイル一覧 -->
+        <div style="background:#e8f5e9;border-radius:10px;padding:13px 14px;margin-bottom:16px;border:1px solid #a5d6a7">
+          <p style="font-size:12px;font-weight:700;color:var(--gr);margin-bottom:9px">📁 事前に準備するファイル</p>
+          <div style="font-size:12px;line-height:1.7;color:var(--text)">
+            <div style="padding:6px 0;border-bottom:1px solid #c8e6c9">
+              📊 <b>月間シフト希望表作成用.xlsx</b>
+              <div style="color:var(--sub);padding-left:18px;font-size:11px">→「シフト集計Excelに反映」で使用</div>
+            </div>
+
+          </div>
+          <div style="margin-top:10px;background:#e3f2fd;border-radius:8px;padding:9px 12px;font-size:11px;color:#1565c0;line-height:1.7;border:1px solid #90caf9">
+            👤 <b>新入社員が入ったとき</b><br>
+            ① 月間シフト希望表作成用.xlsx のA列に名前を追加<br>
+            <span style="color:#1976d2">コードの変更は不要です。Excelを更新するだけで自動対応します。</span>
+          </div>
+        </div>
+
+        <!-- STEP1 -->
+        <div style="display:flex;align-items:stretch;gap:10px;margin-bottom:10px">
+          <div style="background:var(--gr);color:#fff;border-radius:10px;width:32px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">①</div>
+          <button class="btn btn-gr" onclick="showAdminSection('aggSection')" style="margin-bottom:0;flex:1;text-align:left;padding:13px 15px">
+            <div style="font-size:16px;font-weight:700">📊 集計する</div>
+            <div style="font-size:11px;opacity:.85;margin-top:3px;font-weight:400">GASから全員のシフト希望を読み込む</div>
+          </button>
+        </div>
+
+        <!-- STEP2 -->
+        <div style="display:flex;align-items:stretch;gap:10px">
+          <div style="background:#1b5e20;color:#fff;border-radius:10px;width:32px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">②</div>
+          <button class="btn btn-gr" onclick="showAdminSection('xlsxSection')" style="background:#1b5e20;margin-bottom:0;flex:1;text-align:left;padding:13px 15px">
+            <div style="font-size:16px;font-weight:700">📂 Excelに転記する</div>
+            <div style="font-size:11px;opacity:.85;margin-top:3px;font-weight:400">①の後に実行 ／ ファイルを選んで自動書き込み</div>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 戻るボタン -->
+    <div class="hidden" id="backBtn" style="margin-bottom:12px">
+      <button class="btn btn-ol" onclick="showAdminSection(null)" style="font-size:14px;padding:11px">
+        ← メニューに戻る
+      </button>
+    </div>
+
+    <!-- 集計セクション -->
+    <div class="hidden" id="aggSection">
+
+      <div class="card">
+        <div class="card-h"><span class="card-hn">📅</span><div><div class="card-hl">STEP ① 集計期間を確認・設定</div><div class="card-hs">期間が合っているか確認してから確定を押してください</div></div></div>
+        <div class="card-b">
+          <div class="period-row">
+            <input class="inp" type="date" id="aDateStart">
+            <span class="period-sep">〜</span>
+            <input class="inp" type="date" id="aDateEnd">
+          </div>
+          <button class="btn btn-gr" onclick="applyAdminPeriod()" style="margin-top:12px;font-size:15px;padding:14px">
+            ✅ 期間を確定する
+          </button>
+          <div id="periodApplyMsg" style="margin-top:8px;font-size:12px;color:var(--gr);display:none">
+            ✅ シフト希望の期間を更新しました
+          </div>
+        </div>
+      </div>
+
+      <!-- 非表示データバッファ（loadFromGAS用） -->
+      <textarea id="pasteArea" style="display:none"></textarea>
+
+      <!-- スプレッドシートから読み込む -->
+      <div class="card">
+        <div class="card-h"><span class="card-hn">☁️</span>
+          <div><div class="card-hl">STEP ② 全員分を自動読み込み</div><div class="card-hs">ボタン1つで全員のデータを取得・集計します</div></div>
+        </div>
+        <div class="card-b">
+          <button class="btn btn-gr" onclick="loadFromGAS()" style="font-size:18px;padding:18px">
+            ☁️　全員分を読み込んで集計する
+          </button>
+          <button class="btn" onclick="resetAgg()" style="background:#e0e0e0;color:#555;font-size:13px;padding:10px;margin-top:8px">
+            🗑 集計データをリセット（画面クリア）
+          </button>
+          <div style="background:var(--sand);border-radius:9px;padding:11px 13px;margin-top:10px;font-size:12px;color:var(--sub);line-height:1.8">
+            💡 従業員が「送信」ボタンを押したデータが自動で集まっています。<br>
+            このボタンを押すだけで全員分の一覧表が表示されます。<br>
+            ※ GASの設定が必要です（マニュアル参照）
+          </div>
+        </div>
+      </div>
+
+
+      <div class="card hidden" id="aggCard">
+        <div class="card-h"><span class="card-hn">📊</span>
+          <div><div class="card-hl">集計結果</div><div class="card-hs" id="aggMeta"></div></div>
+        </div>
+        <div class="card-b">
+          <div class="tbl-wrap"><table class="agg" id="aggTable"></table></div>
+          <div id="nameCheckPanel"></div>
+
+          <!-- 集計表まるごとコピー -->
+          <div style="margin-top:14px">
+            <button class="btn" onclick="copyTsv()" style="background:#1565c0;color:#fff;font-size:17px;padding:16px">
+              📋 集計表をまるごとコピー（Excelに貼り付け可）
+            </button>
+            <div style="font-size:12px;color:var(--sub);margin-top:6px;padding:0 4px;line-height:1.7">
+              ※ コピー後、Excelを開いて貼り付け（Ctrl+V）するとそのまま転記できます
+            </div>
+          </div>
+          <!-- 個人別ドロップダウン（非表示・JS用） -->
+          <select id="copyNameSel" style="display:none"></select>
+          <pre id="personPreview" style="display:none"></pre>
+        </div>
+      </div>
+
+
+    </div>
+
+    <!-- Excel転記セクション -->
+    <div class="hidden" id="xlsxSection">
+
+      <!-- STEP②ヘッダー -->
+      <div style="background:var(--gr);border-radius:10px;padding:13px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <div style="background:rgba(255,255,255,.2);color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">②</div>
+        <div>
+          <div style="color:#fff;font-size:15px;font-weight:700">Excelに転記する</div>
+          <div style="color:rgba(255,255,255,.8);font-size:11px;margin-top:2px">使用するファイルを選んでください</div>
+        </div>
+      </div>
+
+      <!-- カード②：シフト集計.xlsx への反映 -->
+      <div class="card">
+        <div class="card-h">
+          <span class="card-hn">📊</span>
+          <div><div class="card-hl">シフト集計Excelに反映</div><div class="card-hs">〇/✕/△/空白 を自動書き込み</div></div>
+        </div>
+        <div class="card-b">
+          <!-- 使用ファイル -->
+          <div style="background:#e8f5e9;border-radius:9px;padding:10px 13px;margin-bottom:12px;border:1px solid #a5d6a7">
+            <div style="font-size:11px;color:#2e7d32;font-weight:700;margin-bottom:2px">📁 使用するファイル</div>
+            <div style="font-size:15px;font-weight:800;color:#1b5e20">月間シフト希望表作成用.xlsx</div>
+          </div>
+          <!-- 手順 -->
+          <div style="font-size:12px;color:var(--sub);line-height:2;margin-bottom:12px;background:var(--sand);border-radius:9px;padding:10px 13px">
+            <span style="color:var(--gr);font-weight:700">① </span>「集計する」で全員分を読み込む<br>
+            <span style="color:var(--gr);font-weight:700">② </span>下のボタンをタップ<br>
+            <span style="color:var(--gr);font-weight:700">③ </span>「月間シフト希望表作成用.xlsx」を選ぶ<br>
+            <span style="color:var(--gr);font-weight:700">④ </span>反映済みファイルが自動でダウンロード
+          </div>
+          <!-- 図解 -->
+          <div style="margin-bottom:12px">
+            <button onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';this.textContent=d.style.display==='block'?'📖 図解を閉じる ▲':'📖 使い方図解を見る ▼'" style="width:100%;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;padding:8px;font-size:12px;color:#2e7d32;font-weight:700;cursor:pointer">📖 使い方図解を見る ▼</button>
+            <div style="display:none;margin-top:6px">
+              <svg viewBox="0 0 460 320" xmlns="http://www.w3.org/2000/svg" width="100%" font-family="-apple-system,'Hiragino Sans',sans-serif">
+                <rect x="4" y="4" width="452" height="50" rx="9" fill="#e8f5e9" stroke="#a5d6a7" stroke-width="1.5"/>
+                <circle cx="28" cy="29" r="14" fill="#2e7d32"/><text x="28" y="34" text-anchor="middle" fill="white" font-size="12" font-weight="800">①</text>
+                <text x="50" y="24" fill="#1b5e20" font-size="13" font-weight="700">全員分を集計する</text>
+                <text x="50" y="42" fill="#555" font-size="11">管理者ログイン → 期間確定 → ☁️ 全員分を読み込む</text>
+                <line x1="230" y1="58" x2="230" y2="72" stroke="#2e7d32" stroke-width="2.5"/><polygon points="230,78 224,68 236,68" fill="#2e7d32"/>
+                <rect x="4" y="80" width="452" height="50" rx="9" fill="#e8f5e9" stroke="#a5d6a7" stroke-width="1.5"/>
+                <circle cx="28" cy="105" r="14" fill="#2e7d32"/><text x="28" y="110" text-anchor="middle" fill="white" font-size="12" font-weight="800">②</text>
+                <text x="50" y="100" fill="#1b5e20" font-size="13" font-weight="700">下のボタンをタップ</text>
+                <text x="50" y="118" fill="#555" font-size="11">「📊 月間シフト希望表作成用.xlsx を選ぶ」をタップ</text>
+                <line x1="230" y1="134" x2="230" y2="148" stroke="#2e7d32" stroke-width="2.5"/><polygon points="230,154 224,144 236,144" fill="#2e7d32"/>
+                <rect x="4" y="156" width="452" height="50" rx="9" fill="#e8f5e9" stroke="#a5d6a7" stroke-width="1.5"/>
+                <circle cx="28" cy="181" r="14" fill="#2e7d32"/><text x="28" y="186" text-anchor="middle" fill="white" font-size="12" font-weight="800">③</text>
+                <text x="50" y="176" fill="#1b5e20" font-size="13" font-weight="700">ファイルを選択</text>
+                <text x="50" y="194" fill="#555" font-size="11">デスクトップ → 月間シフト希望表作成用.xlsx → 開く</text>
+                <line x1="230" y1="210" x2="230" y2="224" stroke="#2e7d32" stroke-width="2.5"/><polygon points="230,230 224,220 236,220" fill="#2e7d32"/>
+                <rect x="4" y="232" width="452" height="80" rx="9" fill="#2e7d32"/>
+                <text x="22" y="256" fill="white" font-size="14" font-weight="800">✅ 自動でダウンロード！</text>
+                <text x="22" y="274" fill="rgba(255,255,255,.85)" font-size="11">シフト集計_反映済_日付.xlsx が保存されます</text>
+                <text x="22" y="294" fill="rgba(255,255,255,.75)" font-size="11">〇=○出勤可　✕=×不可　△=△要相談　空白=未入力</text>
+              </svg>
+            </div>
+          </div>
+          <div style="background:#f1f8e9;border-radius:9px;padding:9px 13px;margin-bottom:12px;font-size:12px;color:#558b2f;line-height:1.8">
+            〇 = ○（出勤可）　✕ = ×（不可）　△ = △（要相談）　<span style="color:var(--sub)">空欄 = 未入力</span>
+          </div>
+          <button class="btn btn-gr" style="background:#2e7d32;font-size:15px" onclick="checkAndShuukei()">
+            📊 月間シフト希望表作成用.xlsx を選ぶ
+          </button>
+          <input type="file" id="shuukeiInput" accept=".xlsx" style="display:none" onchange="writeToShuukei(this)">
+          <div id="shuukeiStatus" style="margin-top:10px;font-size:12px;color:var(--sub);line-height:1.6"></div>
+        </div>
+      </div>
+
+      <!-- カード③：AIシフト表への自動割り当て -->
+    </div>
+
+  </div>
+
+  <!-- ===== スタッフ・ホーム管理セクション ===== -->
+  <div class="hidden" id="staffSection">
+
+    <!-- ホーム一覧 -->
+    <div class="card">
+      <div class="card-h">
+        <span class="card-hn">🏠</span>
+        <div><div class="card-hl">ホーム一覧</div><div class="card-hs">タップで削除 ／ 下から追加できます</div></div>
+      </div>
+      <div class="card-b">
+        <div id="homeChips" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;min-height:32px"></div>
+        <div style="display:flex;gap:8px">
+          <input class="inp" type="text" id="newHomeName" placeholder="新しいホーム名を入力"
+            style="font-size:14px;padding:11px 13px" onkeydown="if(event.key==='Enter')addHome()">
+          <button class="btn btn-gr" onclick="addHome()"
+            style="width:auto;padding:11px 18px;margin:0;font-size:14px;flex-shrink:0">＋ 追加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- スタッフ一覧 -->
+    <div class="card">
+      <div class="card-h">
+        <span class="card-hn">👥</span>
+        <div><div class="card-hl">スタッフ ＆ ホーム担当</div><div class="card-hs">セルをタップ → ○（担当）→ 空白 と切り替わります</div></div>
+      </div>
+      <div class="card-b">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <span style="display:flex;align-items:center;gap:5px;font-size:12px">
+            <span style="background:var(--m-bg);color:var(--m);border:2px solid var(--m-bd);border-radius:5px;padding:2px 9px;font-weight:800">○</span>担当（希望○のときに割り当て対象）
+          </span>
+          <span style="font-size:12px;color:var(--sub)">空白 = 対象外</span>
+        </div>
+        <div class="staff-tbl" id="staffTableWrap"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <input class="inp" type="text" id="newStaffName" placeholder="スタッフ名（フルネーム）"
+            style="font-size:14px;padding:11px 13px" onkeydown="if(event.key==='Enter')addStaff()">
+          <button class="btn btn-gr" onclick="addStaff()"
+            style="width:auto;padding:11px 18px;margin:0;font-size:14px;flex-shrink:0">＋ 追加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Excelからインポート -->
+    <div class="card">
+      <div class="card-h">
+        <span class="card-hn">📥</span>
+        <div><div class="card-hl">Excelからまとめてインポート</div><div class="card-hs">ホーム対象表シートを読み取って一括登録</div></div>
+      </div>
+      <div class="card-b">
+        <div style="background:#e3f2fd;border-radius:9px;padding:10px 13px;margin-bottom:12px;border:1px solid #90caf9">
+          <div style="font-size:11px;color:#1565c0;font-weight:700;margin-bottom:2px">📁 使用するファイル</div>
+          <div style="font-size:15px;font-weight:800;color:#0d47a1">AIシフト表作成ベース.xlsx</div>
+        </div>
+        <div style="font-size:12px;color:var(--sub);line-height:1.9;margin-bottom:12px;background:var(--sand);border-radius:9px;padding:10px 13px">
+          💡「ホーム対象表」シートを読み取り、スタッフとホーム担当を自動で取り込みます。<br>
+          <span style="color:#c62828;font-weight:700">※ 既存のスタッフ設定に追加されます（削除はされません）</span>
+        </div>
+        <button class="btn btn-gr" style="background:#1b5e20" onclick="document.getElementById('importStaffInput').click()">
+          📥 AIシフト表作成ベース.xlsx を選んでインポート
+        </button>
+        <input type="file" id="importStaffInput" accept=".xlsx" style="display:none" onchange="importStaffFromExcel(this)">
+        <div id="importStatus" style="margin-top:10px;font-size:12px;color:var(--sub);line-height:1.6"></div>
+      </div>
+    </div>
+
+    <!-- データ削除 -->
+    <div style="background:#fff3e0;border:1.5px solid #ffb74d;border-radius:10px;padding:14px;margin-top:12px">
+      <div style="font-size:14px;font-weight:700;color:#e65100;margin-bottom:10px">⚠️ データリセット</div>
+      <button class="btn" onclick="clearGASData()" style="background:#c62828;color:#fff;font-size:15px;padding:14px;margin-bottom:8px">
+        🗑 GAS全データを削除（送信済みシフト希望を全消去）
+      </button>
+      <button onclick="clearAllStaffData()"
+        style="background:none;border:none;color:#aaa;font-size:12px;cursor:pointer;text-decoration:underline;display:block;margin:0 auto">
+        スタッフ設定をすべてリセットする
+      </button>
+    </div>
+
+  </div>
+
+  <footer>© おりーぶ庵株式会社　管理者専用</footer>
+</main>
+
+
+
+<!-- コメントモーダル -->
+<div class="comment-modal" id="commentModal">
+  <div class="comment-box">
+    <div style="font-size:16px;font-weight:700;color:var(--gr);margin-bottom:6px" id="commentTitle">💬 コメントを追加</div>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:12px" id="commentDateLabel"></div>
+    <!-- 日付未指定の場合は日付選択を表示 -->
+    <div id="commentDatePickerWrap" style="margin-bottom:12px;display:none">
+      <label style="font-size:13px;font-weight:700;display:block;margin-bottom:6px">日付を選んでください</label>
+      <input type="date" id="commentDateInput" class="inp" style="font-size:14px;padding:10px"
+        onchange="onCommentDateChange(this.value)">
+    </div>
+    <textarea id="commentText" rows="4" style="width:100%;border:2px solid var(--bdr);border-radius:10px;padding:12px;font-size:14px;font-family:inherit;resize:none;outline:none;line-height:1.6;color:var(--text)"
+      placeholder="例：午前のみ可&#10;夕方以降は不可&#10;急遽変更あり など"
+      onfocus="this.style.borderColor='var(--gr2)'" onblur="this.style.borderColor='var(--bdr)'"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-cl" style="flex:1;font-size:13px;padding:11px" onclick="deleteComment()">🗑 削除</button>
+      <button class="btn btn-ol" style="flex:1;font-size:13px;padding:11px" onclick="closeCommentModal()">キャンセル</button>
+      <button class="btn btn-gr" style="flex:1;font-size:13px;padding:11px" onclick="saveComment()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 送信確認モーダル -->
+<div class="overlay" id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:36px;margin-bottom:8px">📋</div>
+      <div style="font-size:19px;font-weight:700;color:var(--gr);margin-bottom:6px">送信内容の確認</div>
+      <div style="font-size:12px;color:var(--sub)">内容を確認してから送信してください</div>
+    </div>
+    <!-- 確認内容 -->
+    <div style="background:var(--sand);border-radius:12px;padding:14px;margin-bottom:16px;max-height:260px;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--gr);margin-bottom:8px" id="confirmName"></div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:10px" id="confirmPeriod"></div>
+      <!-- カウンター -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="confirmCount"></div>
+      <!-- 記号一覧 -->
+      <div style="font-size:12px;line-height:1.9;font-family:monospace;white-space:pre-wrap" id="confirmList"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-cl" style="flex:1;font-size:14px;padding:13px" onclick="closeConfirm()">
+        ✏️ 修正する
+      </button>
+      <button class="btn btn-gr" style="flex:1;font-size:14px;padding:13px" onclick="doSendConfirmed()">
+        📨 送信する
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ADMIN_PW="5103";
+// ★ GASのURLをここに設定（マニュアルのSTEP3で取得）
+const GAS_URL="https://script.google.com/macros/s/AKfycbwG__KMZmGaeF7S1wwqJokyijgjfOVHYNKmG7huHApz5H9KxpKC1KsPHNRH9TfqX0SvjQ/exec";
+const DOW=["日","月","火","水","木","金","土"];
+const HOL={
+  "2025-01-01":1,"2025-01-13":1,"2025-02-11":1,"2025-02-23":1,"2025-02-24":1,
+  "2025-03-20":1,"2025-04-29":1,"2025-05-03":1,"2025-05-04":1,"2025-05-05":1,
+  "2025-05-06":1,"2025-07-21":1,"2025-08-11":1,"2025-09-15":1,"2025-09-23":1,
+  "2025-10-13":1,"2025-11-03":1,"2025-11-23":1,"2025-11-24":1,
+  "2026-01-01":1,"2026-01-12":1,"2026-02-11":1,"2026-02-23":1,"2026-03-20":1,
+  "2026-04-29":1,"2026-05-03":1,"2026-05-04":1,"2026-05-05":1,"2026-05-06":1,
+  "2026-07-20":1,"2026-08-11":1,"2026-09-21":1,"2026-09-23":1,"2026-10-12":1,
+  "2026-11-03":1,"2026-11-23":1
+};
+let state={}, commentState={}, rangeStart, rangeEnd;
+const fmt=d=>d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
+const parseYMD=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const daysBetween=(a,b)=>Math.round((b-a)/86400000);
+
+function defaultRange(){
+  const t=new Date(),y=t.getFullYear(),m=t.getMonth();
+  const sM=t.getDate()>=16?m+1:m;
+  return[new Date(y,sM,16),new Date(y,sM+1,15)];
+}
+
+function switchMode(mode){
+  ["input","admin"].forEach(v=>{
+    const view=document.getElementById("view-"+v);
+    if(view){ v===mode ? view.classList.remove("hidden") : view.classList.add("hidden"); }
+  });
+  const btn=document.getElementById("adminToggleBtn");
+  if(btn){ btn.textContent = mode==="admin" ? "← 戻る" : "⚙️ 管理"; }
+}
+function toggleAdminMode(){
+  const isAdmin=!document.getElementById("view-admin").classList.contains("hidden");
+  switchMode(isAdmin?"input":"admin");
+}
+
+function init(){
+  const[s,e]=defaultRange();
+  document.getElementById("dateStart").value=fmt(s);
+  document.getElementById("dateEnd").value=fmt(e);
+  document.getElementById("aDateStart").value=fmt(s);
+  document.getElementById("aDateEnd").value=fmt(e);
+  rangeStart=s;rangeEnd=e;
+  buildCal();refreshPreview();
+  // ※ 期間の反映はapplyAdminPeriod()ボタンで行う
+  document.getElementById("empName").addEventListener("input",e=>{
+    refreshPreview();if(e.target.value)markStep(1);
+  });
+  renderHistory();
+}
+
+function buildCal(){
+  const g=document.getElementById("calGrid");g.innerHTML="";
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  document.getElementById("calRange").textContent=
+    `${rangeStart.getMonth()+1}月${rangeStart.getDate()}日 〜 ${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日`;
+  document.getElementById("calCount").textContent=`全${total}日間`;
+  DOW.forEach((d,i)=>{
+    const el=document.createElement("div");
+    el.className="dow"+(i===0?" sun":i===6?" sat":"");
+    el.textContent=d;g.appendChild(el);
+  });
+  for(let i=0;i<rangeStart.getDay();i++){
+    const c=document.createElement("div");c.className="day out";g.appendChild(c);
+  }
+  for(let i=0;i<total;i++){
+    const d=addDays(rangeStart,i),k=fmt(d);
+    const c=document.createElement("div");
+    const cls=["day"];
+    if(d.getDay()===0)cls.push("sun");
+    if(d.getDay()===6)cls.push("sat");
+    if(HOL[k])cls.push("hol");
+    c.className=cls.join(" ");c.dataset.k=k;
+    c.innerHTML=`<span class="dn">${d.getDate()}</span><span class="ds"></span>`;
+    c.addEventListener("click",()=>cycleCell(k));
+    let _pt;
+    c.addEventListener("pointerdown",()=>{_pt=setTimeout(()=>openCommentModal(k),600);});
+    c.addEventListener("pointerup",  ()=>clearTimeout(_pt));
+    c.addEventListener("pointerleave",()=>clearTimeout(_pt));
+    g.appendChild(c);applyState(k);
+  }
+  updateCount();
+}
+
+const CYCLE=["","○","×","△"];
+function cycleCell(k){
+  const cur=state[k]||"",next=CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length];
+  if(next)state[k]=next;else delete state[k];
+  applyState(k);updateCount();refreshPreview();markStep(2);
+}
+function applyState(k){
+  const el=document.querySelector(`.day[data-k="${k}"]`);if(!el)return;
+  el.classList.remove("vm","vs","vb","has-comment");
+  const s=state[k]||"";
+  el.querySelector(".ds").textContent=s;
+  if(s==="○")el.classList.add("vm");
+  else if(s==="△")el.classList.add("vs");
+  else if(s==="×")el.classList.add("vb");
+  if(commentState[k])el.classList.add("has-comment");
+}
+function updateCount(){
+  let m=0,s=0,b=0,u=0;
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  for(let i=0;i<total;i++){
+    const v=state[fmt(addDays(rangeStart,i))]||"";
+    if(v==="○")m++;else if(v==="△")s++;else if(v==="×")b++;else u++;
+  }
+  document.getElementById("cnt-m").textContent=m;
+  document.getElementById("cnt-s").textContent=s;
+  document.getElementById("cnt-b").textContent=b;
+  document.getElementById("cnt-u").textContent=u;
+}
+function allMaru(){
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  for(let i=0;i<total;i++){const k=fmt(addDays(rangeStart,i));state[k]="○";applyState(k);}
+  updateCount();refreshPreview();toast("全日を ○ にしました","ok");markStep(2);
+}
+function allBatsu(){
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  for(let i=0;i<total;i++){const k=fmt(addDays(rangeStart,i));state[k]="×";applyState(k);}
+  updateCount();refreshPreview();toast("全日を × にしました","ok");markStep(2);
+}
+function clearAll(){
+  if(!confirm("入力をすべて消去しますか？"))return;
+  state={};
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  for(let i=0;i<total;i++)applyState(fmt(addDays(rangeStart,i)));
+  updateCount();refreshPreview();toast("クリアしました","ok");
+}
+
+function buildText(){
+  const name=(document.getElementById("empName").value||"").trim();
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  const lines=[
+    `【シフト希望】${name||"（名前未入力）"}`,
+    `期間：${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`,
+    "――――――――――――――――"
+  ];
+  for(let i=0;i<total;i++){
+    const d=addDays(rangeStart,i),k=fmt(d);
+    const sym=state[k]||"―";
+    const cmt=commentState[k]?` ／ 💬${commentState[k]}`:"";
+    lines.push(`${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）${sym}${cmt}`);
+  }
+  return lines.join("\n");
+}
+function refreshPreview(){
+  document.getElementById("preview").textContent=buildText();
+}
+
+function markStep(n){
+  for(let i=1;i<=3;i++)document.getElementById("s"+i).classList.toggle("on",i<=n);
+}
+
+async function doCopy(){
+  if(!(document.getElementById("empName").value||"").trim()){toast("お名前を入力してください","err");return}
+  const txt=buildText();
+  try{await navigator.clipboard.writeText(txt);}
+  catch(e){const t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}
+  toast("コピーしました！","ok");markStep(3);
+}
+
+function doSend(){
+  const name=(document.getElementById("empName").value||"").trim();
+  if(!name){
+    toast("お名前を入力してください","err");
+    document.getElementById("empName").focus();
+    return;
+  }
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  let m=0,s=0,b=0,u=0;
+  const details=[];
+  for(let i=0;i<total;i++){
+    const d=addDays(rangeStart,i),k=fmt(d),v=state[k]||"";
+    if(v==="○")m++;else if(v==="△")s++;else if(v==="×")b++;else u++;
+    if(v) details.push(`${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）${v}`);
+  }
+
+  // 確認モーダルを表示
+  document.getElementById("confirmName").textContent=`👤 ${name}`;
+  document.getElementById("confirmPeriod").textContent=
+    `📅 ${rangeStart.getMonth()+1}/${rangeStart.getDate()} 〜 ${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`;
+  document.getElementById("confirmCount").innerHTML=
+    `<span style="background:#c8e6c9;color:#1b5e20;padding:4px 10px;border-radius:100px;font-size:12px;font-weight:700">○ ${m}日</span>`+
+    `<span style="background:#ffe0b2;color:#e65100;padding:4px 10px;border-radius:100px;font-size:12px;font-weight:700">△ ${s}日</span>`+
+    `<span style="background:#ffcdd2;color:#c62828;padding:4px 10px;border-radius:100px;font-size:12px;font-weight:700">× ${b}日</span>`+
+    `<span style="background:#f5f5f5;color:#666;padding:4px 10px;border-radius:100px;font-size:12px">未入力 ${u}日</span>`;
+  document.getElementById("confirmList").textContent=
+    details.length>0 ? details.join("\n") : "（入力なし）";
+  const modal=document.getElementById("confirmModal");
+  modal.style.display="flex";
+}
+
+function closeConfirm(){
+  document.getElementById("confirmModal").style.display="none";
+}
+
+async function doSendConfirmed(){
+  closeConfirm();
+  const name=(document.getElementById("empName").value||"").trim();
+  const txt=buildText();
+  const period=`${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`;
+  const btn=document.getElementById("sendBtn");
+  if(btn){btn.disabled=true;btn.style.opacity="0.6";btn.textContent="送信中...";}
+
+  if(GAS_URL && GAS_URL!=="YOUR_GAS_URL"){
+    try{
+      await fetch(GAS_URL,{
+        method:"POST",
+        mode:"no-cors",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({name,period,text:txt})
+      });
+      showSentDone(btn);
+    }catch(e){
+      toast("送信エラーが発生しました","err");
+      if(btn){btn.disabled=false;btn.style.opacity="1";btn.textContent="📨　送　信";}
+    }
+  }else{
+    showSentDone(btn);
+  }
+}
+
+function showSentDone(btn){
+  const done=document.getElementById("sentDone");
+  if(done)done.style.display="block";
+  if(btn)btn.style.display="none";
+  markStep(3);
+  toast("✅ 送信しました！","ok");
+  saveHistory();
+  renderHistory();
+}
+
+function saveHistory(){
+  const name=(document.getElementById("empName").value||"").trim();
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  let m=0,s=0,b=0;
+  for(let i=0;i<total;i++){
+    const v=state[fmt(addDays(rangeStart,i))]||"";
+    if(v==="○")m++;else if(v==="△")s++;else if(v==="×")b++;
+  }
+  const period=`${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`;
+  const now=new Date();
+  const ts=`${now.getFullYear()}/${("0"+(now.getMonth()+1)).slice(-2)}/${("0"+now.getDate()).slice(-2)} ${("0"+now.getHours()).slice(-2)}:${("0"+now.getMinutes()).slice(-2)}`;
+  const hist=JSON.parse(localStorage.getItem("shiftHistory")||"[]");
+  hist.unshift({name,period,ts,m,s,b});
+  if(hist.length>10)hist.length=10;
+  localStorage.setItem("shiftHistory",JSON.stringify(hist));
+}
+
+function renderHistory(){
+  const hist=JSON.parse(localStorage.getItem("shiftHistory")||"[]");
+  const wrap=document.getElementById("historyWrap");
+  const list=document.getElementById("historyList");
+  if(!wrap||!list)return;
+  if(hist.length===0){wrap.style.display="none";return;}
+  wrap.style.display="block";
+  list.innerHTML=hist.map((h,i)=>`
+    <div style="background:${i===0?"#f1f8e9":"#fafaf7"};border:1px solid ${i===0?"#a5d6a7":"var(--bdr)"};border-radius:10px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
+        <span style="font-size:15px;font-weight:700;color:var(--gr)">${h.name}</span>
+        <span style="font-size:11px;color:var(--sub)">${h.ts}</span>
+      </div>
+      <div style="font-size:12px;color:var(--sub);margin-top:3px">📅 ${h.period}</div>
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+        <span style="background:#c8e6c9;color:#1b5e20;padding:3px 9px;border-radius:100px;font-size:12px;font-weight:700">○ ${h.m}日</span>
+        <span style="background:#ffe0b2;color:#e65100;padding:3px 9px;border-radius:100px;font-size:12px;font-weight:700">△ ${h.s}日</span>
+        <span style="background:#ffcdd2;color:#c62828;padding:3px 9px;border-radius:100px;font-size:12px;font-weight:700">× ${h.b}日</span>
+        ${i===0?"<span style='background:#e8f5e9;color:var(--gr);padding:3px 9px;border-radius:100px;font-size:11px;font-weight:700'>✅ 最新</span>":""}
+      </div>
+    </div>`).join("");
+}
+
+function fallbackLine(txt,btn){
+  window.open("https://line.me/R/msg/text/?"+encodeURIComponent(txt),"_blank");
+  setTimeout(()=>{showSentDone(btn);},500);
+}
+function downloadCSV(){
+  const name=(document.getElementById("empName").value||"noname").trim();
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  const rows=[["日付","曜日","記号"]];
+  for(let i=0;i<total;i++){const d=addDays(rangeStart,i),k=fmt(d);rows.push([k,DOW[d.getDay()],state[k]||""]);}
+  const csv="\uFEFF"+rows.map(r=>r.join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=`シフト希望_${name}_${fmt(rangeStart)}.csv`;a.click();URL.revokeObjectURL(url);
+}
+
+/* ===== 処理中オーバーレイ ===== */
+function showOverlay(msg){
+  let el=document.getElementById("procOverlay");
+  if(!el){
+    el=document.createElement("div");
+    el.id="procOverlay";
+    el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px";
+    el.innerHTML=`<div style="font-size:52px;animation:spin 1.2s linear infinite">⏳</div>
+      <div id="procMsg" style="color:#fff;font-size:17px;font-weight:700;text-align:center;line-height:1.6;padding:0 24px"></div>
+      <div style="color:rgba(255,255,255,.75);font-size:13px">このまましばらくお待ちください</div>`;
+    document.body.appendChild(el);
+    const st=document.createElement("style");
+    st.textContent="@keyframes spin{to{transform:rotate(360deg)}}";
+    document.head.appendChild(st);
+  }
+  document.getElementById("procMsg").innerHTML=msg;
+  el.style.display="flex";
+}
+function hideOverlay(){
+  const el=document.getElementById("procOverlay");
+  if(el) el.style.display="none";
+}
+const yieldUI=()=>new Promise(r=>setTimeout(r,60));
+
+let toastT;
+function toast(msg,type="ok"){
+  const el=document.getElementById("toast");
+  el.textContent=msg;el.className="toast show "+(type==="err"?"err":"ok");
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove("show"),2800);
+}
+
+function pwCheck(){
+  if(document.getElementById("pwInput").value.trim()===ADMIN_PW){
+    document.getElementById("pwCard").classList.add("hidden");
+    document.getElementById("adminBody").classList.remove("hidden");
+    document.getElementById("pwErr").style.display="none";
+    showSequential();
+  }else{
+    document.getElementById("pwErr").style.display="block";
+  }
+}
+
+function showSequential(){
+  ["adminMenu","xlsxSection","staffSection"].forEach(id=>{
+    document.getElementById(id).classList.add("hidden");
+  });
+  document.getElementById("backBtn").classList.add("hidden");
+  document.getElementById("aggSection").classList.remove("hidden");
+}
+
+function showAdminSection(id){
+  ["aggSection","xlsxSection","staffSection"].forEach(s=>{
+    document.getElementById(s).classList.add("hidden");
+  });
+  const backBtn = document.getElementById("backBtn");
+  if(id){
+    document.getElementById(id).classList.remove("hidden");
+    document.getElementById("adminMenu").classList.add("hidden");
+    backBtn.classList.remove("hidden");
+    if(id==="staffSection") renderStaffSection();
+  } else {
+    document.getElementById("adminMenu").classList.remove("hidden");
+    backBtn.classList.add("hidden");
+  }
+}
+
+
+async function resetPersonData(){
+  const name=document.getElementById("resetNameSel").value;
+  if(!name){toast("スタッフを選んでください","err");return;}
+  if(!confirm(`「${name}」のシフト希望データをスプレッドシートから削除しますか？`))return;
+  if(!GAS_URL||GAS_URL==="YOUR_GAS_URL"){
+    toast("GASが設定されていません","err");return;
+  }
+  const status=document.getElementById("resetStatus");
+  status.textContent="削除中…";status.style.color="var(--sub)";
+  try{
+    await fetch(GAS_URL,{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"delete",name})
+    });
+    status.textContent=`✅ ${name}のデータを削除しました。「全員分を読み込む」で再集計してください。`;
+    status.style.color="var(--gr)";
+    toast(`${name}を削除しました`,"ok");
+  }catch(e){
+    status.textContent="エラー: "+e.message;
+    status.style.color="#c62828";
+  }
+}
+
+/* ===== コメント機能 ===== */
+let _commentKey=null;
+
+function openCommentModal(key){
+  _commentKey=key;
+  const picker=document.getElementById("commentDatePickerWrap");
+  const label=document.getElementById("commentDateLabel");
+  if(key){
+    const parts=key.split("-");
+    const mo=parseInt(parts[1]),da=parseInt(parts[2]);
+    const dow=DOW[new Date(parseInt(parts[0]),mo-1,da).getDay()];
+    document.getElementById("commentTitle").textContent=`💬 ${mo}/${da}（${dow}）のコメント`;
+    label.textContent="";
+    picker.style.display="none";
+  }else{
+    document.getElementById("commentTitle").textContent="💬 コメントを追加";
+    label.textContent="日付を選んでコメントを入力してください";
+    document.getElementById("commentDateInput").value="";
+    picker.style.display="block";
+  }
+  document.getElementById("commentText").value=key?(commentState[key]||""):"";
+  document.getElementById("commentModal").classList.add("show");
+}
+
+function onCommentDateChange(val){
+  if(!val)return;
+  _commentKey=val;
+  const parts=val.split("-");
+  const mo=parseInt(parts[1]),da=parseInt(parts[2]);
+  const dow=DOW[new Date(parseInt(parts[0]),mo-1,da).getDay()];
+  document.getElementById("commentTitle").textContent=`💬 ${mo}/${da}（${dow}）のコメント`;
+  document.getElementById("commentText").value=commentState[_commentKey]||"";
+}
+
+function saveComment(){
+  if(!_commentKey){toast("日付を選んでください","err");return;}
+  const text=document.getElementById("commentText").value.trim();
+  if(text) commentState[_commentKey]=text;
+  else delete commentState[_commentKey];
+  applyState(_commentKey);
+  refreshPreview();
+  updateCommentList();
+  closeCommentModal();
+  toast(text?"コメントを保存しました":"コメントを削除しました","ok");
+}
+
+function deleteComment(){
+  if(_commentKey) delete commentState[_commentKey];
+  if(_commentKey) applyState(_commentKey);
+  refreshPreview();
+  updateCommentList();
+  closeCommentModal();
+  toast("コメントを削除しました","ok");
+}
+
+function closeCommentModal(){
+  document.getElementById("commentModal").classList.remove("show");
+  _commentKey=null;
+}
+
+function updateCommentList(){
+  const el=document.getElementById("commentList");
+  if(!el)return;
+  const entries=Object.entries(commentState);
+  if(entries.length===0){el.innerHTML="";return;}
+  el.innerHTML="<div style='font-size:13px;font-weight:700;color:#f57f17;margin-bottom:6px'>💬 コメント一覧</div>"+
+    entries.map(([k,v])=>{
+      const parts=k.split("-");
+      const mo=parseInt(parts[1]),da=parseInt(parts[2]);
+      const dow=DOW[new Date(parseInt(parts[0]),mo-1,da).getDay()];
+      return `<div style="background:#fff9c4;border:1.5px solid #f9a825;border-radius:8px;padding:8px 11px;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:700;color:#f57f17">${mo}/${da}（${dow}）</span>
+        <div style="font-size:13px;color:var(--text);margin-top:3px;line-height:1.5">${v}</div>
+        <button onclick="openCommentModal('${k}')" style="font-size:11px;color:#f57f17;background:none;border:none;cursor:pointer;margin-top:4px;padding:0;text-decoration:underline">編集</button>
+      </div>`;
+    }).join("");
+}
+
+function applyAdminPeriod(){
+  const as=parseYMD(document.getElementById("aDateStart").value);
+  const ae=parseYMD(document.getElementById("aDateEnd").value);
+  if(!as||!ae){toast("期間を入力してください","err");return;}
+  if(ae<as){toast("終了日は開始日以降にしてください","err");return;}
+  rangeStart=as; rangeEnd=ae;
+  document.getElementById("dateStart").value=fmt(as);
+  document.getElementById("dateEnd").value=fmt(ae);
+  state={}; commentState={};
+  buildCal(); refreshPreview();
+
+  // 集計結果もリセット
+  window._agg = null;
+  const aggCard = document.getElementById("aggCard");
+  if(aggCard) aggCard.classList.add("hidden");
+  const xlsxSection = document.getElementById("xlsxSection");
+  if(xlsxSection) xlsxSection.classList.add("hidden");
+
+  const msg=document.getElementById("periodApplyMsg");
+  if(msg){msg.style.display="block";setTimeout(()=>msg.style.display="none",3000);}
+  toast(`${as.getMonth()+1}/${as.getDate()}〜${ae.getMonth()+1}/${ae.getDate()}に期間を更新しました`,"ok");
+}
+
+function resetAgg(){
+  if(!confirm("集計データをリセットします。\nページが再読み込みされます。\n（ダウンロード済みのファイルには影響しません）\nよろしいですか？")) return;
+  location.reload();
+}
+
+async function loadFromGAS(){
+  if(!GAS_URL || GAS_URL==="YOUR_GAS_URL"){
+    toast("GASのURLが設定されていません","err");
+    return;
+  }
+  toast("読み込み中…","ok");
+  try{
+    // GASはCORSの制限があるため、scriptタグ経由でJSONPとして取得
+    const data = await fetchGASData();
+    if(!data || data.length===0){
+      toast("データがありません。従業員に送信してもらってください","err");
+      return;
+    }
+    const allText = data.map(d=>d.text).join("\n\n");
+    document.getElementById("pasteArea").value=allText;
+    toast(`${data.length}名分のデータを読み込みました`,"ok");
+    parseAll();
+  }catch(e){
+    toast("読み込みエラー："+e.message,"err");
+  }
+}
+
+function fetchGASData(){
+  return new Promise((resolve, reject)=>{
+    const cbName = "_gasCallback_"+Date.now();
+    const script  = document.createElement("script");
+    const timeout = setTimeout(()=>{
+      delete window[cbName];
+      document.body.removeChild(script);
+      reject(new Error("タイムアウト"));
+    }, 10000);
+
+    window[cbName] = function(json){
+      clearTimeout(timeout);
+      delete window[cbName];
+      document.body.removeChild(script);
+      resolve(json.data||[]);
+    };
+
+    script.src = GAS_URL + "?callback=" + cbName;
+    script.onerror = ()=>{
+      clearTimeout(timeout);
+      delete window[cbName];
+      reject(new Error("接続エラー"));
+    };
+    document.body.appendChild(script);
+  });
+}
+
+function loadSample(){
+  const s=parseYMD(document.getElementById("aDateStart").value);
+  const m=s.getMonth()+1,d=s.getDate();
+  document.getElementById("pasteArea").value=
+`【シフト希望】岩久保
+期間：${m}/${d}〜${m+1}/${d-1}
+――――――――――――――――
+${m}/${d}（土）○
+${m}/${d+1}（日）×
+${m}/${d+2}（月）○
+${m}/${d+3}（火）△
+
+（お名前）田中　太郎
+${m}/${d}⭕ ${m}/${d+1}❌ ${m}/${d+2}⭕ ${m}/${d+3}△
+
+📝 お名前をご記入ください　佐藤　花子
+${m}/${d}（土）〇 ${m}/${d+1}（日）✕ ${m}/${d+2}（月）○`;
+  toast("サンプルを読み込みました","ok");
+}
+
+function normSym(s){
+  if(!s)return"";
+  if(/[○◯⭕✅◎〇]/.test(s))return"○";
+  if(/[×✕✖❌☓✗]/.test(s))return"×";
+  if(/[△▲]/.test(s))return"△";
+  return"";
+}
+function extractName(block){
+  // パターン1: 【シフト希望】フルネーム（行末まで全部取得）
+  let m=block.match(/【[^】]*】\s*([^\n\r]{1,30})/);
+  if(m){const n=m[1].trim();if(n&&!/^[\d\/]/.test(n))return n;}
+  // パターン2: お名前）フルネーム
+  m=block.match(/[）\)]\s*([^\n\r（()]{1,30})/);
+  if(m&&m[1].trim().length>0)return m[1].trim();
+  // パターン3: ください　フルネーム
+  m=block.match(/(?:お名前[^\n]*?ください|お名前)[　\s]+([^\n\r]+)/);
+  if(m)return m[1].trim();
+  // パターン4: 最初の行
+  const first=block.split(/\n/).map(x=>x.trim()).filter(Boolean)[0]||"";
+  if(first&&!/\d+\/\d+/.test(first)&&first.length<=30)
+    return first.replace(/[）\)（\(🍀🌼🌸🕊️🌿📝【】]/g,"").trim();
+  return"（不明）";
+}
+function extractMarks(block,y){
+  const res={};
+  // 記号と💬コメントを同時に抽出
+  const re=/(\d{1,2})\/(\d{1,2})\s*(?:[（(][^）)]*[）)])?\s*([○◯⭕✅◎〇×✕✖❌☓✗△▲])([^\n\r]*)/g;
+  let m;
+  while((m=re.exec(block))!==null){
+    const sym=normSym(m[3]);if(!sym)continue;
+    const key=`${y}-${("0"+parseInt(m[1])).slice(-2)}-${("0"+parseInt(m[2])).slice(-2)}`;
+    res[key]=sym;
+    // 💬コメントを抽出
+    const rest=m[4]||"";
+    const cmtMatch=rest.match(/💬(.+)/);
+    if(cmtMatch) res[key+"__comment"]=cmtMatch[1].trim();
+  }
+  return res;
+}
+
+function parseAll(){
+  const el2=document.getElementById("pasteArea");const raw=el2?el2.value:"";
+  if(!raw.trim()){toast("テキストが空です","err");return}
+  const s=parseYMD(document.getElementById("aDateStart").value);
+  const e=parseYMD(document.getElementById("aDateEnd").value);
+  if(e<s){toast("期間が不正です","err");return}
+  const blocks=raw.split(/\n\s*\n+/).map(x=>x.trim()).filter(Boolean);
+  const byName={};
+  blocks.forEach(b=>{
+    const rawName=extractName(b);
+    // 名前のスペース（全角・半角・複数）を半角スペース1つに正規化して重複防止
+    const name = rawName.replace(/[\s\u3000]+/g," ").trim();
+    const marks=extractMarks(b,s.getFullYear());
+    const nonComment=Object.fromEntries(Object.entries(marks).filter(([k])=>!k.endsWith('__comment')));
+    if(Object.keys(nonComment).length>0){
+      if(!byName[name])byName[name]={};
+      Object.assign(byName[name],marks);
+    }
+  });
+  if(!Object.keys(byName).length){toast("有効なデータが見つかりません","err");return}
+  renderAgg(byName,s,e);
+  updateCopyNameSel(byName);
+  toast(`${Object.keys(byName).length}名分を集計しました`,"ok");
+}
+
+function updateCopyNameSel(byName){
+  const sel=document.getElementById("copyNameSel");
+  if(!sel)return;
+  sel.innerHTML='<option value="">▼ スタッフを選んでください</option>';
+  Object.keys(byName).sort().forEach(nm=>{
+    const opt=document.createElement("option");
+    opt.value=nm; opt.textContent=nm;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change",previewPersonText);
+
+  // リセット用プルダウンも更新
+  const resetSel=document.getElementById("resetNameSel");
+  if(!resetSel)return;
+  resetSel.innerHTML='<option value="">▼ リセットするスタッフを選ぶ</option>';
+  Object.keys(byName).sort().forEach(nm=>{
+    const opt=document.createElement("option");
+    opt.value=nm; opt.textContent=nm;
+    resetSel.appendChild(opt);
+  });
+}
+
+function previewPersonText(){
+  const agg=window._agg; if(!agg)return;
+  const nm=document.getElementById("copyNameSel").value;
+  const prev=document.getElementById("personPreview");
+  if(!nm){prev.style.display="none";return;}
+  const lines=[`【シフト希望】${nm}`,`期間：${agg.dates[0].getMonth()+1}/${agg.dates[0].getDate()}〜${agg.dates[agg.dates.length-1].getMonth()+1}/${agg.dates[agg.dates.length-1].getDate()}`,"――――――――――――――――"];
+  agg.dates.forEach(d=>{
+    const v=agg.byName[nm][fmt(d)]||"―";
+    lines.push(`${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）${v}`);
+  });
+  prev.textContent=lines.join("\n");
+  prev.style.display="block";
+}
+
+async function copyPersonText(){
+  const nm=document.getElementById("copyNameSel").value;
+  if(!nm){toast("スタッフを選んでください","err");return;}
+  const prev=document.getElementById("personPreview");
+  const txt=prev.textContent;
+  if(!txt){toast("先にスタッフを選んでください","err");return;}
+  try{await navigator.clipboard.writeText(txt);}
+  catch(e){const t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}
+  toast(`${nm}のテキストをコピーしました`,"ok");
+}
+
+function renderAgg(byName,s,e){
+  const total=daysBetween(s,e)+1;
+  const dates=[];for(let i=0;i<total;i++)dates.push(addDays(s,i));
+  const tbl=document.getElementById("aggTable");tbl.innerHTML="";
+  const thead=document.createElement("thead");
+  const trh=document.createElement("tr");
+  const th0=document.createElement("th");th0.textContent="氏名";trh.appendChild(th0);
+  dates.forEach(d=>{
+    const th=document.createElement("th");
+    th.innerHTML=`${d.getMonth()+1}/${d.getDate()}<br><span style="font-weight:400;opacity:.7">${DOW[d.getDay()]}</span>`;
+    if(d.getDay()===0)th.className="sun";if(d.getDay()===6)th.className="sat";
+    trh.appendChild(th);
+  });
+  thead.appendChild(trh);tbl.appendChild(thead);
+  const tbody=document.createElement("tbody");
+  const names=Object.keys(byName).filter(nm=>{
+    // 1回でも○×△を入力した人のみ表示
+    return dates.some(d=>{
+      const v=byName[nm][fmt(d)]||"";
+      return v==="○"||v==="×"||v==="△";
+    });
+  });
+  names.forEach(nm=>{
+    const tr=document.createElement("tr");
+    const td0=document.createElement("td");td0.textContent=nm;tr.appendChild(td0);
+    dates.forEach(d=>{
+      const k=fmt(d),v=byName[nm][k]||"";
+      const cmt=byName[nm][k+"__comment"]||"";
+      const td=document.createElement("td");
+      td.style.position="relative";
+      td.textContent=v;
+      if(v==="○")td.className="m";else if(v==="△")td.className="s";else if(v==="×")td.className="b";
+      if(cmt){
+        td.title=cmt;
+        td.style.borderBottom="3px solid #f9a825";
+        td.style.background=(v==="○")?"#b9f6ca":(v==="×")?"#ffcdd2":(v==="△")?"#ffe0b2":"#fff9c4";
+        const badge=document.createElement("span");
+        badge.textContent="💬";
+        badge.title=cmt;
+        badge.style.cssText="position:absolute;top:1px;right:1px;font-size:11px;line-height:1;cursor:help";
+        td.appendChild(badge);
+        // コメント行にポップアップ展開（タップ対応）
+        td.style.cursor="pointer";
+        (function(name,date,comment){
+          td.addEventListener("click",()=>{
+            const parts=date.split("-");
+            alert(`💬 コメント\n${name}　${parseInt(parts[1])}/${parseInt(parts[2])}\n\n${comment}`);
+          });
+        })(nm,k,cmt);
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  ["○","△","×"].forEach(sym=>{
+    const tr=document.createElement("tr");tr.className="sum";
+    const td0=document.createElement("td");td0.textContent=`${sym} 人数`;tr.appendChild(td0);
+    dates.forEach(d=>{
+      let c=0;const k=fmt(d);names.forEach(nm=>{if(byName[nm][k]===sym)c++;});
+      const td=document.createElement("td");td.textContent=c||"";tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  document.getElementById("aggCard").classList.remove("hidden");
+  document.getElementById("aggMeta").textContent=
+    `${s.getMonth()+1}/${s.getDate()}〜${e.getMonth()+1}/${e.getDate()} ／ ${names.length}名`;
+  window._agg={byName,dates};
+
+  // 氏名照合チェック
+  checkNameMismatch(byName);
+
+  // 集計完了 → STEP②を自動展開してスクロール
+  const xlsxSec=document.getElementById("xlsxSection");
+  xlsxSec.classList.remove("hidden");
+  setTimeout(()=>xlsxSec.scrollIntoView({behavior:"smooth",block:"start"}),400);
+}
+
+function checkNameMismatch(byName){
+  const panel=document.getElementById("nameCheckPanel");
+  if(!panel) return;
+  const staffData=loadStaffData();
+  const staffNames=staffData.staff.map(s=>s.name);
+  const gasNames=Object.keys(byName);
+  const strip=n=>(n||"").replace(/[\s　]/g,"");
+
+  if(staffNames.length===0){
+    panel.innerHTML=`<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:9px;padding:11px 13px;margin-top:10px;font-size:12px;color:#e65100;line-height:1.7">
+      ⚠️ スタッフが未登録です。「スタッフ・ホーム管理」でスタッフを登録すると氏名の照合チェックができます。
+    </div>`;
+    return;
+  }
+
+  const spaceDiff=[];
+  const gasOnly=[];
+  const staffOnly=[];
+
+  gasNames.forEach(gn=>{
+    const gv=strip(gn);
+    const found=staffNames.find(sn=>strip(sn)===gv);
+    if(found){ if(found!==gn) spaceDiff.push({gas:gn,staff:found}); }
+    else gasOnly.push(gn);
+  });
+  staffNames.forEach(sn=>{
+    if(!gasNames.find(gn=>strip(gn)===strip(sn))) staffOnly.push(sn);
+  });
+
+  window._spaceDiffs=spaceDiff;
+
+  if(spaceDiff.length===0&&gasOnly.length===0&&staffOnly.length===0){
+    panel.innerHTML=`<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:9px;padding:11px 13px;margin-top:10px;font-size:13px;color:#2e7d32;font-weight:700">
+      ✅ 全員の氏名が一致しています（${gasNames.length}名）
+    </div>`;
+    return;
+  }
+
+  let html=`<div style="border:1px solid #ffb74d;border-radius:9px;overflow:hidden;margin-top:12px">
+    <div style="background:#fff3e0;padding:10px 14px;font-size:13px;font-weight:700;color:#e65100;border-bottom:1px solid #ffe0b2">
+      ⚠️ 氏名の照合チェック
+    </div><div style="padding:12px 14px">`;
+
+  if(spaceDiff.length>0){
+    html+=`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:#e65100;margin-bottom:6px">📝 スペースの違いあり → 「統一する」でGAS名をスタッフ名に合わせます</div>`;
+    spaceDiff.forEach(({gas,staff},idx)=>{
+      html+=`<div style="display:flex;align-items:center;gap:6px;background:#fff8e1;border-radius:7px;padding:8px 10px;margin-bottom:5px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#c62828;font-weight:700">${gas}</span>
+        <span style="color:#aaa;font-size:13px">→</span>
+        <span style="font-size:12px;color:#2e7d32;font-weight:700">${staff}</span>
+        <button onclick="unifyAggName(${idx})" style="margin-left:auto;background:#e65100;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">統一する</button>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  if(gasOnly.length>0){
+    html+=`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:#c62828;margin-bottom:6px">❓ スタッフ未登録の名前（名前違い・入力ミスの可能性）</div>`;
+    gasOnly.forEach(gn=>{
+      html+=`<div style="background:#ffebee;border-radius:7px;padding:8px 10px;margin-bottom:4px;font-size:12px;color:#c62828">
+        ⚠️ <strong>${gn}</strong> <span style="color:#aaa;font-size:11px">スタッフ一覧に登録がありません</span>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  if(staffOnly.length>0){
+    html+=`<div><div style="font-size:12px;font-weight:700;color:#777;margin-bottom:6px">📋 未提出（今期のデータなし）</div>`;
+    staffOnly.forEach(sn=>{
+      html+=`<div style="background:#f5f5f5;border-radius:7px;padding:8px 10px;margin-bottom:4px;font-size:12px;color:#999">
+        ─ <strong style="color:#555">${sn}</strong> <span style="font-size:11px">未提出 または 期間外</span>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  html+=`</div></div>`;
+  panel.innerHTML=html;
+}
+
+function unifyAggName(idx){
+  const pair=(window._spaceDiffs||[])[idx];
+  if(!pair) return;
+  const agg=window._agg;
+  if(!agg||!agg.byName[pair.gas]) return;
+  agg.byName[pair.staff]=agg.byName[pair.gas];
+  delete agg.byName[pair.gas];
+  toast(`「${pair.gas}」→「${pair.staff}」に統一しました`,"ok");
+  const d=agg.dates;
+  renderAgg(agg.byName,d[0],d[d.length-1]);
+}
+
+function exportCsv(){
+  const a=window._agg; if(!a) return;
+  const names=Object.keys(a.byName);
+  const rows=[];
+  const dFirst=a.dates[0];
+
+  // ヘッダー行（月間シフト希望表作成用.xlsx形式）
+  const hdr=["\u6c0f\u540d"];
+  a.dates.forEach(d=>hdr.push(d.getMonth()+1+"/"+d.getDate()+"("+DOW[d.getDay()]+")"));
+  hdr.push("\u5099\u8003\u30fb\u30b3\u30e1\u30f3\u30c8");
+  rows.push(hdr);
+
+  // スタッフ行（\u25cb\u2192\u2b55\ufe0f \u00d7\u2192\u274c \u25b3\u2192\u25b3 \u7a7a\u767d\u2192\u672a\u5165\u529b）
+  names.forEach(nm=>{
+    const nameClean=nm.replace(/[\s\u3000]/g,"");
+    const row=[nameClean];
+    const comments=[];
+    a.dates.forEach(d=>{
+      const k=fmt(d);
+      const v=a.byName[nm][k]||"";
+      let mark="";
+      if(v==="\u25cb") mark="\u2b55\ufe0f";
+      else if(v==="\u00d7") mark="\u274c";
+      else if(v==="\u25b3") mark="\u25b3";
+      row.push(mark);
+      const cmt=a.byName[nm][k+"__comment"];
+      if(cmt){ comments.push((d.getMonth()+1)+"/"+d.getDate()+"\uff1a"+cmt); }
+    });
+    row.push(comments.join(" \uff0f "));
+    rows.push(row);
+  });
+
+  // \u51fa\u52e4\u53ef\u80fd\u4eba\u6570\u884c
+  const cntRow=["\u51fa\u52e4\u53ef\u80fd\u4eba\u6570"];
+  a.dates.forEach(d=>{
+    let c=0;
+    names.forEach(nm=>{ if(a.byName[nm][fmt(d)]==="\u25cb") c++; });
+    cntRow.push(c||"");
+  });
+  cntRow.push("");
+  rows.push(cntRow);
+
+  // CSV\u51fa\u529b
+  const csv="\uFEFF"+rows.map(r=>r.map(x=>'"'+String(x==null?"":x).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a2=document.createElement("a");
+  a2.href=url;
+  a2.download="\u30b7\u30d5\u30c8\u96c6\u8a08_"+(dFirst.getMonth()+1)+"\u6708"+(dFirst.getDate())+"\u65e5\uff5e.csv";
+  a2.click();
+  URL.revokeObjectURL(url);
+  toast("CSV\u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9\u3057\u307e\u3057\u305f","ok");
+}
+async function copyTsv(){
+  const a=window._agg;if(!a)return;
+  const rows=[["氏名",...a.dates.map(d=>`${d.getMonth()+1}/${d.getDate()}(${DOW[d.getDay()]})`)]];
+  Object.keys(a.byName).forEach(nm=>rows.push([nm,...a.dates.map(d=>a.byName[nm][fmt(d)]||"")]));
+  try{await navigator.clipboard.writeText(rows.map(r=>r.join("\t")).join("\n"));toast("TSVをコピーしました","ok");}
+  catch(e){toast("コピー失敗。CSVをご利用ください","err");}
+}
+
+
+/* ===== 月間シフト希望表作成用.xlsx への反映 ===== */
+function checkAndShuukei(){
+  if(!window._agg){
+    toast("先に「集計する」を実行してください","err");
+    return;
+  }
+  document.getElementById("shuukeiInput").click();
+}
+
+async function writeToShuukei(input){
+  const agg = window._agg;
+  if(!agg){ toast("先に「集計する」を実行してください","err"); return; }
+  const file = input.files[0]; if(!file) return; input.value="";
+
+  showOverlay("📊 シフト集計Excelを処理中…<br>完了まで10〜20秒かかります");
+  await yieldUI();
+
+  const status = document.getElementById("shuukeiStatus");
+  status.textContent = "⏳ 処理中…";
+  status.style.color = "var(--sub)";
+
+  try{
+    const buf = await file.arrayBuffer();
+    await yieldUI();
+    const wb  = XLSX.read(buf, {type:"array", cellDates:false, cellStyles:true});
+
+    // 既存シートをそのまま使用（書式を一切変えない）
+    const d0 = agg.dates[0];
+    const wsName = wb.SheetNames[0]; // Sheet1をそのまま使う
+    const ws = wb.Sheets[wsName];
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    if(!data||data.length===0) throw new Error("シートが空です");
+
+    // ── ヘッダー行を検索（「氏名」行 または 数字日付行に対応）──
+    let hdrRowIdx = -1;
+    for(let r=0; r<Math.min(6,data.length); r++){
+      const v = data[r]&&data[r][0];
+      if(typeof v==="string" && v.includes("氏名")){ hdrRowIdx=r; break; }
+    }
+    // 見つからなければ数字日付が5個以上並ぶ行を探す（タカサキ式）
+    if(hdrRowIdx===-1){
+      for(let r=0; r<Math.min(6,data.length); r++){
+        const row = data[r]||[];
+        const nums = row.filter(v=>typeof v==="number"&&v>=1&&v<=31);
+        if(nums.length>=5){ hdrRowIdx=r; break; }
+      }
+    }
+    if(hdrRowIdx===-1) throw new Error("ヘッダー行が見つかりません");
+
+    // ── ベーステンプレートの罫線スタイルを取得 ──
+    const getBaseStyle = (r, c) => {
+      const refAddr = XLSX.utils.encode_cell({r, c:0});
+      const refCell = ws[refAddr];
+      if(refCell && refCell.s) return JSON.parse(JSON.stringify(refCell.s));
+      const hdrAddr = XLSX.utils.encode_cell({r:hdrRowIdx, c:2});
+      const hdrCell = ws[hdrAddr];
+      if(hdrCell && hdrCell.s) return JSON.parse(JSON.stringify(hdrCell.s));
+      return null;
+    };
+
+    // ── 日付列マップを作成（2方式対応）──
+    const dateColMap = {};
+    const mdToFmt = {};
+    const hdrRow = data[hdrRowIdx]||[];
+
+    // 方式①：ヘッダーが数字（タカサキ式）
+    const hasNumericDates = hdrRow.filter(v=>typeof v==="number"&&v>=1&&v<=31).length >= 5;
+    if(hasNumericDates){
+      hdrRow.forEach((cell, c)=>{
+        if(typeof cell!=="number"||cell<1||cell>31) return;
+        const day = cell;
+        const matched = agg.dates.find(d=>d.getDate()===day);
+        if(matched){
+          const md = `${matched.getMonth()+1}/${day}`;
+          dateColMap[md]=c;
+          mdToFmt[md]=fmt(matched);
+        }
+      });
+    } else {
+      // 方式②：ヘッダーが「氏名」行（従来式）
+      agg.dates.forEach((d, i)=>{
+        const col = i + 1;
+        const md = `${d.getMonth()+1}/${d.getDate()}`;
+        dateColMap[md] = col;
+        mdToFmt[md] = fmt(d);
+        const addr = XLSX.utils.encode_cell({r: hdrRowIdx, c: col});
+        const existStyle = (ws[addr]&&ws[addr].s)?JSON.parse(JSON.stringify(ws[addr].s)):getBaseStyle(hdrRowIdx, col);
+        ws[addr] = {t:"s", v:md, w:md};
+        if(existStyle) ws[addr].s = existStyle;
+      });
+    }
+
+    // 備考列：最後の日付列の次
+    const maxDateCol = Object.values(dateColMap).length>0 ? Math.max(...Object.values(dateColMap)) : agg.dates.length;
+    const cmtColIdx = maxDateCol + 1;
+    ws["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:data.length-1, c:cmtColIdx+2}});
+
+    // ── A列の氏名インデックスを作る ──
+    // 𠮷(U+20BB7)など拡張漢字を常用漢字に正規化して照合ミスを防ぐ
+    const normalizeN = (s) => (s||"").replace(/[\s　]/g,"").replace(/\uD842\uDFB7/g,"\u5409");
+    const nameRowMap = {}; // {正規化した名前: rowIdx}
+    for(let r=hdrRowIdx+1; r<data.length; r++){
+      const nm = data[r]&&data[r][0];
+      if(!nm||typeof nm!=="string") continue;
+      const clean = normalizeN(nm);
+      if(clean) nameRowMap[clean]=r;
+    }
+
+    const matchedDates = Object.keys(dateColMap); // 全集計日が対象
+
+    // ── 書き込み ──
+    let written=0;
+    const skipped=[];
+
+    Object.keys(agg.byName).forEach(csvName=>{
+      const csvClean = normalizeN(csvName);
+      let targetRow = nameRowMap[csvClean];
+
+      // 前方一致フォールバック（姓のみ）
+      if(targetRow===undefined){
+        for(const [nm,ri] of Object.entries(nameRowMap)){
+          if(nm.startsWith(csvClean)||csvClean.startsWith(nm)){
+            targetRow=ri; break;
+          }
+        }
+      }
+      // 誤字フォールバック（最後の1文字が違う場合：上念直美→上念直実など）
+      if(targetRow===undefined && csvClean.length>=3){
+        const prefix=csvClean.slice(0,-1);
+        for(const [nm,ri] of Object.entries(nameRowMap)){
+          if(nm.startsWith(prefix)&&Math.abs(nm.length-csvClean.length)<=1){
+            targetRow=ri; break;
+          }
+        }
+      }
+      if(targetRow===undefined){ skipped.push(csvName); return; }
+
+      // ExcelのDateColMapを基準にループ（期間ずれに強い）
+      const commentParts = [];
+      Object.entries(dateColMap).forEach(([md, colIdx])=>{
+        const fmtKey=mdToFmt[md];
+        if(!fmtKey) return;
+        const v=agg.byName[csvName][fmtKey]||"";
+        const mark = v==="○"?"○" : v==="×"?"×" : v==="△"?"△" : "";
+        const addr=XLSX.utils.encode_cell({r:targetRow, c:colIdx});
+        if(!ws[addr]){
+          // 新規セル：同行A列（氏名セル）から罫線スタイルをコピー
+          const refCell=ws[XLSX.utils.encode_cell({r:targetRow,c:0})];
+          ws[addr]={t:"s",v:""};
+          if(refCell&&refCell.s) ws[addr].s=refCell.s;
+        }
+        // 既存スタイルを維持したまま値だけ更新（書式は一切変えない）
+        ws[addr].t="s"; ws[addr].v=mark; ws[addr].w=mark;
+        if(mark) written++;
+        // コメントを収集
+        const cmt = agg.byName[csvName][fmtKey+"__comment"];
+        if(cmt) commentParts.push(`${md}：${cmt}`);
+      });
+      // 備考列にコメントをまとめて書き込む
+      if(commentParts.length > 0){
+        const cmtAddr = XLSX.utils.encode_cell({r:targetRow, c:cmtColIdx});
+        const cmtText = commentParts.join(" ／ ");
+        const refCell=ws[XLSX.utils.encode_cell({r:targetRow,c:0})];
+        ws[cmtAddr]={t:"s",v:cmtText,w:cmtText};
+        if(refCell&&refCell.s) ws[cmtAddr].s=refCell.s;
+      }
+
+      // AH列（33列目）に氏名、AI列（34列目）にコメントを書き込む
+      const ahCol = 33; // AH列（0ベース）
+      const aiCol = 34; // AI列（0ベース）
+      const refCellA = ws[XLSX.utils.encode_cell({r:targetRow, c:0})];
+      // AH列：A列の氏名をそのまま反映
+      const nameCell = ws[XLSX.utils.encode_cell({r:targetRow, c:0})];
+      const ahAddr = XLSX.utils.encode_cell({r:targetRow, c:ahCol});
+      if(nameCell){
+        ws[ahAddr]={t:"s", v:nameCell.v||"", w:nameCell.w||""};
+        if(refCellA&&refCellA.s) ws[ahAddr].s=refCellA.s;
+      }
+      // AI列：コメントを書き込む
+      const aiAddr = XLSX.utils.encode_cell({r:targetRow, c:aiCol});
+      const cmtText2 = commentParts.join(" ／ ");
+      ws[aiAddr]={t:"s", v:cmtText2, w:cmtText2};
+      if(refCellA&&refCellA.s) ws[aiAddr].s=refCellA.s;
+    });
+
+    // シート範囲を更新
+    ws["!ref"] = XLSX.utils.encode_range({
+      s:{r:0,c:0},
+      e:{r:data.length-1, c:cmtColIdx}
+    });
+
+
+    // ── ログシートを追加 ──
+    const logSheetName = "ログ";
+    if(wb.SheetNames.includes(logSheetName)){
+      delete wb.Sheets[logSheetName];
+      wb.SheetNames.splice(wb.SheetNames.indexOf(logSheetName),1);
+    }
+    const logWs = {};
+    const logData = [
+      ["項目","内容"],
+      ["処理日時", new Date().toLocaleString("ja-JP")],
+      ["テンプレート名数", Object.keys(nameRowMap).length],
+      ["日付列数", Object.keys(dateColMap).length],
+      ["集計期間と重複日数", matchedDates.length],
+      ["書き込み件数", written],
+      ["照合OK数", Object.keys(agg.byName).length - skipped.length],
+      ["照合NG数", skipped.length],
+      ["",""],
+      ["照合できなかった名前", skipped.join("、")],
+    ];
+    XLSX.utils.sheet_add_aoa(logWs, logData, {origin:"A1"});
+    logWs["!cols"]=[{wch:20},{wch:50}];
+    wb.SheetNames.push(logSheetName);
+    wb.Sheets[logSheetName] = logWs;
+
+    // ── ダウンロード ──
+    const outBuf=XLSX.write(wb,{type:"array",bookType:"xlsx",cellStyles:true});
+    const blob=new Blob([outBuf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`シフト集計_反映済_${fmt(agg.dates[0])}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
+
+    hideOverlay();
+    let msg=`✅ ${written}セル書き込み完了！`;
+    if(skipped.length>0) msg+=`\n⚠️ 照合できなかった名前: ${skipped.join("、")}`;
+    status.textContent=msg;
+    status.style.color="var(--gr)";
+    toast(`${written}セル反映しました`,"ok");
+
+  }catch(e){
+    hideOverlay();
+    status.textContent="エラー: "+e.message;
+    status.style.color="#c62828";
+    toast("エラー: "+e.message,"err");
+  }
+}
+
+/* ===== AI シフト表 自動割り当て ===== */
+function aiGetLast(name){ return (name||"").trim().split(/[\s\u3000]/)[0]; }
+
+async function updateAiShiftDates(input){
+  const file = input.files[0]; if(!file) return; input.value="";
+  // 期間取得（集計データ優先、なければフォームの期間）
+  const start = window._agg ? window._agg.dates[0] : rangeStart;
+  const end   = window._agg ? window._agg.dates[window._agg.dates.length-1] : rangeEnd;
+  if(!start||!end){ toast("先に期間を設定してください","err"); return; }
+
+  showOverlay("📅 日付を更新中…");
+  await yieldUI();
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:"array", cellDates:false});
+    const wsName = wb.SheetNames.find(n=>n==="表") || wb.SheetNames[0];
+    const ws = wb.Sheets[wsName];
+
+    // 全日付リストを生成（日曜始まりの週ブロック）
+    const totalDays = daysBetween(start, end) + 1;
+    const allDates = [];
+    for(let i=0; i<totalDays; i++) allDates.push(addDays(start, i));
+
+    // 表シートの日付行（数値>40000が3つ以上ある行）を検索して順番に置き換え
+    const maxRow = ws["!ref"] ? parseInt(ws["!ref"].split(":")[1].replace(/\D/g,"")) : 100;
+    const getV=(r,c)=>{ const a=XLSX.utils.encode_cell({r:r-1,c:c-1}); return ws[a]?ws[a].v:null; };
+    const setSerial=(r,c,d)=>{
+      const a=XLSX.utils.encode_cell({r:r-1,c:c-1});
+      const serial = Math.round((d.getTime()/86400000)+25569);
+      if(!ws[a]) ws[a]={};
+      ws[a].t="n"; ws[a].v=serial; ws[a].w=`${d.getMonth()+1}/${d.getDate()}`;
+    };
+
+    let weekIdx = 0;
+    for(let row=1; row<=maxRow; row++){
+      const cols = [];
+      for(let c=2;c<=8;c++){ if(typeof getV(row,c)==="number"&&getV(row,c)>40000) cols.push(c); }
+      if(cols.length<3) continue;
+
+      // この週の日曜日を基点に7日分の日付を当てはめる
+      const baseDay = weekIdx * 7;
+      cols.forEach((c,i)=>{
+        const dayOffset = (c-2) + baseDay; // B列=日曜=0
+        if(dayOffset < allDates.length){
+          setSerial(row, c, allDates[dayOffset]);
+        }
+      });
+      weekIdx++;
+    }
+
+    const outBuf = XLSX.write(wb,{type:"array",bookType:"xlsx"});
+    const blob = new Blob([outBuf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url;
+    const m=start.getMonth()+1, y=start.getFullYear();
+    a.download=`AIシフト表作成ベース_${y}年${m}月.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
+    hideOverlay();
+    toast(`✅ ${y}年${m}月用テンプレートを作成しました`,"ok");
+  }catch(e){ hideOverlay(); toast("エラー: "+e.message,"err"); console.error(e); }
+}
+
+function checkAndAiShift(){
+  if(!window._agg){
+    document.getElementById("aiShiftCheck").style.display="block";
+    return;
+  }
+  document.getElementById("aiShiftCheck").style.display="none";
+  document.getElementById("aiShiftBaseInput").click();
+}
+
+async function writeToAIShiftTable(input){
+  const agg = window._agg;
+  if(!agg){ toast("先に集計を実行してください","err"); return; }
+  const file = input.files[0]; if(!file) return; input.value="";
+
+  const status = document.getElementById("aiShiftStatus");
+  status.textContent = "⏳ 処理中…";
+  status.style.color = "var(--sub)";
+  showOverlay("🤖 AIシフト表を処理中…<br>完了まで10〜20秒かかります");
+  await yieldUI();
+
+  try{
+    const buf = await file.arrayBuffer();
+    await yieldUI();
+    const wb  = XLSX.read(buf, {type:"array", cellDates:false});
+
+    // ===== スタッフ・ホームデータを取得（ホーム対象表シート優先）=====
+    const staffHomeMap = {}; // {フルネーム: [ホーム...]}
+    const fixedStaff  = {}; // {ホーム: フルネーム（◎日勤固定）}
+    const seishainSet = new Set(); // 正社員（月・火は配置不可）
+    let HOMES_ORDER = [];
+    const formData = loadStaffData();
+
+    const homeSheetName = wb.SheetNames.find(n=>n==="ホーム対象表");
+    if(homeSheetName){
+      // ── Excelの「ホーム対象表」シートを優先使用（新規追加・退職も自動反映）──
+      const wsHome = wb.Sheets[homeSheetName];
+      const homeData = XLSX.utils.sheet_to_json(wsHome, {header:1, defval:null});
+      HOMES_ORDER = ["西九条","九条","酉島","新郡山","春日出","出来島"];
+      const hdrRow = homeData.find(r=>r&&r[0]==="スタッフ名");
+      if(!hdrRow) throw new Error("ホーム対象表のヘッダー行が見つかりません");
+      const homeColIdx = {};
+      HOMES_ORDER.forEach(h=>{ homeColIdx[h]=hdrRow.indexOf(h); });
+      homeData.forEach(row=>{
+        if(!row||!row[0]) return;
+        const s0 = String(row[0]).trim();
+        // ヘッダー行・凡例行・注記行をスキップ
+        if(s0==="スタッフ名"||s0.includes("◎=")||s0.includes("Hの")) return;
+        const name = s0;
+        const comment = row[7] ? String(row[7]).trim() : ""; // H列コメント
+        const homes = [];
+        HOMES_ORDER.forEach(h=>{
+          const val = row[homeColIdx[h]];
+          if(val==="○"||val==="◎") homes.push(h);
+          if(val==="◎") fixedStaff[h]=name;
+        });
+        if(homes.length>0){
+          staffHomeMap[name]=homes;
+          if(comment.includes("正社員")) seishainSet.add(name); // 月・火欠勤
+        }
+      });
+      status.textContent=`ホーム対象表: ${Object.keys(staffHomeMap).length}名を読み込みました。割り当て中…`;
+    } else if(formData.staff.length > 0){
+      // ── フォールバック：フォームのスタッフ管理データを使用 ──
+      HOMES_ORDER = formData.homes;
+      formData.staff.forEach(s=>{
+        const homes=[];
+        HOMES_ORDER.forEach(h=>{
+          const val=(s.homes||{})[h]||"";
+          if(val==="○") homes.push(h);
+        });
+        if(homes.length>0) staffHomeMap[s.name]=homes;
+      });
+      status.textContent=`スタッフ管理: ${formData.staff.length}名を使用。割り当て中…`;
+    } else {
+      throw new Error("「ホーム対象表」シートが見つかりません。\nAIシフト表作成ベース.xlsxにホーム対象表シートがあるか確認してください。");
+    }
+
+    const staffCount = Object.keys(staffHomeMap).length;
+    if(staffCount === 0){
+      throw new Error("ホーム対象表にスタッフが見つかりません。\n○または◎が設定されているスタッフがいるか確認してください。");
+    }
+
+    // ===== 集計データ → 可用性マップ作成 =====
+    // 名前照合（スペース除去して比較）
+    const csvNames = Object.keys(agg.byName);
+    const csvToHName = {};
+    const skipped = [];
+    const homeNames = Object.keys(staffHomeMap);
+
+    csvNames.forEach(csvN=>{
+      const csvClean = csvN.replace(/[\s\u3000]/g,"");
+      let matched = null;
+      for(const hName of homeNames){
+        if(csvClean===hName.replace(/[\s\u3000]/g,"")){matched=hName;break;}
+      }
+      // 前方一致フォールバック（姓のみ一致）
+      if(!matched){
+        for(const hName of homeNames){
+          const hFirst = hName.replace(/[\s\u3000].*/,"");
+          if(csvClean===hFirst.replace(/[\s\u3000]/g,"")){matched=hName;break;}
+        }
+      }
+      csvToHName[csvN] = matched;
+      if(!matched) skipped.push(csvN);
+    });
+
+    // {スタッフフルネーム: {"6/16":true,...}}
+    const availMap = {};
+    csvNames.forEach(csvN=>{
+      const hName = csvToHName[csvN];
+      if(!hName) return;
+      if(!availMap[hName]) availMap[hName]={};
+      agg.dates.forEach(d=>{
+        // 正社員は月曜(1)・火曜(2)は配置不可
+        if(seishainSet.has(hName) && (d.getDay()===1||d.getDay()===2)) return;
+        const v = agg.byName[csvN][fmt(d)]||"";
+        if(v==="○"||v==="⭕️"){
+          availMap[hName][`${d.getMonth()+1}/${d.getDate()}`]=true;
+        }
+      });
+    });
+
+    // ===== 「表」シートに書き込む =====
+    const tableSheetName = wb.SheetNames.find(n=>n==="表");
+    if(!tableSheetName) throw new Error("「表」シートが見つかりません");
+    const wsTable = wb.Sheets[tableSheetName];
+
+    const getV=(r,c)=>{
+      const a=XLSX.utils.encode_cell({r:r-1,c:c-1});
+      return wsTable[a]?wsTable[a].v:null;
+    };
+    const setV=(r,c,v)=>{
+      const a=XLSX.utils.encode_cell({r:r-1,c:c-1});
+      if(!wsTable[a]) wsTable[a]={t:"s",v:""};
+      wsTable[a].t="s"; wsTable[a].v=String(v); wsTable[a].w=String(v);
+    };
+    const serialToMD=(s)=>{
+      if(!s) return null;
+      // ExcelシリアルをUTC日付に変換
+      const ms = (Number(s)-25569)*86400000;
+      const d = new Date(ms);
+      // タイムゾーン補正
+      const local = new Date(d.getTime() + d.getTimezoneOffset()*60000);
+      return `${local.getMonth()+1}/${local.getDate()}`;
+    };
+
+    // 表シートを走査してブロックを検出し書き込む
+    let written = 0;
+    let row = 1;
+    const maxRow = wsTable["!ref"] ? parseInt(wsTable["!ref"].split(":")[1].replace(/\D/g,"")) : 50;
+    while(row <= maxRow){
+      // 日付行かどうか判定（整数シリアル値が複数ある行）
+      let serialCols = [];
+      for(let c=1;c<=9;c++){
+        const v=getV(row,c);
+        if(typeof v==="number"&&v>40000) serialCols.push(c);
+      }
+      if(serialCols.length===0){row++;continue;}
+
+      // md値をキャッシュ（変換前に保存）
+      const colToMD = {};
+      serialCols.forEach(col=>{
+        const md=serialToMD(getV(row,col));
+        if(md) colToMD[col]=md;
+      });
+
+      // 日付セルをテキスト形式（"7/17"）に変換してスタイル保持（表示用）
+      serialCols.forEach(col=>{
+        const md=colToMD[col];
+        if(!md) return;
+        const a=XLSX.utils.encode_cell({r:row-1,c:col-1});
+        if(wsTable[a]){
+          const style=wsTable[a].s;
+          wsTable[a]={t:"s",v:md,w:md};
+          if(style!==undefined) wsTable[a].s=style;
+        }
+      });
+
+      // ホーム行を探す（次の行から連続してホーム名が続く）
+      const homeStart = row+1;
+      const assignedToday = {}; // {md: Set<スタッフ名>}
+
+      // ホーム順に処理（Excelの実際の行からホーム名を読み取る）
+      for(let hi=0; hi<HOMES_ORDER.length; hi++){
+        const homeRow = homeStart+hi;
+        const cellA = getV(homeRow,1);
+        if(!cellA||!HOMES_ORDER.includes(String(cellA).trim())) continue;
+        const home = String(cellA).trim(); // Excelの実際のホーム名を使用
+
+        serialCols.forEach(col=>{
+          const md=colToMD[col]; // キャッシュから取得
+          if(!md) return;
+          if(!assignedToday[md]) assignedToday[md]=new Set();
+
+          setV(homeRow,col,""); // まずクリア
+
+          // 日勤固定スタッフ（◎）を取得
+          const dayStaff = fixedStaff[home] ? aiGetLast(fixedStaff[home]) : null;
+
+          // 夜勤スタッフを探す（◎以外）
+          let nightStaff = null;
+          for(const [hName,homes] of Object.entries(staffHomeMap)){
+            if(assignedToday[md].has(hName)) continue;
+            if(!homes.includes(home)) continue;
+            if(Object.values(fixedStaff).includes(hName)) continue; // ◎スタッフはスキップ
+            if(availMap[hName]&&availMap[hName][md]){
+              nightStaff = hName;
+              break;
+            }
+          }
+
+          // 「夜勤者/日勤者」形式でセルに書き込む
+          let cellValue = "";
+          if(nightStaff && dayStaff){
+            cellValue = `${aiGetLast(nightStaff)}/${dayStaff}`;
+          } else if(nightStaff){
+            cellValue = aiGetLast(nightStaff);
+          } else if(dayStaff){
+            cellValue = dayStaff;
+          }
+          if(cellValue){
+            setV(homeRow,col,cellValue);
+            if(nightStaff) assignedToday[md].add(nightStaff);
+            written++;
+          }
+        });
+      }
+
+      row = homeStart + HOMES_ORDER.length + 1;
+    }
+
+    // ===== ダウンロード =====
+    const outBuf = XLSX.write(wb, {type:"array", bookType:"xlsx"});
+    const blob = new Blob([outBuf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    const d0 = agg.dates[0];
+    a.download = `AIシフト表_${d0.getMonth()+1}月${d0.getDate()}日〜_完成.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    let msg = `✅ ${written}件を表シートに書き込みました！`;
+    hideOverlay();
+    if(skipped.length>0) msg += ` ⚠️ 未照合: ${skipped.join("、")}`;
+    status.textContent = msg;
+    status.style.color = "var(--gr)";
+    toast(`${written}件のシフトを割り当てました`,"ok");
+
+  }catch(e){
+    hideOverlay();
+    status.textContent = "エラー: " + e.message;
+    status.style.color = "#c62828";
+    toast("エラー: " + e.message, "err");
+  }
+}
+
+/* ===== スタッフ・ホーム管理 ===== */
+const STAFF_KEY = "oriveAn_staffData";
+let _staffData = null;
+
+function loadStaffData(){
+  if(_staffData) return _staffData;
+  const saved = localStorage.getItem(STAFF_KEY);
+  if(saved){ try{ _staffData=JSON.parse(saved); return _staffData; }catch(e){} }
+  _staffData = { homes:["西九条","九条","酉島","新郡山","春日出","出来島"], staff:[] };
+  return _staffData;
+}
+function saveStaffData(){
+  localStorage.setItem(STAFF_KEY, JSON.stringify(_staffData));
+}
+
+function renderStaffSection(){
+  const d = loadStaffData();
+  // ホームチップ
+  const homeChips = document.getElementById("homeChips");
+  homeChips.innerHTML = "";
+  if(d.homes.length===0){
+    homeChips.innerHTML='<span style="font-size:12px;color:var(--sub)">ホームが登録されていません</span>';
+  }
+  d.homes.forEach((h,i)=>{
+    const chip=document.createElement("div");
+    chip.style.cssText="display:flex;align-items:center;gap:4px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:100px;padding:5px 10px 5px 13px;font-size:13px;font-weight:700;color:var(--gr)";
+    chip.innerHTML=`${h}<button onclick="deleteHome(${i})" style="background:none;border:none;cursor:pointer;color:#c62828;font-size:16px;padding:0 0 0 5px;line-height:1;font-weight:700">×</button>`;
+    homeChips.appendChild(chip);
+  });
+  renderStaffTable();
+}
+
+function renderStaffTable(){
+  const d = loadStaffData();
+  const wrap = document.getElementById("staffTableWrap");
+  if(d.staff.length===0){
+    wrap.innerHTML='<div style="text-align:center;padding:24px 16px;color:var(--sub);font-size:13px;line-height:1.8">スタッフが登録されていません<br>下のフォームから追加、またはExcelからインポートしてください</div>';
+    return;
+  }
+  let html='<table><thead><tr><th>氏名</th>';
+  d.homes.forEach(h=>{ html+=`<th style="font-size:10px;line-height:1.3">${h.replace(/(.{3})/g,'$1<br>').replace(/<br>$/,'')}</th>`; });
+  html+='<th style="font-size:10px">削除</th></tr></thead><tbody>';
+  d.staff.forEach((s,si)=>{
+    html+=`<tr><td style="font-size:12px;white-space:nowrap">${s.name}</td>`;
+    d.homes.forEach(h=>{
+      const val=(s.homes||{})[h]||"";
+      const cls=val==="○"?"maru":"";
+      html+=`<td><div class="hcell ${cls}" onclick="cycleHomeCell(${si},'${h}')">${val==="○"?"○":""}</div></td>`;
+    });
+    html+=`<td><button onclick="deleteStaff(${si})" style="background:none;border:none;cursor:pointer;font-size:18px;color:#e0e0e0;padding:4px" onmouseenter="this.style.color='#c62828'" onmouseleave="this.style.color='#e0e0e0'">🗑</button></td></tr>`;
+  });
+  html+='</tbody></table>';
+  wrap.innerHTML=html;
+}
+
+function cycleHomeCell(si, home){
+  const d=loadStaffData();
+  if(!d.staff[si].homes) d.staff[si].homes={};
+  const cur=d.staff[si].homes[home]||"";
+  if(cur==="○") delete d.staff[si].homes[home];
+  else d.staff[si].homes[home]="○";
+  saveStaffData(); renderStaffTable();
+}
+
+function addStaff(){
+  const inp=document.getElementById("newStaffName");
+  const name=inp.value.trim();
+  if(!name){toast("名前を入力してください","err");return;}
+  const d=loadStaffData();
+  if(d.staff.find(s=>s.name===name)){toast("すでに登録されています","err");return;}
+  d.staff.push({name,homes:{}});
+  saveStaffData(); inp.value=""; renderStaffTable();
+  toast(`${name} を追加しました`,"ok");
+}
+
+function deleteStaff(si){
+  const d=loadStaffData();
+  const name=d.staff[si].name;
+  if(!confirm(`「${name}」を削除しますか？`))return;
+  d.staff.splice(si,1);
+  saveStaffData(); renderStaffTable();
+  toast(`${name} を削除しました`,"ok");
+}
+
+function addHome(){
+  const inp=document.getElementById("newHomeName");
+  const name=inp.value.trim();
+  if(!name){toast("ホーム名を入力してください","err");return;}
+  const d=loadStaffData();
+  if(d.homes.includes(name)){toast("すでに登録されています","err");return;}
+  d.homes.push(name);
+  saveStaffData(); inp.value=""; renderStaffSection();
+  toast(`「${name}」を追加しました`,"ok");
+}
+
+function deleteHome(hi){
+  const d=loadStaffData();
+  const name=d.homes[hi];
+  if(!confirm(`「${name}」を削除しますか？\nこのホームの担当設定もすべて消えます`))return;
+  d.homes.splice(hi,1);
+  d.staff.forEach(s=>{if(s.homes)delete s.homes[name];});
+  saveStaffData(); renderStaffSection();
+  toast(`「${name}」を削除しました`,"ok");
+}
+
+async function clearGASData(){
+  if(!confirm("送信済みのシフト希望データを全て削除します。\nこの操作は元に戻せません。\nよろしいですか？")) return;
+  if(!confirm("本当に削除しますか？\n（全スタッフの提出データが消えます）")) return;
+  showOverlay("🗑 データを削除中…");
+  try{
+    await fetch(GAS_URL,{
+      method:"POST", mode:"no-cors",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"clearAll"})
+    });
+    await new Promise(r=>setTimeout(r,1500));
+    hideOverlay();
+    window._agg=null;
+    const aggCard=document.getElementById("aggCard");
+    if(aggCard){aggCard.classList.add("hidden"); aggCard.style.display="none";}
+    toast("✅ 全データを削除しました。GASスプレッドシートが空になりました","ok");
+  }catch(e){
+    hideOverlay();
+    toast("エラー: "+e.message,"err");
+  }
+}
+
+function clearAllStaffData(){
+  if(!confirm("スタッフ設定をすべてリセットしますか？\nスタッフ一覧とホーム担当が消えます（元に戻せません）"))return;
+  _staffData={ homes:["西九条","九条","酉島","新郡山","春日出","出来島"], staff:[] };
+  saveStaffData();
+  renderStaffSection();
+  toast("リセットしました（初期ホーム6拠点に戻しました）","ok");
+}
+
+async function importStaffFromExcel(input){
+  const file=input.files[0]; if(!file)return; input.value="";
+  const status=document.getElementById("importStatus");
+  status.textContent="読み込み中…"; status.style.color="var(--sub)";
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:"array"});
+    const homeSheetName=wb.SheetNames.find(n=>n==="ホーム対象表");
+    if(!homeSheetName) throw new Error("「ホーム対象表」シートが見つかりません");
+    const ws=wb.Sheets[homeSheetName];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    const hdrRow=rows.find(r=>r&&r[0]==="スタッフ名");
+    if(!hdrRow) throw new Error("ヘッダー行（スタッフ名）が見つかりません");
+    const d=loadStaffData();
+    // ホームを追加
+    const excelHomes=hdrRow.slice(1).filter(h=>h&&typeof h==="string").map(h=>h.trim());
+    excelHomes.forEach(h=>{if(!d.homes.includes(h))d.homes.push(h);});
+    // スタッフを追加・更新
+    let added=0,updated=0;
+    rows.forEach(row=>{
+      if(!row||!row[0]||row[0]==="スタッフ名"||String(row[0]).includes("◎="))return;
+      const name=String(row[0]).trim(); if(!name)return;
+      let s=d.staff.find(x=>x.name===name);
+      if(!s){s={name,homes:{}}; d.staff.push(s); added++;}
+      else updated++;
+      if(!s.homes)s.homes={};
+      excelHomes.forEach((h,i)=>{
+        const val=row[i+1];
+        if(val==="○"||val==="◎") s.homes[h]="○";
+      });
+    });
+    saveStaffData(); renderStaffSection();
+    status.textContent=`✅ 新規 ${added}名追加・${updated}名更新、ホーム ${excelHomes.length}件を取り込みました`;
+    status.style.color="var(--gr)";
+    toast("インポート完了","ok");
+  }catch(e){
+    status.textContent="エラー: "+e.message;
+    status.style.color="#c62828";
+    toast("インポートエラー","err");
+  }
+}
+
+window.addEventListener("load",function(){try{init();}catch(e){console.error(e);}});
+</script>
+</body>
+</html>
