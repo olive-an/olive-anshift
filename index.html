@@ -452,15 +452,11 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
               📊 <b>月間シフト希望表作成用.xlsx</b>
               <div style="color:var(--sub);padding-left:18px;font-size:11px">→「シフト集計Excelに反映」で使用</div>
             </div>
-            <div style="padding:6px 0">
-              🤖 <b>AIシフト表作成ベース.xlsx</b>
-              <div style="color:var(--sub);padding-left:18px;font-size:11px">→「AIシフト表 自動割り当て」で使用</div>
-            </div>
+
           </div>
           <div style="margin-top:10px;background:#e3f2fd;border-radius:8px;padding:9px 12px;font-size:11px;color:#1565c0;line-height:1.7;border:1px solid #90caf9">
             👤 <b>新入社員が入ったとき</b><br>
             ① 月間シフト希望表作成用.xlsx のA列に名前を追加<br>
-            ② AIシフト表作成ベース.xlsx の「ホーム対象表」に名前と担当ホーム（○）を追加<br>
             <span style="color:#1976d2">コードの変更は不要です。Excelを更新するだけで自動対応します。</span>
           </div>
         </div>
@@ -633,74 +629,6 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
       </div>
 
       <!-- カード③：AIシフト表への自動割り当て -->
-      <div class="card">
-        <div class="card-h">
-          <span class="card-hn">🤖</span>
-          <div><div class="card-hl">AIシフト表 自動割り当て</div><div class="card-hs">ホーム対象表を読み取り → 表シートに自動書き込み</div></div>
-        </div>
-        <div class="card-b">
-          <!-- 使用ファイル -->
-          <div style="background:#f3e5f5;border-radius:9px;padding:10px 13px;margin-bottom:12px;border:1px solid #ce93d8">
-            <div style="font-size:11px;color:#6a1b9a;font-weight:700;margin-bottom:2px">📁 使用するファイル</div>
-            <div style="font-size:15px;font-weight:800;color:#4a148c">AIシフト表作成ベース.xlsx</div>
-          </div>
-          <!-- 手順 -->
-          <div style="font-size:12px;color:var(--sub);line-height:2;margin-bottom:12px;background:var(--sand);border-radius:9px;padding:10px 13px">
-            <span style="color:var(--gr);font-weight:700">① </span>「集計する」で全員分を読み込む<br>
-            <span style="color:var(--gr);font-weight:700">② </span>下のボタンをタップ<br>
-            <span style="color:var(--gr);font-weight:700">③ </span>「AIシフト表作成ベース.xlsx」を選ぶ<br>
-            <span style="color:var(--gr);font-weight:700">④ </span>ホーム対象表を自動読み取り → 表シートに割り当て<br>
-            <span style="color:var(--gr);font-weight:700">⑤ </span>完成ファイルをダウンロード → 印刷
-          </div>
-          <!-- 図解 -->
-          <div style="margin-bottom:12px">
-            <button onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';this.textContent=d.style.display==='block'?'📖 図解を閉じる ▲':'📖 使い方図解を見る ▼'" style="width:100%;background:#f3e5f5;border:1px solid #ce93d8;border-radius:7px;padding:8px;font-size:12px;color:#6a1b9a;font-weight:700;cursor:pointer">📖 使い方図解を見る ▼</button>
-            <div style="display:none;margin-top:6px">
-              <svg viewBox="0 0 460 360" xmlns="http://www.w3.org/2000/svg" width="100%" font-family="-apple-system,'Hiragino Sans',sans-serif">
-                <rect x="4" y="4" width="452" height="50" rx="9" fill="#f3e5f5" stroke="#ce93d8" stroke-width="1.5"/>
-                <circle cx="28" cy="29" r="14" fill="#6a1b9a"/><text x="28" y="34" text-anchor="middle" fill="white" font-size="12" font-weight="800">①</text>
-                <text x="50" y="24" fill="#4a148c" font-size="13" font-weight="700">全員分を集計する</text>
-                <text x="50" y="42" fill="#555" font-size="11">管理者ログイン → 期間確定 → ☁️ 全員分を読み込む</text>
-                <line x1="230" y1="58" x2="230" y2="72" stroke="#6a1b9a" stroke-width="2.5"/><polygon points="230,78 224,68 236,68" fill="#6a1b9a"/>
-                <rect x="4" y="80" width="452" height="50" rx="9" fill="#f3e5f5" stroke="#ce93d8" stroke-width="1.5"/>
-                <circle cx="28" cy="105" r="14" fill="#6a1b9a"/><text x="28" y="110" text-anchor="middle" fill="white" font-size="12" font-weight="800">②</text>
-                <text x="50" y="100" fill="#4a148c" font-size="13" font-weight="700">下のボタンをタップ</text>
-                <text x="50" y="118" fill="#555" font-size="11">「🤖 AIシフト表作成ベース.xlsx を選ぶ」をタップ</text>
-                <line x1="230" y1="134" x2="230" y2="148" stroke="#6a1b9a" stroke-width="2.5"/><polygon points="230,154 224,144 236,144" fill="#6a1b9a"/>
-                <rect x="4" y="156" width="452" height="50" rx="9" fill="#f3e5f5" stroke="#ce93d8" stroke-width="1.5"/>
-                <circle cx="28" cy="181" r="14" fill="#6a1b9a"/><text x="28" y="186" text-anchor="middle" fill="white" font-size="12" font-weight="800">③</text>
-                <text x="50" y="176" fill="#4a148c" font-size="13" font-weight="700">ファイルを選択</text>
-                <text x="50" y="194" fill="#555" font-size="11">デスクトップ → AIシフト表作成ベース.xlsx → 開く</text>
-                <line x1="230" y1="210" x2="230" y2="224" stroke="#6a1b9a" stroke-width="2.5"/><polygon points="230,230 224,220 236,220" fill="#6a1b9a"/>
-                <rect x="4" y="232" width="452" height="50" rx="9" fill="#ede7f6" stroke="#b39ddb" stroke-width="1.5"/>
-                <circle cx="28" cy="257" r="14" fill="#6a1b9a"/><text x="28" y="262" text-anchor="middle" fill="white" font-size="12" font-weight="800">④</text>
-                <text x="50" y="252" fill="#4a148c" font-size="13" font-weight="700">自動処理（ホーム照合・割り当て）</text>
-                <text x="50" y="270" fill="#555" font-size="11">スタッフとホームを自動照合 → 希望○の日に割り当て</text>
-                <line x1="230" y1="286" x2="230" y2="300" stroke="#6a1b9a" stroke-width="2.5"/><polygon points="230,306 224,296 236,296" fill="#6a1b9a"/>
-                <rect x="4" y="308" width="452" height="46" rx="9" fill="#6a1b9a"/>
-                <text x="22" y="328" fill="white" font-size="14" font-weight="800">✅ 自動でダウンロード → 印刷</text>
-                <text x="22" y="346" fill="rgba(255,255,255,.85)" font-size="11">AIシフト表_日付_完成.xlsx が保存されます</text>
-              </svg>
-            </div>
-          </div>
-          <div style="background:#f3e5f5;border-radius:9px;padding:9px 13px;margin-bottom:12px;font-size:12px;color:#6a1b9a;line-height:1.8">
-            ○ = 担当（希望○のときに自動割り当て）　空白 = 対象外
-          </div>
-          <div id="aiShiftCheck" style="display:none;background:#ffebee;border-radius:10px;padding:12px;margin-bottom:12px">
-            <p style="font-size:13px;color:#c62828;font-weight:700">⚠️ 先に「集計する」で全員分を読み込んでください</p>
-          </div>
-          <button class="btn btn-gr" style="background:#6a1b9a;font-size:15px" onclick="checkAndAiShift()">
-            🤖 AIシフト表作成ベース.xlsx を選ぶ
-          </button>
-          <input type="file" id="aiShiftBaseInput" accept=".xlsx" style="display:none" onchange="writeToAIShiftTable(this)">
-          <button class="btn" style="background:#fff;color:#6a1b9a;border:2px solid #ce93d8;font-size:14px;padding:13px;margin-top:8px" onclick="document.getElementById('updateDatesInput').click()">
-            📅 来月用テンプレートを作成（日付更新）
-          </button>
-          <input type="file" id="updateDatesInput" accept=".xlsx" style="display:none" onchange="updateAiShiftDates(this)">
-          <div id="aiShiftStatus" style="margin-top:10px;font-size:12px;color:var(--sub);line-height:1.6"></div>
-        </div>
-      </div>
-
     </div>
 
   </div>
@@ -1450,7 +1378,9 @@ function parseAll(){
   const blocks=raw.split(/\n\s*\n+/).map(x=>x.trim()).filter(Boolean);
   const byName={};
   blocks.forEach(b=>{
-    const name=extractName(b);
+    const rawName=extractName(b);
+    // 名前のスペース（全角・半角・複数）を半角スペース1つに正規化して重複防止
+    const name = rawName.replace(/[\s\u3000]+/g," ").trim();
     const marks=extractMarks(b,s.getFullYear());
     const nonComment=Object.fromEntries(Object.entries(marks).filter(([k])=>!k.endsWith('__comment')));
     if(Object.keys(nonComment).length>0){
@@ -1526,7 +1456,13 @@ function renderAgg(byName,s,e){
   });
   thead.appendChild(trh);tbl.appendChild(thead);
   const tbody=document.createElement("tbody");
-  const names=Object.keys(byName);
+  const names=Object.keys(byName).filter(nm=>{
+    // 1回でも○×△を入力した人のみ表示
+    return dates.some(d=>{
+      const v=byName[nm][fmt(d)]||"";
+      return v==="○"||v==="×"||v==="△";
+    });
+  });
   names.forEach(nm=>{
     const tr=document.createElement("tr");
     const td0=document.createElement("td");td0.textContent=nm;tr.appendChild(td0);
