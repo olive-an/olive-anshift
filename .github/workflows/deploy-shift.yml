@@ -1,0 +1,35 @@
+name: Deploy shift form to Netlify (olive-anshift)
+
+# main へ push すると、シフト希望フォームを公開サイトへ自動デプロイします。
+# 公開先: https://olive-anshift.netlify.app/
+# 認証: リポジトリSecret NETLIFY_AUTH_TOKEN（設定済み）
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "index.html"
+      - ".github/workflows/deploy-shift.yml"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Netlify（olive-anshift）へ公開
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::NETLIFY_AUTH_TOKEN が未設定です。"
+            exit 1
+          fi
+          npx -y netlify-cli@17 deploy \
+            --prod \
+            --dir=. \
+            --site=766f0953-70c9-44e5-b30b-9c936f23cbbf \
+            --message "auto-deploy ${{ github.sha }}"
