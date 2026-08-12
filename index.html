@@ -1913,10 +1913,8 @@ async function writeToShuukei(input){
           ws[addr]={t:"s",v:""};
           if(refCell&&refCell.s) ws[addr].s=refCell.s;
         }
-        // 既存スタイルを維持したまま値だけ更新
-        const existS = ws[addr] ? ws[addr].s : undefined;
+        // 既存スタイルを維持したまま値だけ更新（書式は一切変えない）
         ws[addr].t="s"; ws[addr].v=mark; ws[addr].w=mark;
-        if(existS) ws[addr].s = existS;
         if(mark) written++;
         // コメントを収集
         const cmt = agg.byName[csvName][fmtKey+"__comment"];
@@ -1930,72 +1928,31 @@ async function writeToShuukei(input){
         ws[cmtAddr]={t:"s",v:cmtText,w:cmtText};
         if(refCell&&refCell.s) ws[cmtAddr].s=refCell.s;
       }
+
+      // AH列（33列目）に氏名、AI列（34列目）にコメントを書き込む
+      const ahCol = 33; // AH列（0ベース）
+      const aiCol = 34; // AI列（0ベース）
+      const refCellA = ws[XLSX.utils.encode_cell({r:targetRow, c:0})];
+      // AH列：A列の氏名をそのまま反映
+      const nameCell = ws[XLSX.utils.encode_cell({r:targetRow, c:0})];
+      const ahAddr = XLSX.utils.encode_cell({r:targetRow, c:ahCol});
+      if(nameCell){
+        ws[ahAddr]={t:"s", v:nameCell.v||"", w:nameCell.w||""};
+        if(refCellA&&refCellA.s) ws[ahAddr].s=refCellA.s;
+      }
+      // AI列：コメントを書き込む
+      const aiAddr = XLSX.utils.encode_cell({r:targetRow, c:aiCol});
+      const cmtText2 = commentParts.join(" ／ ");
+      ws[aiAddr]={t:"s", v:cmtText2, w:cmtText2};
+      if(refCellA&&refCellA.s) ws[aiAddr].s=refCellA.s;
     });
 
-    // ── 出勤可能回数（○の日数）を集計してAM相当列に書き込む ──
-    // 「出勤可能」「回数」を含む列ヘッダーを探す
-    let countColIdx = -1;
-    for(let c=0; c<200; c++){
-      const a = XLSX.utils.encode_cell({r: hdrRowIdx, c});
-      const v = ws[a]&&ws[a].v;
-      if(v && String(v).includes("回数")){ countColIdx=c; break; }
-      if(v && String(v).includes("出勤可能")){ countColIdx=c; }
-    }
-    // 見つからなければ日付列の次の次（備考の次）に追加
-    if(countColIdx < 0) countColIdx = cmtColIdx + 1;
-
-    // ヘッダーに書き込む
-    const countHdrAddr = XLSX.utils.encode_cell({r: hdrRowIdx, c: countColIdx});
-    if(!ws[countHdrAddr]) ws[countHdrAddr]={};
-    ws[countHdrAddr].t="s"; ws[countHdrAddr].v="出勤可能回数"; ws[countHdrAddr].w="出勤可能回数";
-
-    // 各スタッフ行に○の日数をカウント
-    Object.keys(nameRowMap).forEach(cleanName=>{
-      const ri = nameRowMap[cleanName];
-      // 〇（まるかな/まるかん）の数をカウント
-      let cnt = 0;
-      Object.entries(dateColMap).forEach(([md, ci])=>{
-        const a = XLSX.utils.encode_cell({r:ri, c:ci});
-        const v = ws[a]&&ws[a].v;
-        if(v==="○") cnt++;
-      });
-      const a = XLSX.utils.encode_cell({r:ri, c:countColIdx});
-      const refCell = ws[XLSX.utils.encode_cell({r:ri, c:0})];
-      if(!ws[a]) ws[a]={};
-      ws[a].t="n"; ws[a].v=cnt; ws[a].w=String(cnt);
-      if(refCell&&refCell.s) ws[a].s=refCell.s;
-    });
-
-    // シート範囲を回数列まで拡張
+    // シート範囲を更新
     ws["!ref"] = XLSX.utils.encode_range({
       s:{r:0,c:0},
-      e:{r:data.length-1, c:Math.max(cmtColIdx, countColIdx)}
+      e:{r:data.length-1, c:cmtColIdx}
     });
 
-    // ── 罫線・書式を整備（ベーススタイルを維持・thin罫線を確実に付与）──
-    const thinB = {style:'thin',color:{auto:1}};
-    const mkBorder = ()=>({top:thinB,bottom:thinB,left:thinB,right:thinB});
-
-    // 全セルに罫線を確実に付与（既存スタイルを上書きせず罫線だけ追加）
-    const maxC = Math.max(cmtColIdx, countColIdx>=0?countColIdx:0);
-    for(let r=hdrRowIdx; r<data.length; r++){
-      for(let c=0; c<=maxC; c++){
-        const a=XLSX.utils.encode_cell({r,c});
-        if(!ws[a]) ws[a]={t:'s',v:''};
-        // 既存スタイルを取得（なければベーステンプレートから）
-        let s = ws[a].s ? JSON.parse(JSON.stringify(ws[a].s)) : (getBaseStyle(r,c)||{});
-        // 罫線を確実に付与
-        s.border = mkBorder();
-        // フォントサイズを維持（未設定なら12pt）
-        if(!s.font) s.font = {name:'BIZ UDゴシック', sz:12};
-        else if(!s.font.sz) s.font.sz = 12;
-        // 配置
-        if(!s.alignment) s.alignment = {};
-        s.alignment.horizontal = (c===0&&r!==hdrRowIdx)?'left':'center';
-        s.alignment.vertical = 'center';
-        ws[a].s = s;
-      }
-    }
 
     // ── ログシートを追加 ──
     const logSheetName = "ログ";
