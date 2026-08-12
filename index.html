@@ -1763,35 +1763,10 @@ async function writeToShuukei(input){
     await yieldUI();
     const wb  = XLSX.read(buf, {type:"array", cellDates:false, cellStyles:true});
 
-    // テンプレートシートを探す（「シフト集計」「集計」「Sheet1」の順）
-    const tmplName = wb.SheetNames.find(n=>n.includes("シフト")||n.includes("集計")) || wb.SheetNames[0];
-    const tmpl = wb.Sheets[tmplName];
-
-    // 新シート名：「2026年7月」形式（集計開始月を使用）
+    // 既存シートをそのまま使用（書式を一切変えない）
     const d0 = agg.dates[0];
-    const newSheetName = `${d0.getFullYear()}年${d0.getMonth()+1}月`;
-
-    // 既存シートがあれば上書き確認
-    if(wb.SheetNames.includes(newSheetName)){
-      if(!confirm(`「${newSheetName}」シートが既に存在します。上書きしますか？`)) return;
-      delete wb.Sheets[newSheetName];
-      wb.SheetNames.splice(wb.SheetNames.indexOf(newSheetName), 1);
-    }
-
-    // ── テンプレートを完全ディープコピーして新シート作成 ──
-    const ws = {};
-    for(const key of Object.keys(tmpl)){
-      if(key.startsWith("!")){
-        ws[key] = JSON.parse(JSON.stringify(tmpl[key]));
-      } else {
-        // セルのスタイル(s)を含めて完全コピー
-        const cell = tmpl[key];
-        ws[key] = Object.assign({}, cell);
-        if(cell.s) ws[key].s = JSON.parse(JSON.stringify(cell.s));
-      }
-    }
-    wb.SheetNames.push(newSheetName);
-    wb.Sheets[newSheetName] = ws;
+    const wsName = wb.SheetNames[0]; // Sheet1をそのまま使う
+    const ws = wb.Sheets[wsName];
     const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
     if(!data||data.length===0) throw new Error("シートが空です");
 
