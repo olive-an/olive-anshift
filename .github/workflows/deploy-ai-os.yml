@@ -1,0 +1,32 @@
+name: Deploy AI-OS to Netlify (fallback)
+
+# 予備のデプロイ経路：Netlify の Git 連携が不調なときに手動実行で
+# olive-an/olive-ai-os (main) を https://olive-ai-os.netlify.app へ公開します。
+# 認証: リポジトリSecret NETLIFY_AUTH_TOKEN（設定済み・deploy-shift.yml と共用）
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: AI-OSリポジトリを取得（olive-an/olive-ai-os main）
+        uses: actions/checkout@v4
+        with:
+          repository: olive-an/olive-ai-os
+          ref: main
+
+      - name: Netlify（olive-ai-os）へ公開
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::NETLIFY_AUTH_TOKEN が未設定です。"
+            exit 1
+          fi
+          npx -y netlify-cli@17 deploy \
+            --prod \
+            --dir=. \
+            --site=c2898a43-3ef3-4a13-bf9f-812ec9da380e \
+            --message "fallback deploy ${{ github.run_id }}"
