@@ -471,11 +471,20 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
         </div>
 
         <!-- STEP2 -->
-        <div style="display:flex;align-items:stretch;gap:10px">
+        <div style="display:flex;align-items:stretch;gap:10px;margin-bottom:10px">
           <div style="background:#1b5e20;color:#fff;border-radius:10px;width:32px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">②</div>
           <button class="btn btn-gr" onclick="showAdminSection('xlsxSection')" style="background:#1b5e20;margin-bottom:0;flex:1;text-align:left;padding:13px 15px">
             <div style="font-size:16px;font-weight:700">📂 Excelに転記する</div>
             <div style="font-size:11px;opacity:.85;margin-top:3px;font-weight:400">①の後に実行 ／ ファイルを選んで自動書き込み</div>
+          </button>
+        </div>
+
+        <!-- 総務タスク -->
+        <div style="display:flex;align-items:stretch;gap:10px">
+          <div style="background:#e65100;color:#fff;border-radius:10px;width:32px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800">🤖</div>
+          <button class="btn btn-gr" onclick="showAdminSection('soumuSection')" style="background:#e65100;margin-bottom:0;flex:1;text-align:left;padding:13px 15px">
+            <div style="font-size:16px;font-weight:700">🗂 総務タスク自動化</div>
+            <div style="font-size:11px;opacity:.85;margin-top:3px;font-weight:400">新人受け入れ・備品管理などの総務業務をテンプレートで自動生成</div>
           </button>
         </div>
 
@@ -629,6 +638,67 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:14px;border-top
       </div>
 
       <!-- カード③：AIシフト表への自動割り当て -->
+    </div>
+
+    <!-- ===== 総務タスク自動化セクション ===== -->
+    <div class="hidden" id="soumuSection">
+
+      <!-- ヘッダー -->
+      <div style="background:#e65100;border-radius:10px;padding:13px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <div style="background:rgba(255,255,255,.2);color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">🤖</div>
+        <div>
+          <div style="color:#fff;font-size:15px;font-weight:700">総務タスク自動化ダッシュボード</div>
+          <div style="color:rgba(255,255,255,.85);font-size:11px;margin-top:2px">シフト以外の総務業務をテンプレートで自動生成・管理</div>
+        </div>
+      </div>
+
+      <!-- サマリー -->
+      <div class="card">
+        <div class="card-b" style="padding:14px">
+          <div class="counter">
+            <div class="cnt"><span class="cn" id="soumu-cnt-open" style="color:var(--s)">0</span><span class="cl">未完了</span></div>
+            <div class="cnt"><span class="cn" id="soumu-cnt-overdue" style="color:var(--b)">0</span><span class="cl">期限超過</span></div>
+            <div class="cnt"><span class="cn" id="soumu-cnt-done" style="color:var(--m)">0</span><span class="cl">完了</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- テンプレートから自動生成 -->
+      <div class="card">
+        <div class="card-h"><span class="card-hn">✨</span>
+          <div><div class="card-hl">テンプレートから自動生成</div><div class="card-hs">タップするとチェックリストが一括で追加されます</div></div>
+        </div>
+        <div class="card-b" id="soumuTemplateWrap"></div>
+      </div>
+
+      <!-- 手動でタスクを追加 -->
+      <div class="card">
+        <div class="card-h"><span class="card-hn">✏️</span>
+          <div><div class="card-hl">タスクを追加</div><div class="card-hs">カテゴリ・期限を選んで追加できます</div></div>
+        </div>
+        <div class="card-b">
+          <div class="field">
+            <label class="lbl" style="font-size:14px;margin-bottom:6px">内容</label>
+            <input class="inp" type="text" id="soumuNewTitle" placeholder="例：会議室の予約確認" style="font-size:15px;padding:12px 14px">
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <select id="soumuNewCat" class="inp" style="font-size:14px;padding:12px 10px;flex:1"></select>
+            <input class="inp" type="date" id="soumuNewDue" style="font-size:14px;padding:12px 10px;flex:1">
+          </div>
+          <button class="btn btn-gr" style="background:#e65100" onclick="addSoumuTaskManual()">＋ タスクを追加</button>
+        </div>
+      </div>
+
+      <!-- タスク一覧 -->
+      <div class="card">
+        <div class="card-h"><span class="card-hn">📋</span>
+          <div><div class="card-hl">タスク一覧</div><div class="card-hs">タップで完了・未完了を切り替え</div></div>
+        </div>
+        <div class="card-b">
+          <div id="soumuTaskList"></div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -1105,15 +1175,15 @@ function pwCheck(){
 }
 
 function showSequential(){
-  ["adminMenu","xlsxSection","staffSection"].forEach(id=>{
+  ["adminMenu","xlsxSection","staffSection","soumuSection"].forEach(id=>{
     document.getElementById(id).classList.add("hidden");
   });
-  document.getElementById("backBtn").classList.add("hidden");
+  document.getElementById("backBtn").classList.remove("hidden");
   document.getElementById("aggSection").classList.remove("hidden");
 }
 
 function showAdminSection(id){
-  ["aggSection","xlsxSection","staffSection"].forEach(s=>{
+  ["aggSection","xlsxSection","staffSection","soumuSection"].forEach(s=>{
     document.getElementById(s).classList.add("hidden");
   });
   const backBtn = document.getElementById("backBtn");
@@ -1122,6 +1192,7 @@ function showAdminSection(id){
     document.getElementById("adminMenu").classList.add("hidden");
     backBtn.classList.remove("hidden");
     if(id==="staffSection") renderStaffSection();
+    if(id==="soumuSection") renderSoumuSection();
   } else {
     document.getElementById("adminMenu").classList.remove("hidden");
     backBtn.classList.add("hidden");
@@ -2408,6 +2479,180 @@ async function importStaffFromExcel(input){
     status.style.color="#c62828";
     toast("インポートエラー","err");
   }
+}
+
+/* ===== 総務タスク自動化ダッシュボード ===== */
+const SOUMU_KEY = "oriveAn_soumuTasks";
+const SOUMU_CATS = {
+  onboarding: {label:"新人受け入れ", icon:"🆕", color:"#1565c0", bg:"#e3f2fd"},
+  supplies:   {label:"備品管理",     icon:"📦", color:"#6a1b9a", bg:"#f3e5f5"},
+  comms:      {label:"社内連絡",     icon:"📢", color:"#2e7d32", bg:"#e8f5e9"},
+  other:      {label:"その他",       icon:"📋", color:"#616161", bg:"#f5f5f5"}
+};
+const SOUMU_TEMPLATES = {
+  onboarding: {
+    label:"新人受け入れチェックリスト", icon:"🆕", cat:"onboarding",
+    tasks:[
+      {title:"雇用契約書・誓約書の準備", days:3},
+      {title:"シフト希望フォームへのスタッフ登録", days:1},
+      {title:"AIシフト表「ホーム対象表」に担当ホームを追加", days:1},
+      {title:"名札・制服・ロッカーの準備", days:5},
+      {title:"初日オリエンテーション実施", days:7}
+    ]
+  },
+  supplies: {
+    label:"備品管理チェックリスト", icon:"📦", cat:"supplies",
+    tasks:[
+      {title:"消耗品の在庫確認", days:2},
+      {title:"発注リストの作成", days:3},
+      {title:"納品物の検収", days:10}
+    ]
+  },
+  comms: {
+    label:"社内連絡チェックリスト", icon:"📢", cat:"comms",
+    tasks:[
+      {title:"月次シフト確定のお知らせ配信", days:1},
+      {title:"会議議事録の共有", days:2},
+      {title:"規則・マニュアル改定の周知", days:3}
+    ]
+  }
+};
+
+let _soumuTasks = null;
+function loadSoumuTasks(){
+  if(_soumuTasks) return _soumuTasks;
+  const saved = localStorage.getItem(SOUMU_KEY);
+  if(saved){ try{ _soumuTasks=JSON.parse(saved); return _soumuTasks; }catch(e){} }
+  _soumuTasks = [];
+  return _soumuTasks;
+}
+function saveSoumuTasks(){
+  localStorage.setItem(SOUMU_KEY, JSON.stringify(_soumuTasks));
+}
+function soumuToday(){
+  const t=new Date(); t.setHours(0,0,0,0); return t;
+}
+
+function renderSoumuSection(){
+  const tasks = loadSoumuTasks();
+
+  // テンプレートボタン
+  const tplWrap = document.getElementById("soumuTemplateWrap");
+  tplWrap.innerHTML = Object.entries(SOUMU_TEMPLATES).map(([key,tpl])=>{
+    const c = SOUMU_CATS[tpl.cat];
+    return `<button class="btn" style="background:${c.bg};color:${c.color};border:2px solid ${c.color};font-size:14px;padding:13px;text-align:left" onclick="addSoumuTasksFromTemplate('${key}')">
+      <div style="font-weight:700">${tpl.icon} ${tpl.label}</div>
+      <div style="font-size:11px;opacity:.8;margin-top:3px;font-weight:400">${tpl.tasks.length}件のタスクを自動追加</div>
+    </button>`;
+  }).join("");
+
+  // カテゴリ選択肢
+  const catSel = document.getElementById("soumuNewCat");
+  if(catSel.options.length===0){
+    catSel.innerHTML = Object.entries(SOUMU_CATS).map(([key,c])=>`<option value="${key}">${c.icon} ${c.label}</option>`).join("");
+  }
+
+  // サマリー
+  const today = soumuToday();
+  let open=0, overdue=0, done=0;
+  tasks.forEach(t=>{
+    if(t.done){ done++; return; }
+    open++;
+    if(t.due && parseYMD(t.due) < today) overdue++;
+  });
+  document.getElementById("soumu-cnt-open").textContent = open;
+  document.getElementById("soumu-cnt-overdue").textContent = overdue;
+  document.getElementById("soumu-cnt-done").textContent = done;
+
+  // 一覧（未完了：期限昇順→期限なし／完了：末尾）
+  const list = document.getElementById("soumuTaskList");
+  if(tasks.length===0){
+    list.innerHTML = '<div style="text-align:center;padding:24px 16px;color:var(--sub);font-size:13px;line-height:1.8">タスクがありません<br>テンプレートまたは手動で追加してください</div>';
+    return;
+  }
+  const sorted = [...tasks].sort((a,b)=>{
+    if(a.done!==b.done) return a.done?1:-1;
+    if(!a.due&&!b.due) return 0;
+    if(!a.due) return 1;
+    if(!b.due) return -1;
+    return a.due.localeCompare(b.due);
+  });
+  list.innerHTML = sorted.map(t=>{
+    const c = SOUMU_CATS[t.cat] || SOUMU_CATS.other;
+    const isOverdue = !t.done && t.due && parseYMD(t.due) < today;
+    const dueLabel = t.due ? `${parseYMD(t.due).getMonth()+1}/${parseYMD(t.due).getDate()}${isOverdue?"（期限超過）":""}` : "期限なし";
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--bdr)">
+      <div onclick="toggleSoumuTask('${t.id}')" style="width:26px;height:26px;border-radius:7px;border:2px solid ${t.done?'var(--m-bd)':'var(--bdr)'};background:${t.done?'var(--m-bg)':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;font-size:15px;color:var(--m)">${t.done?"✓":""}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;${t.done?'text-decoration:line-through;color:var(--sub)':''}">${escapeHtml(t.title)}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;color:${c.color};background:${c.bg};border-radius:100px;padding:2px 9px">${c.icon} ${c.label}</span>
+          <span style="font-size:11px;color:${isOverdue?'var(--b)':'var(--sub)'};font-weight:${isOverdue?"700":"400"}">📅 ${dueLabel}</span>
+        </div>
+      </div>
+      <button onclick="deleteSoumuTask('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:17px;color:#e0e0e0;padding:4px;flex-shrink:0" onmouseenter="this.style.color='#c62828'" onmouseleave="this.style.color='#e0e0e0'">🗑</button>
+    </div>`;
+  }).join("");
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function addSoumuTasksFromTemplate(key){
+  const tpl = SOUMU_TEMPLATES[key];
+  if(!tpl) return;
+  const tasks = loadSoumuTasks();
+  const today = soumuToday();
+  tpl.tasks.forEach(t=>{
+    tasks.push({
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+      title: t.title,
+      cat: tpl.cat,
+      due: fmt(addDays(today, t.days)),
+      done: false
+    });
+  });
+  saveSoumuTasks();
+  renderSoumuSection();
+  toast(`「${tpl.label}」を追加しました（${tpl.tasks.length}件）`,"ok");
+}
+
+function addSoumuTaskManual(){
+  const titleInp = document.getElementById("soumuNewTitle");
+  const title = titleInp.value.trim();
+  if(!title){ toast("内容を入力してください","err"); return; }
+  const cat = document.getElementById("soumuNewCat").value;
+  const due = document.getElementById("soumuNewDue").value;
+  const tasks = loadSoumuTasks();
+  tasks.push({
+    id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+    title, cat, due: due||null, done:false
+  });
+  saveSoumuTasks();
+  titleInp.value=""; document.getElementById("soumuNewDue").value="";
+  renderSoumuSection();
+  toast("タスクを追加しました","ok");
+}
+
+function toggleSoumuTask(id){
+  const tasks = loadSoumuTasks();
+  const t = tasks.find(x=>x.id===id);
+  if(!t) return;
+  t.done = !t.done;
+  saveSoumuTasks();
+  renderSoumuSection();
+}
+
+function deleteSoumuTask(id){
+  const tasks = loadSoumuTasks();
+  const idx = tasks.findIndex(x=>x.id===id);
+  if(idx===-1) return;
+  if(!confirm("このタスクを削除しますか？")) return;
+  tasks.splice(idx,1);
+  saveSoumuTasks();
+  renderSoumuSection();
+  toast("削除しました","ok");
 }
 
 window.addEventListener("load",function(){try{init();}catch(e){console.error(e);}});
