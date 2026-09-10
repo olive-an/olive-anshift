@@ -293,6 +293,36 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
     </div>
   </div>
 
+  <!-- ===== 送信した内容の控え（本人用・端末に保存） ===== -->
+  <div class="card" id="keepCard" style="display:none">
+    <div class="card-h">
+      <span class="card-hn">🗂</span>
+      <div>
+        <div class="card-hl">前に送信した内容の控え</div>
+        <div class="card-hs" id="keepMeta">—</div>
+      </div>
+    </div>
+    <div class="card-b">
+      <select class="inp" id="keepSelect" onchange="renderKeep()"
+        style="display:none;margin-bottom:10px;font-size:14px"></select>
+      <div class="preview" id="keepText" style="max-height:220px;margin-bottom:12px">—</div>
+      <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
+        📤 自分に送る・保存する
+      </button>
+      <div class="btn-sm">
+        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepCopy()">📋 コピー</button>
+        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepMail()">✉ メールで送る</button>
+      </div>
+      <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepDownload()">
+        ⬇ ファイルで保存（テキスト）
+      </button>
+      <p style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px">
+        送信したときに、この端末のブラウザへ自動で保存された控えです（最新5回分）。<br>
+        ブラウザのデータを消すと控えも消えます。確実に残したいときは、コピーかメール、ファイル保存で手元に残してください。
+      </p>
+    </div>
+  </div>
+
   <!-- STEP1 -->
   <div class="card">
     <div class="card-h">
@@ -353,9 +383,11 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         <div class="cnt"><span class="cn" id="cnt-u" style="color:var(--sub)">0</span><span class="cl">未入力</span></div>
       </div>
       <div class="btn-sm" style="margin-top:12px">
-        <button class="btn btn-ol" onclick="allMaru()">○ 全日 出勤可にする</button>
-        <button class="btn btn-cl" onclick="clearAll()">🗑 クリア</button>
+        <button class="btn btn-ol" onclick="allMaru()">○ 全日 出勤可</button>
+        <button class="btn btn-ol" onclick="allBatsu()"
+          style="color:var(--b);border-color:var(--b-bd)">× 全日 不可</button>
       </div>
+      <button class="btn btn-cl" onclick="clearAll()">🗑 クリア</button>
       <button class="btn btn-ol" onclick="openCommentModal(null)" style="margin-top:8px;font-size:13px;padding:11px">
         💬 日付を選んでコメントを追加
       </button>
@@ -388,7 +420,9 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         <p style="font-size:13px;color:var(--sub);margin-top:6px">ご提出ありがとうございました🌿</p>
         <!-- 送信履歴コピーボタン -->
         <div style="margin-top:16px;border-top:1px solid #a5d6a7;padding-top:16px">
-          <p style="font-size:12px;color:var(--sub);margin-bottom:10px">📋 個人保管用</p>
+          <p style="font-size:12px;color:var(--sub);margin-bottom:10px">
+            📋 個人保管用（あとで「前に送信した内容の控え」からも確認できます）
+          </p>
           <button onclick="copySentHistory()" style="
             display:inline-flex;align-items:center;gap:6px;
             padding:11px 20px;border-radius:100px;
@@ -398,6 +432,13 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
             cursor:pointer;font-family:inherit;
             -webkit-tap-highlight-color:transparent;
           ">📋 送信内容をコピー</button>
+          <button class="btn btn-gr" style="margin-top:12px;font-size:15px;padding:14px" onclick="keepShare()">
+            📤 自分に送る・保存する
+          </button>
+          <div class="btn-sm">
+            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepMail()">✉ メールで送る</button>
+            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepDownload()">⬇ ファイル保存</button>
+          </div>
           <div id="copyHistoryMsg" style="font-size:12px;color:var(--gr);margin-top:8px;display:none">
             ✅ コピーしました！メモ帳などに貼り付けて保管できます
           </div>
@@ -708,6 +749,7 @@ function init(){
   document.getElementById("aDateEnd").value=fmt(e);
   rangeStart=s;rangeEnd=e;
   buildCal();refreshPreview();
+  renderKeepCard(); // 前に送信した控えがあれば表示
   // ※ 期間の反映はapplyAdminPeriod()ボタンで行う
   document.getElementById("empName").addEventListener("input",e=>{
     refreshPreview();if(e.target.value)markStep(1);
@@ -779,6 +821,11 @@ function allMaru(){
   const total=daysBetween(rangeStart,rangeEnd)+1;
   for(let i=0;i<total;i++){const k=fmt(addDays(rangeStart,i));state[k]="○";applyState(k);}
   updateCount();refreshPreview();toast("全日を ○ にしました","ok");markStep(2);
+}
+function allBatsu(){
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  for(let i=0;i<total;i++){const k=fmt(addDays(rangeStart,i));state[k]="×";applyState(k);}
+  updateCount();refreshPreview();toast("全日を × にしました","ok");markStep(2);
 }
 function clearAll(){
   if(!confirm("入力をすべて消去しますか？"))return;
@@ -872,14 +919,132 @@ async function doSendConfirmed(){
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({name,period,text:txt})
       });
+      keepSave(name,period,txt);
       showSentDone(btn);
     }catch(e){
       toast("送信エラーが発生しました","err");
       if(btn){btn.disabled=false;btn.style.opacity="1";btn.textContent="📨　送　信";}
     }
   }else{
+    keepSave(name,period,txt);
     showSentDone(btn);
   }
+}
+
+/* ===== 送信した内容の控え（本人用・この端末のブラウザに保存） =====
+   送信のたびに控えを保存し、あとから確認・コピー・メール・ファイル保存ができます。 */
+const KEEP_KEY="oliveShiftKeep";
+const KEEP_MAX=5;
+
+function keepList(){
+  try{
+    const raw=localStorage.getItem(KEEP_KEY);
+    if(!raw)return[];
+    const v=JSON.parse(raw);
+    return Array.isArray(v)?v.filter(x=>x&&x.text):[];
+  }catch(e){return[]}
+}
+function keepSave(name,period,text){
+  try{
+    const list=keepList();
+    list.unshift({name:name||"",period:period||"",text:text||"",sentAt:new Date().toISOString()});
+    localStorage.setItem(KEEP_KEY,JSON.stringify(list.slice(0,KEEP_MAX)));
+  }catch(e){/* プライベートモードなど保存できない場合は何もしない */}
+  renderKeepCard();
+}
+function keepStamp(iso){
+  const d=new Date(iso);
+  if(isNaN(d.getTime()))return"";
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）${("0"+d.getHours()).slice(-2)}:${("0"+d.getMinutes()).slice(-2)} 送信`;
+}
+function renderKeepCard(){
+  const card=document.getElementById("keepCard");
+  const sel=document.getElementById("keepSelect");
+  if(!card||!sel)return;
+  const list=keepList();
+  if(list.length===0){card.style.display="none";return}
+  card.style.display="block";
+  sel.innerHTML=list.map((h,i)=>
+    `<option value="${i}">${keepStamp(h.sentAt)||"送信日時不明"}${h.period?"／"+h.period:""}</option>`
+  ).join("");
+  sel.style.display=list.length>1?"block":"none";
+  sel.value="0";
+  renderKeep();
+}
+function keepCurrent(){
+  const list=keepList();
+  if(list.length===0)return null;
+  const sel=document.getElementById("keepSelect");
+  const i=sel?Number(sel.value||0):0;
+  return list[i]||list[0];
+}
+function renderKeep(){
+  const h=keepCurrent();
+  const meta=document.getElementById("keepMeta");
+  const box=document.getElementById("keepText");
+  if(!h||!box)return;
+  if(meta)meta.textContent=`${keepStamp(h.sentAt)}${h.name?"／"+h.name:""}`;
+  box.textContent=h.text;
+}
+function keepFileName(h){
+  const nm=(h.name||"控え").replace(/[\\/:*?"<>|]/g,"");
+  const pd=(h.period||"").replace(/[\\/:*?"<>|]/g,"-");
+  return `シフト希望_${nm}_${pd}.txt`;
+}
+function keepCopy(){
+  const h=keepCurrent();
+  if(!h){toast("控えがありません","err");return}
+  const done=()=>toast("控えをコピーしました","ok");
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(h.text).then(done).catch(()=>{keepCopyFallback(h.text);done()});
+  }else{
+    keepCopyFallback(h.text);done();
+  }
+}
+function keepCopyFallback(text){
+  const ta=document.createElement("textarea");
+  ta.value=text;document.body.appendChild(ta);
+  ta.select();document.execCommand("copy");
+  document.body.removeChild(ta);
+}
+async function keepShare(){
+  const h=keepCurrent();
+  if(!h){toast("控えがありません","err");return}
+  const title=`シフト希望の控え${h.name?" "+h.name:""}${h.period?"（"+h.period+"）":""}`;
+  if(navigator.share){
+    try{
+      await navigator.share({title,text:h.text});
+      return;
+    }catch(e){
+      if(e&&e.name==="AbortError")return; // 本人がキャンセルした場合
+    }
+  }
+  keepMail(); // 共有に未対応の端末はメール作成に切り替え
+}
+function keepMail(){
+  const h=keepCurrent();
+  if(!h){toast("控えがありません","err");return}
+  const subject=`シフト希望の控え${h.name?" "+h.name:""}${h.period?"（"+h.period+"）":""}`;
+  const url="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(h.text);
+  // メールソフトによっては長い本文が途中で切れるため、その場合はコピーも同時に行う
+  if(url.length>1900){
+    keepCopyFallback(h.text);
+    toast("本文が長いため、控えのコピーも取りました","ok");
+  }
+  location.href=url;
+}
+function keepDownload(){
+  const h=keepCurrent();
+  if(!h){toast("控えがありません","err");return}
+  const blob=new Blob(["﻿"+h.text],{type:"text/plain;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=keepFileName(h);
+  a.style.display="none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  toast("ファイルに保存しました","ok");
 }
 
 function copySentHistory(){
@@ -1413,7 +1578,79 @@ async function copyTsv(){
 
 
 /* ===== Sheet1 XLSX転記 ===== */
-const SHEET1_STAFF = {"畠": 2, "竹政": 3, "黒田": 4, "向原": 5, "吉山": 6, "棟長": 7, "川浪": 8, "吉永": 9, "小林": 10, "金野": 11, "和田": 12, "神田": 13, "長井": 14, "堀口": 15, "広田": 16, "丸川": 17, "福田": 18, "山本": 19, "西尾": 20, "李": 21, "今井": 22, "蛭子": 23, "坂梨": 24, "廣田": 25, "スカイラ": 26, "野田": 27, "橋詰": 28, "中川": 29, "加藤": 30, "伊波": 31, "竹原": 32, "富山": 33, "鳥居": 34, "平良": 35, "中島": 36, "上念": 37, "吉岡": 38, "浅野": 40, "池本": 42, "高崎": 44};
+/* ===== 氏名の照合 =====
+   氏名と行番号をコードに書き込む方式はやめ、選んだExcelのA列をその場で読み取る。
+   名簿の並び替えや新入社員の追加に、コードを直さなくても追従する。 */
+
+// A列で氏名として扱わない見出し（ホーム名・区分）
+const SHEET1_LABELS = ["西九条","九条","酉島","春日出","新郡山","出来島","研修"];
+
+// 旧字体・異体字を新字体に寄せてから比較する
+// 例：廣田侑紀 → 広田、淺野 和子 → 浅野、髙崎 → 高崎
+const KANJI_VARIANTS = {
+  "廣":"広","淺":"浅","髙":"高","﨑":"崎","嵜":"崎","齋":"斎","齊":"斉",
+  "邊":"辺","邉":"辺","澤":"沢","瀧":"滝","嶋":"島","濱":"浜","濵":"浜",
+  "冨":"富","眞":"真","檜":"桧","栁":"柳","桒":"桑","國":"国","龍":"竜"
+};
+function normName(v){
+  return String(v==null?"":v)
+    .replace(/[\s　]/g,"")
+    .split("").map(ch=>KANJI_VARIANTS[ch]||ch).join("");
+}
+
+// シートのA列から「氏名→Excelの行番号」を作る
+function buildNameRowMap(rows){
+  const map={};
+  rows.forEach((row,ri)=>{
+    if(ri===0) return; // 1行目は日付ヘッダー
+    const raw=row&&row[0];
+    if(raw==null) return;
+    const name=String(raw).trim();
+    if(!name) return;
+    if(SHEET1_LABELS.indexOf(name)>=0) return;
+    if(/人数|合計|^計$/.test(name)) return;
+    const key=normName(name);
+    if(key && map[key]==null) map[key]=ri+1; // rowsは0始まり、Excelは1始まり
+  });
+  return map;
+}
+
+// 集計の氏名（フルネーム）を、A列の氏名（多くは姓のみ）に合わせる
+function matchNameRow(fullName,nameRowMap){
+  const full=normName(fullName);
+  if(!full) return null;
+  if(nameRowMap[full]!=null) return nameRowMap[full];            // ① 完全一致
+  const sei=normName(String(fullName).trim().split(/[\s　]/)[0]);
+  if(sei && nameRowMap[sei]!=null) return nameRowMap[sei];       // ② 姓が一致
+  // ③ 前方一致。誤照合を防ぐため、一致する中で最も長い氏名を採用する
+  let row=null,len=0;
+  Object.keys(nameRowMap).forEach(key=>{
+    if(key.length>len && full.indexOf(key)===0){row=nameRowMap[key];len=key.length;}
+  });
+  return row;
+}
+
+// ヘッダー行（16,17,…,15 の数字）から「日→列index」を作る
+function buildDayColMap(rows){
+  const hdr=rows[0]||[];
+  const map={};
+  hdr.forEach((cell,ci)=>{
+    if(ci<2) return; // A列＝氏名、B列＝0
+    const n=Number(String(cell==null?"":cell).replace(/[^\d]/g,""));
+    if(n>=1 && n<=31 && map[n]==null) map[n]=ci;
+  });
+  return map;
+}
+
+// Excelのシート名に使えない文字（: \ / ? * [ ]）を全角に置き換え、31文字以内に収める
+// これらを含むとファイルの書き出し自体が失敗する
+function safeSheetName(name){
+  return String(name)
+    .replace(/:/g,"：").replace(/\\/g,"￥").replace(/\//g,"／")
+    .replace(/\?/g,"？").replace(/\*/g,"＊")
+    .replace(/\[/g,"［").replace(/\]/g,"］")
+    .slice(0,31);
+}
 
 function dayToColIdx(day){
   // 月間シフト希望表：C列(index2)=16日, ..., R(17)=31日, S(18)=1日, ..., AG(32)=15日
@@ -1436,26 +1673,26 @@ async function writeToXlsx(input){
     const wsName = wb.SheetNames.find(n => n === "Sheet1") || wb.SheetNames[0];
     const ws = wb.Sheets[wsName];
 
+    // 選んだファイルのA列から氏名→行番号を読み取る
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    const nameRowMap = buildNameRowMap(rows);
+    if(Object.keys(nameRowMap).length === 0){
+      toast("A列に氏名が見つかりません。ファイルを確認してください","err");
+      return;
+    }
+    // 日付列もヘッダー行から読み取る（読み取れない場合は従来の固定計算に戻す）
+    const dayColMap = buildDayColMap(rows);
+    const colOf = day => (dayColMap[day] != null ? dayColMap[day] : dayToColIdx(day));
+
     let written = 0;
+    let matched = 0;
     const skipped = [];
 
     Object.keys(agg.byName).forEach(name => {
-      // フルネームから姓を抽出して照合
-      // 「中野　聖子」→「中野」、「中野聖子」→先頭2文字
-      const nameParts = name.replace(/\s/g,"　").split("　");
-      const lastName  = nameParts[0] || name.substring(0,2);
-      let rowIdx = null;
+      const rowIdx = matchNameRow(name, nameRowMap);
 
-      for(const [key, idx] of Object.entries(SHEET1_STAFF)){
-        if(lastName === key ||
-           lastName.startsWith(key) ||
-           key.startsWith(lastName)){
-          rowIdx = idx;
-          break;
-        }
-      }
-
-      if(rowIdx === null){ skipped.push(name); return; }
+      if(rowIdx == null){ skipped.push(name); return; }
+      matched++;
 
       const xlsxR = rowIdx - 1; // Excel行番号→XLSX 0始まりindex
 
@@ -1463,7 +1700,7 @@ async function writeToXlsx(input){
         const sym = agg.byName[name][fmt(d)] || "";
         if(!sym) return;
 
-        const colIdx = dayToColIdx(d.getDate());
+        const colIdx = colOf(d.getDate());
         const addr   = XLSX.utils.encode_cell({r: xlsxR, c: colIdx});
 
         if(!ws[addr]) ws[addr] = {t:"s", v:""};
@@ -1484,8 +1721,8 @@ async function writeToXlsx(input){
     a.click();
     URL.revokeObjectURL(url);
 
-    let msg = `✅ ${written}セル転記完了！`;
-    if(skipped.length > 0) msg += ` ⚠️ 未照合: ${skipped.join("、")}`;
+    let msg = `✅ ${matched}名・${written}セル転記完了！`;
+    if(skipped.length > 0) msg += ` ⚠️ 未照合${skipped.length}名: ${skipped.join("、")}`;
     toast(msg, "ok");
 
   } catch(e) {
@@ -1555,10 +1792,10 @@ async function aiWriteToShuukei(input){
     const csvToHN={};
     const skipped=[];
     csvNames.forEach(csvN=>{
-      const clean=csvN.replace(/[\s\u3000]/g,"");
+      const clean=normName(csvN); // 旧字体・異体字の違いを吸収して照合する
       let matched=null;
       for(const hName of Object.keys(_aiStaffHomeMap2)){
-        if(clean===hName.replace(/[\s\u3000]/g,"")){matched=hName;break;}
+        if(clean===normName(hName)){matched=hName;break;}
       }
       csvToHN[csvN]=matched;
       if(!matched) skipped.push(csvN);
@@ -1696,12 +1933,12 @@ async function writeToShuukei(input){
       if(ri===0) return;
       const name=row[0];
       if(!name||String(name).includes("人数")) return;
-      nameRowMap[String(name).trim().replace(/[\s\u3000]/g,"")]=ri;
+      nameRowMap[normName(name)]=ri;
     });
 
-    // フルネーム完全一致照合
+    // フルネーム完全一致照合（旧字体・異体字の違いは normName で吸収する）
     const findRow=(csvName)=>{
-      const clean=csvName.trim().replace(/[\s\u3000]/g,"");
+      const clean=normName(csvName);
       for(const [key,ri] of Object.entries(nameRowMap)){
         if(clean===key) return ri;
       }
@@ -1711,7 +1948,7 @@ async function writeToShuukei(input){
     // ===== 月シート名を決定 =====
     const d0=agg.dates[0];
     const d1=agg.dates[agg.dates.length-1];
-    const sheetName=`${d0.getMonth()+1}月（${d0.getMonth()+1}/${d0.getDate()}〜${d1.getMonth()+1}/${d1.getDate()}）`;
+    const sheetName=safeSheetName(`${d0.getMonth()+1}月（${d0.getMonth()+1}/${d0.getDate()}〜${d1.getMonth()+1}/${d1.getDate()}）`);
 
     // 既存の同名シートを削除
     if(wb.SheetNames.includes(sheetName)){
@@ -1769,8 +2006,14 @@ async function writeToShuukei(input){
       });
     });
 
-    // 出勤可能人数行を更新（最終行）
-    const lastRow=masterData.length;
+    // 出勤可能人数行を更新
+    // A列に「人数」を含む行を下から探す。見つからないときだけ従来どおり最終行に書く
+    // （最終行決め打ちだと、名簿の最終行にいる人の希望を人数で上書きしてしまう）
+    let lastRow=masterData.length;
+    for(let ri=masterData.length-1; ri>=1; ri--){
+      const a0=masterData[ri] && masterData[ri][0];
+      if(a0 && String(a0).includes("人数")){ lastRow=ri+1; break; }
+    }
     agg.dates.forEach(d=>{
       const md=`${d.getMonth()+1}/${d.getDate()}`;
       const colIdx=dateColMap[md];
@@ -1805,3 +2048,8 @@ async function writeToShuukei(input){
 
 
 
+
+window.addEventListener("load",function(){try{init();}catch(e){console.error(e);}});
+</script>
+</body>
+</html>
