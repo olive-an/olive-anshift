@@ -293,6 +293,36 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
     </div>
   </div>
 
+  <!-- ===== 送信した内容の控え（本人用・端末に保存） ===== -->
+  <div class="card" id="keepCard" style="display:none">
+    <div class="card-h">
+      <span class="card-hn">🗂</span>
+      <div>
+        <div class="card-hl">前に送信した内容の控え</div>
+        <div class="card-hs" id="keepMeta">—</div>
+      </div>
+    </div>
+    <div class="card-b">
+      <select class="inp" id="keepSelect" onchange="renderKeep()"
+        style="display:none;margin-bottom:10px;font-size:14px"></select>
+      <div class="preview" id="keepText" style="max-height:220px;margin-bottom:12px">—</div>
+      <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
+        📤 自分に送る・保存する
+      </button>
+      <div class="btn-sm">
+        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepCopy()">📋 コピー</button>
+        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepMail()">✉ メールで送る</button>
+      </div>
+      <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepDownload()">
+        ⬇ ファイルで保存（テキスト）
+      </button>
+      <p style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px">
+        送信したときに、この端末のブラウザへ自動で保存された控えです（最新5回分）。<br>
+        ブラウザのデータを消すと控えも消えます。確実に残したいときは、コピーかメール、ファイル保存で手元に残してください。
+      </p>
+    </div>
+  </div>
+
   <!-- STEP1 -->
   <div class="card">
     <div class="card-h">
@@ -388,7 +418,9 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         <p style="font-size:13px;color:var(--sub);margin-top:6px">ご提出ありがとうございました🌿</p>
         <!-- 送信履歴コピーボタン -->
         <div style="margin-top:16px;border-top:1px solid #a5d6a7;padding-top:16px">
-          <p style="font-size:12px;color:var(--sub);margin-bottom:10px">📋 個人保管用</p>
+          <p style="font-size:12px;color:var(--sub);margin-bottom:10px">
+            📋 個人保管用（あとで「前に送信した内容の控え」からも確認できます）
+          </p>
           <button onclick="copySentHistory()" style="
             display:inline-flex;align-items:center;gap:6px;
             padding:11px 20px;border-radius:100px;
@@ -398,6 +430,13 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
             cursor:pointer;font-family:inherit;
             -webkit-tap-highlight-color:transparent;
           ">📋 送信内容をコピー</button>
+          <button class="btn btn-gr" style="margin-top:12px;font-size:15px;padding:14px" onclick="keepShare()">
+            📤 自分に送る・保存する
+          </button>
+          <div class="btn-sm">
+            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepMail()">✉ メールで送る</button>
+            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepDownload()">⬇ ファイル保存</button>
+          </div>
           <div id="copyHistoryMsg" style="font-size:12px;color:var(--gr);margin-top:8px;display:none">
             ✅ コピーしました！メモ帳などに貼り付けて保管できます
           </div>
@@ -708,6 +747,7 @@ function init(){
   document.getElementById("aDateEnd").value=fmt(e);
   rangeStart=s;rangeEnd=e;
   buildCal();refreshPreview();
+  renderKeepCard(); // 前に送信した控えがあれば表示
   // ※ 期間の反映はapplyAdminPeriod()ボタンで行う
   document.getElementById("empName").addEventListener("input",e=>{
     refreshPreview();if(e.target.value)markStep(1);
@@ -872,14 +912,132 @@ async function doSendConfirmed(){
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({name,period,text:txt})
       });
+      keepSave(name,period,txt);
       showSentDone(btn);
     }catch(e){
       toast("送信エラーが発生しました","err");
       if(btn){btn.disabled=false;btn.style.opacity="1";btn.textContent="📨　送　信";}
     }
   }else{
+    keepSave(name,period,txt);
     showSentDone(btn);
   }
+}
+
+/* ===== 送信した内容の控え（本人用・この端末のブラウザに保存） =====
+   送信のたびに控えを保存し、あとから確認・コピー・メール・ファイル保存ができます。 */
+const KEEP_KEY="oliveShiftKeep";
+const KEEP_MAX=5;
+
+function keepList(){
+  try{
+    const raw=localStorage.getItem(KEEP_KEY);
+    if(!raw)return[];
+    const v=JSON.parse(raw);
+    return Array.isArray(v)?v.filter(x=>x&&x.text):[];
+  }catch(e){return[]}
+}
+function keepSave(name,period,text){
+  try{
+    const list=keepList();
+    list.unshift({name:name||"",period:period||"",text:text||"",sentAt:new Date().toISOString()});
+    localStorage.setItem(KEEP_KEY,JSON.stringify(list.slice(0,KEEP_MAX)));
+  }catch(e){/* プライベートモードなど保存できない場合は何もしない */}
+  renderKeepCard();
+}
+function keepStamp(iso){
+  const d=new Date(iso);
+  if(isNaN(d.getTime()))return"";
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）${("0"+d.getHours()).slice(-2)}:${("0"+d.getMinutes()).slice(-2)} 送信`;
+}
+function renderKeepCard(){
+  const card=document.getElementById("keepCard");
+  const sel=document.getElementById("keepSelect");
+  if(!card||!sel)return;
+  const list=keepList();
+  if(list.length===0){card.style.display="none";return}
+  card.style.display="block";
+  sel.innerHTML=list.map((h,i)=>
+    `<option value="${i}">${keepStamp(h.sentAt)||"送信日時不明"}${h.period?"／"+h.period:""}</option>`
+  ).join("");
+  sel.style.display=list.length>1?"block":"none";
+  sel.value="0";
+  renderKeep();
+}
+function keepCurrent(){
+  const list=keepList();
+  if(list.length===0)return null;
+  const sel=document.getElementById("keepSelect");
+  const i=sel?Number(sel.value||0):0;
+  return list[i]||list[0];
+}
+function renderKeep(){
+  const h=keepCurrent();
+  const meta=document.getElementById("keepMeta");
+  const box=document.getElementById("keepText");
+  if(!h||!box)return;
+  if(meta)meta.textContent=`${keepStamp(h.sentAt)}${h.name?"／"+h.name:""}`;
+  box.textContent=h.text;
+}
+function keepFileName(h){
+  const nm=(h.name||"控え").replace(/[\\/:*?"<>|]/g,"");
+  const pd=(h.period||"").replace(/[\\/:*?"<>|]/g,"-");
+  return `シフト希望_${nm}_${pd}.txt`;
+}
+function keepCopy(){
+  const h=keepCurrent();
+  if(!h){toast("控えがありません","err");return}
+  const done=()=>toast("控えをコピーしました","ok");
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(h.text).then(done).catch(()=>{keepCopyFallback(h.text);done()});
+  }else{
+    keepCopyFallback(h.text);done();
+  }
+}
+function keepCopyFallback(text){
+  const ta=document.createElement("textarea");
+  ta.value=text;document.body.appendChild(ta);
+  ta.select();document.execCommand("copy");
+  document.body.removeChild(ta);
+}
+async function keepShare(){
+  const h=keepCurrent();
+  if(!h){toast("控えがありません","err");return}
+  const title=`シフト希望の控え${h.name?" "+h.name:""}${h.period?"（"+h.period+"）":""}`;
+  if(navigator.share){
+    try{
+      await navigator.share({title,text:h.text});
+      return;
+    }catch(e){
+      if(e&&e.name==="AbortError")return; // 本人がキャンセルした場合
+    }
+  }
+  keepMail(); // 共有に未対応の端末はメール作成に切り替え
+}
+function keepMail(){
+  const h=keepCurrent();
+  if(!h){toast("控えがありません","err");return}
+  const subject=`シフト希望の控え${h.name?" "+h.name:""}${h.period?"（"+h.period+"）":""}`;
+  const url="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(h.text);
+  // メールソフトによっては長い本文が途中で切れるため、その場合はコピーも同時に行う
+  if(url.length>1900){
+    keepCopyFallback(h.text);
+    toast("本文が長いため、控えのコピーも取りました","ok");
+  }
+  location.href=url;
+}
+function keepDownload(){
+  const h=keepCurrent();
+  if(!h){toast("控えがありません","err");return}
+  const blob=new Blob(["﻿"+h.text],{type:"text/plain;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=keepFileName(h);
+  a.style.display="none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  toast("ファイルに保存しました","ok");
 }
 
 function copySentHistory(){
@@ -1805,3 +1963,8 @@ async function writeToShuukei(input){
 
 
 
+
+window.addEventListener("load",function(){try{init();}catch(e){console.error(e);}});
+</script>
+</body>
+</html>
