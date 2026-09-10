@@ -383,9 +383,11 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         <div class="cnt"><span class="cn" id="cnt-u" style="color:var(--sub)">0</span><span class="cl">未入力</span></div>
       </div>
       <div class="btn-sm" style="margin-top:12px">
-        <button class="btn btn-ol" onclick="allMaru()">○ 全日 出勤可にする</button>
-        <button class="btn btn-cl" onclick="clearAll()">🗑 クリア</button>
+        <button class="btn btn-ol" onclick="allMaru()">○ 全日 出勤可</button>
+        <button class="btn btn-ol" onclick="allBatsu()"
+          style="color:var(--b);border-color:var(--b-bd)">× 全日 不可</button>
       </div>
+      <button class="btn btn-cl" onclick="clearAll()">🗑 クリア</button>
       <button class="btn btn-ol" onclick="openCommentModal(null)" style="margin-top:8px;font-size:13px;padding:11px">
         💬 日付を選んでコメントを追加
       </button>
@@ -819,6 +821,11 @@ function allMaru(){
   const total=daysBetween(rangeStart,rangeEnd)+1;
   for(let i=0;i<total;i++){const k=fmt(addDays(rangeStart,i));state[k]="○";applyState(k);}
   updateCount();refreshPreview();toast("全日を ○ にしました","ok");markStep(2);
+}
+function allBatsu(){
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  for(let i=0;i<total;i++){const k=fmt(addDays(rangeStart,i));state[k]="×";applyState(k);}
+  updateCount();refreshPreview();toast("全日を × にしました","ok");markStep(2);
 }
 function clearAll(){
   if(!confirm("入力をすべて消去しますか？"))return;
