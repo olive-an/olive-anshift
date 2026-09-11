@@ -265,6 +265,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -1705,6 +1706,121 @@ function dayToColIdx(day){
   return day >= 16 ? day - 14 : day + 17;
 }
 
+/* ===== 原紙の体裁を保ったまま転記する =====
+   XLSXライブラリで書き出し直すと、罫線・色・太字・列幅・行高・用紙の向き・
+   ウィンドウ枠の固定が、すべて失われてしまう（無料版は書式を書き出せないため）。
+   そこで、読み取りはこれまでどおりXLSXで行い、書き出しだけは
+   元のファイル（zip）の中の該当セルの文字だけを差し替える方式にする。
+   これなら原紙の見た目は1か所も変わらず、印刷してそのまま使える。 */
+
+function xmlEsc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function colIdxToLetter(ci){ // 0始まり → A, B, ... AA
+  let s="",n=ci+1;
+  while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}
+  return s;
+}
+function colLetterToNum(letters){ // A → 1
+  let n=0;
+  for(let i=0;i<letters.length;i++) n=n*26+(letters.charCodeAt(i)-64);
+  return n;
+}
+
+// ブックの中から、目的のシートのXMLファイル名を正しく突き止める
+async function findSheetXmlPath(zip,sheetName){
+  const wbXml=await zip.file("xl/workbook.xml").async("string");
+  const relXml=await zip.file("xl/_rels/workbook.xml.rels").async("string");
+  const sheetTags=wbXml.match(/<sheet\b[^>]*\/?>/g)||[];
+  let rid=null,firstRid=null;
+  sheetTags.forEach(tag=>{
+    const nm=/name="([^"]*)"/.exec(tag);
+    const ri=/r:id="([^"]*)"/.exec(tag)||/relationshipId="([^"]*)"/.exec(tag);
+    if(!ri)return;
+    if(firstRid===null)firstRid=ri[1];
+    if(nm&&nm[1]===sheetName)rid=ri[1];
+  });
+  if(!rid)rid=firstRid;
+  if(!rid)return "xl/worksheets/sheet1.xml";
+  const re=new RegExp('<Relationship[^>]*Id="'+rid+'"[^>]*>');
+  const rel=re.exec(relXml);
+  let target=rel?(/Target="([^"]*)"/.exec(rel[0])||[])[1]:null;
+  if(!target)return "xl/worksheets/sheet1.xml";
+  target=target.replace(/^\//,"").replace(/^\.\//,"");
+  return target.indexOf("xl/")===0?target:"xl/"+target;
+}
+
+// シートXMLの中の、指定セルの中身だけを差し替える（書式のs属性はそのまま残す）
+function patchSheetXml(xml,edits){
+  const byRow={};
+  Object.keys(edits).forEach(addr=>{
+    const m=/^([A-Z]+)(\d+)$/.exec(addr);
+    if(!m)return;
+    (byRow[m[2]]=byRow[m[2]]||[]).push({addr,col:colLetterToNum(m[1]),val:edits[addr]});
+  });
+
+  Object.keys(byRow).sort((a,b)=>Number(b)-Number(a)).forEach(rowNum=>{
+    // ※ [^>]* を欲張りにすると、<c r="C2" s="20"/> の「/」まで飲み込んでしまい、
+    //   次の </c> までをまとめて消してしまう。必ず控えめ（*?）にすること。
+    const rowRe=new RegExp('<row\\b[^>]*?\\br="'+rowNum+'"[^>]*?(?:\\/>|>[\\s\\S]*?<\\/row>)');
+    const rm=rowRe.exec(xml);
+    if(!rm)return; // 原紙に無い行には書き込まない
+    let rowXml=rm[0];
+    // 空行（<row .../>）は中身を入れられる形に開く
+    if(/\/>$/.test(rowXml)) rowXml=rowXml.replace(/\/>$/,"></row>");
+
+    byRow[rowNum].sort((a,b)=>a.col-b.col).forEach(e=>{
+      const cellXml='<c r="'+e.addr+'"__S__ t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(e.val)+'</t></is></c>';
+      const cellRe=new RegExp('<c\\b[^>]*?\\br="'+e.addr+'"[^>]*?(?:\\/>|>[\\s\\S]*?<\\/c>)');
+      const cm=cellRe.exec(rowXml);
+      if(cm){
+        // 既にあるセル：書式（s属性）だけ引き継いで中身を入れ替える
+        const s=/\bs="(\d+)"/.exec(cm[0]);
+        rowXml=rowXml.slice(0,cm.index)
+          +cellXml.replace("__S__",s?' s="'+s[1]+'"':"")
+          +rowXml.slice(cm.index+cm[0].length);
+      }else{
+        // セルが無い場合：列の順番を守って差し込む
+        const newCell=cellXml.replace("__S__","");
+        const cells=rowXml.match(/<c\b[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g)||[];
+        let insertBefore=null;
+        for(let i=0;i<cells.length;i++){
+          const ref=/\br="([A-Z]+)\d+"/.exec(cells[i]);
+          if(ref&&colLetterToNum(ref[1])>e.col){insertBefore=cells[i];break;}
+        }
+        if(insertBefore){
+          const at=rowXml.indexOf(insertBefore);
+          rowXml=rowXml.slice(0,at)+newCell+rowXml.slice(at);
+        }else{
+          rowXml=rowXml.replace(/<\/row>$/,newCell+"</row>");
+        }
+      }
+    });
+    xml=xml.slice(0,rm.index)+rowXml+xml.slice(rm.index+rm[0].length);
+  });
+  return xml;
+}
+
+// 元ファイルのzipを開き、セルだけ差し替えて同じzipとして返す
+async function writeCellsKeepingFormat(arrayBuffer,sheetName,edits){
+  const zip=await JSZip.loadAsync(arrayBuffer);
+  const path=await findSheetXmlPath(zip,sheetName);
+  const file=zip.file(path);
+  if(!file) throw new Error("シートのデータが見つかりません（"+path+"）");
+  const xml=await file.async("string");
+  zip.file(path,patchSheetXml(xml,edits));
+  return await zip.generateAsync({type:"blob",
+    mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    compression:"DEFLATE"});
+}
+
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
 async function writeToXlsx(input){
   const agg = window._agg;
   if(!agg){ toast("先に集計を実行してください","err"); return; }
@@ -1715,7 +1831,7 @@ async function writeToXlsx(input){
 
   try{
     const buf = await file.arrayBuffer();
-    const wb  = XLSX.read(buf, {type:"array"});
+    const wb  = XLSX.read(buf, {type:"array", cellStyles:true});
 
     // Sheet1 を取得（なければ最初のシート）
     const wsName = wb.SheetNames.find(n => n === "Sheet1") || wb.SheetNames[0];
@@ -1735,6 +1851,7 @@ async function writeToXlsx(input){
     let written = 0;
     let matched = 0;
     const skipped = [];
+    const edits = {}; // 「C2」→「○」の形で、書き込む場所と記号をためる
 
     Object.keys(agg.byName).forEach(name => {
       const rowIdx = matchNameRow(name, nameRowMap);
@@ -1742,35 +1859,49 @@ async function writeToXlsx(input){
       if(rowIdx == null){ skipped.push(name); return; }
       matched++;
 
-      const xlsxR = rowIdx - 1; // Excel行番号→XLSX 0始まりindex
-
       agg.dates.forEach(d => {
         const sym = agg.byName[name][fmt(d)] || "";
         if(!sym) return;
 
         const colIdx = colOf(d.getDate());
-        const addr   = XLSX.utils.encode_cell({r: xlsxR, c: colIdx});
-
-        if(!ws[addr]) ws[addr] = {t:"s", v:""};
-        ws[addr].t = "s";
-        ws[addr].v = sym;
-        ws[addr].w = sym;
+        edits[colIdxToLetter(colIdx) + rowIdx] = sym; // 例：C2
         written++;
       });
     });
 
-    // ダウンロード
-    const outBuf = XLSX.write(wb, {type:"array", bookType:"xlsx"});
-    const blob   = new Blob([outBuf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement("a");
-    a.href       = url;
-    a.download   = `シフト希望転記済_${fmt(agg.dates[0])}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if(written === 0){
+      toast("転記する記号がありません。先に集計してください","err");
+      return;
+    }
+
+    // ダウンロード（原紙の罫線・色・列幅・用紙の向きをそのまま残す）
+    const fileName = `シフト希望転記済_${fmt(agg.dates[0])}.xlsx`;
+    let keptFormat = true;
+    if(typeof JSZip !== "undefined"){
+      try{
+        const blob = await writeCellsKeepingFormat(buf, wsName, edits);
+        downloadBlob(blob, fileName);
+      }catch(err){
+        console.error(err);
+        keptFormat = false;
+      }
+    }else{
+      keptFormat = false;
+    }
+
+    if(!keptFormat){
+      // 予備：体裁は崩れるが、数字と記号だけは必ず出せるようにしておく
+      Object.keys(edits).forEach(addr => {
+        if(!ws[addr]) ws[addr] = {t:"s", v:""};
+        ws[addr].t = "s"; ws[addr].v = edits[addr]; ws[addr].w = edits[addr];
+      });
+      const outBuf = XLSX.write(wb, {type:"array", bookType:"xlsx", cellStyles:true});
+      downloadBlob(new Blob([outBuf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), fileName);
+    }
 
     let msg = `✅ ${matched}名・${written}セル転記完了！`;
     if(skipped.length > 0) msg += ` ⚠️ 未照合${skipped.length}名: ${skipped.join("、")}`;
+    if(!keptFormat) msg += " ※罫線や色は元に戻りませんでした";
     toast(msg, "ok");
 
   } catch(e) {
