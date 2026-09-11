@@ -549,6 +549,9 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
           <div class="tbl-wrap"><table class="agg" id="aggTable"></table></div>
           <button class="btn btn-gr" style="margin-top:14px" onclick="exportCsv()">📄 CSV（全員まとめて）ダウンロード</button>
           <button class="btn btn-ol" onclick="copyTsv()">📋 TSVコピー（Excel貼付用）</button>
+          <button class="btn btn-gr" style="background:#1b5e20" onclick="xlsxFromAgg()">
+            📂 月間シフト希望表作成用.xlsx に転記する
+          </button>
           <button class="btn btn-cl" onclick="resetAggData()">🗑 集計をリセット</button>
           <p style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6">
             💡 読み込み直したいときに押してください。上の集計結果が消えます。<br>
@@ -1089,6 +1092,15 @@ function showAdminSection(id){
     document.getElementById("adminMenu").classList.remove("hidden");
     backBtn.classList.add("hidden");
   }
+}
+
+// 集計結果の画面から、そのままExcel転記へ進む
+// （管理者メニューに戻って「Excelに転記する」を開き直す手間をなくすため）
+function xlsxFromAgg(){
+  if(!window._agg){ toast("先に集計してください","err"); return; }
+  const inp=document.getElementById("xlsxInput");
+  if(!inp){ toast("転記の準備ができていません","err"); return; }
+  inp.click();
 }
 
 function checkAndXlsx(){
