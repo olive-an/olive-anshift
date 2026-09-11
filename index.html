@@ -549,6 +549,11 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
           <div class="tbl-wrap"><table class="agg" id="aggTable"></table></div>
           <button class="btn btn-gr" style="margin-top:14px" onclick="exportCsv()">📄 CSV（全員まとめて）ダウンロード</button>
           <button class="btn btn-ol" onclick="copyTsv()">📋 TSVコピー（Excel貼付用）</button>
+          <button class="btn btn-cl" onclick="resetAggData()">🗑 集計をリセット</button>
+          <p style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6">
+            💡 読み込み直したいときに押してください。上の集計結果が消えます。<br>
+            スプレッドシートのデータは消えません。
+          </p>
         </div>
       </div>
 
@@ -1217,13 +1222,19 @@ function applyAdminPeriod(){
 }
 
 function resetAggData(){
-  if(!confirm("集計データをリセットしますか？\n集計結果・CSVボタンが非表示になります。")) return;
+  if(!confirm("集計をリセットしますか？\n\n画面の集計結果が消えます。\nスプレッドシートのデータは消えません。")) return;
   window._agg = null;
   const aggCard = document.getElementById("aggCard");
   if(aggCard) aggCard.classList.add("hidden");
-  const xlsxSection = document.getElementById("xlsxSection");
-  if(xlsxSection) xlsxSection.classList.add("hidden");
-  toast("集計データをリセットしました","ok");
+  // 表と見出しも空にしておく（次の集計で前回分が残らないように）
+  const tbl = document.getElementById("aggTable");
+  if(tbl) tbl.innerHTML = "";
+  const meta = document.getElementById("aggMeta");
+  if(meta) meta.textContent = "";
+  // 読み込んだテキストも捨てる
+  const paste = document.getElementById("pasteArea");
+  if(paste) paste.value = "";
+  toast("集計をリセットしました","ok");
 }
 
 async function loadFromGAS(){
