@@ -1359,35 +1359,79 @@ function normSym(s){
   if(/[△▲]/.test(s))return"△";
   return"";
 }
+// 名前として扱わない行（案内文・区切り線・日付だけの行）かどうか
+function isNameLike(s){
+  if(!s) return false;
+  if(s.length>30) return false;
+  if(/\d+\s*\/\s*\d+/.test(s)) return false;       // 日付を含む行は名前ではない
+  if(/^[―ー\-—=＝_＿\s　]+$/.test(s)) return false;  // 区切り線
+  if(/^(期間|シフト希望|お名前|氏名)$/.test(s)) return false;
+  return true;
+}
+// 「お名前」以降だけを取り出して、案内文・記号を落とす
+function cleanNamePart(s){
+  return String(s)
+    .replace(/.*(?:お名前|氏名)/,"")
+    .replace(/をご記入ください|ご記入ください|を記入してください|を教えてください|をお書きください/g,"")
+    .replace(/[）)（(：:＊*📝【】🍀🌼🌸🕊️🌿]/g,"")
+    .trim();
+}
 function extractName(block){
+  const lines=block.split(/\n/).map(x=>x.trim()).filter(Boolean);
   // パターン1: 【シフト希望】フルネーム（行末まで全部取得）
   let m=block.match(/【[^】]*】\s*([^\n\r]{1,30})/);
   if(m){const n=m[1].trim();if(n&&!/^[\d\/]/.test(n))return n;}
-  // パターン2: お名前）フルネーム
-  m=block.match(/[）\)]\s*([^\n\r（()]{1,30})/);
-  if(m&&m[1].trim().length>0)return m[1].trim();
-  // パターン3: ください　フルネーム
-  m=block.match(/(?:お名前[^\n]*?ください|お名前)[　\s]+([^\n\r]+)/);
-  if(m)return m[1].trim();
-  // パターン4: 最初の行
-  const first=block.split(/\n/).map(x=>x.trim()).filter(Boolean)[0]||"";
-  if(first&&!/\d+\/\d+/.test(first)&&first.length<=30)
-    return first.replace(/[）\)（\(🍀🌼🌸🕊️🌿📝【】]/g,"").trim();
+  // パターン2: 「お名前」「氏名」を含む行から取り出す
+  //   （お名前）田中　太郎 ／ 📝お名前をご記入ください　佐藤　花子 の両方に対応する。
+  //   ※ 以前は「）の後ろ」を無条件に名前としていたため、
+  //     「9/16（土）〇 9/17…」の（土）に反応して記号を名前と誤認していた。
+  for(let i=0;i<lines.length;i++){
+    if(!/(?:お名前|氏名)/.test(lines[i])) continue;
+    const n=cleanNamePart(lines[i]);
+    if(isNameLike(n)) return n;
+    // 同じ行に名前が無い場合は、次の名前らしい行を見る
+    for(let j=i+1;j<lines.length;j++){
+      const nx=lines[j].replace(/[）)（(：:＊*📝【】🍀🌼🌸🕊️🌿]/g,"").trim();
+      if(isNameLike(nx)) return nx;
+      break;
+    }
+  }
+  // パターン3: 最初の行
+  const first=lines[0]||"";
+  const firstClean=first.replace(/[）\)（\(🍀🌼🌸🕊️🌿📝【】]/g,"").trim();
+  if(isNameLike(firstClean)) return firstClean;
   return"（不明）";
 }
-function extractMarks(block,y){
+// 集計期間内の「M/D」→「YYYY-MM-DD」の対応表を作る。
+// 12/16〜1/15 のように年をまたぐ期間でも、1月分が正しく翌年になる。
+function buildDateResolver(s,e){
+  const map={};
+  const total=daysBetween(s,e)+1;
+  for(let i=0;i<total;i++){
+    const d=addDays(s,i);
+    const k=`${d.getMonth()+1}/${d.getDate()}`;
+    if(map[k]==null) map[k]=fmt(d);
+  }
+  return map;
+}
+function extractMarks(block,resolver){
   const res={};
-  // 記号と💬コメントを同時に抽出
-  const re=/(\d{1,2})\/(\d{1,2})\s*(?:[（(][^）)]*[）)])?\s*([○◯⭕✅◎〇×✕✖❌☓✗△▲])([^\n\r]*)/g;
+  // 記号と💬コメントを同時に抽出。
+  // 末尾は「次の日付の手前」または「行末」までに限定する。
+  // ※ 以前は行末まで貪欲に取り込んでいたため、
+  //   「9/16○ 9/17△ 9/18×」のように1行に複数日を書くと先頭の1日しか読めなかった。
+  const re=/(\d{1,2})\/(\d{1,2})\s*(?:[（(][^）)]*[）)])?\s*([○◯⭕✅◎〇×✕✖❌☓✗△▲])([^\n\r]*?)(?=\s*\d{1,2}\/\d{1,2}|[\n\r]|$)/g;
   let m;
   while((m=re.exec(block))!==null){
     const sym=normSym(m[3]);if(!sym)continue;
-    const key=`${y}-${("0"+parseInt(m[1])).slice(-2)}-${("0"+parseInt(m[2])).slice(-2)}`;
+    const key=resolver[`${parseInt(m[1])}/${parseInt(m[2])}`];
+    if(!key) continue; // 集計期間の外の日付は取り込まない
     res[key]=sym;
     // 💬コメントを抽出
     const rest=m[4]||"";
     const cmtMatch=rest.match(/💬(.+)/);
     if(cmtMatch) res[key+"__comment"]=cmtMatch[1].trim();
+    if(re.lastIndex===m.index) re.lastIndex++; // 空マッチによる無限ループ防止
   }
   return res;
 }
@@ -1399,17 +1443,21 @@ function parseAll(){
   const e=parseYMD(document.getElementById("aDateEnd").value);
   if(e<s){toast("期間が不正です","err");return}
   const blocks=raw.split(/\n\s*\n+/).map(x=>x.trim()).filter(Boolean);
+  const resolver=buildDateResolver(s,e);
   const byName={};
   blocks.forEach(b=>{
     const name=extractName(b);
-    const marks=extractMarks(b,s.getFullYear());
+    const marks=extractMarks(b,resolver);
     const nonComment=Object.fromEntries(Object.entries(marks).filter(([k])=>!k.endsWith('__comment')));
     if(Object.keys(nonComment).length>0){
       if(!byName[name])byName[name]={};
       Object.assign(byName[name],marks);
     }
   });
-  if(!Object.keys(byName).length){toast("有効なデータが見つかりません","err");return}
+  if(!Object.keys(byName).length){
+    toast(`有効なデータがありません。上の期間（${s.getMonth()+1}/${s.getDate()}〜${e.getMonth()+1}/${e.getDate()}）と本文の日付が合っているか確認してください`,"err");
+    return;
+  }
   renderAgg(byName,s,e);
   updateCopyNameSel(byName);
   toast(`${Object.keys(byName).length}名分を集計しました`,"ok");
