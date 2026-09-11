@@ -1770,10 +1770,15 @@ function patchSheetXml(xml,edits){
     if(/\/>$/.test(rowXml)) rowXml=rowXml.replace(/\/>$/,"></row>");
 
     byRow[rowNum].sort((a,b)=>a.col-b.col).forEach(e=>{
-      const cellXml='<c r="'+e.addr+'"__S__ t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(e.val)+'</t></is></c>';
+      // 空文字のときは中身なしのセルにする（書式は残したまま、文字だけ消す）
+      const cellXml = (e.val==null||e.val==="")
+        ? '<c r="'+e.addr+'"__S__/>'
+        : '<c r="'+e.addr+'"__S__ t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(e.val)+'</t></is></c>';
       const cellRe=new RegExp('<c\\b[^>]*?\\br="'+e.addr+'"[^>]*?(?:\\/>|>[\\s\\S]*?<\\/c>)');
       const cm=cellRe.exec(rowXml);
       if(cm){
+        // 計算式が入っているセルには書き込まない（式を壊さないため）
+        if(/<f[\s>]/.test(cm[0])) return;
         // 既にあるセル：書式（s属性）だけ引き継いで中身を入れ替える
         const s=/\bs="(\d+)"/.exec(cm[0]);
         rowXml=rowXml.slice(0,cm.index)
@@ -1819,6 +1824,161 @@ function downloadBlob(blob,filename){
   const a=document.createElement("a");
   a.href=url;a.download=filename;a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ===== ブック（zip）を直接編集して、シートを足す・消す =====
+   シフト集計.xlsx への月シート追加も、ライブラリで作り直すと
+   ブック全体の書式が失われる。そこで、元のファイルの中に
+   シートのデータを足し込む形にして、既存シートには一切触れない。 */
+
+const OOXML_WS_TYPE="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet";
+const OOXML_WS_CT="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml";
+const reEsc=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+
+async function zipText(zip,path){
+  const f=zip.file(path);
+  return f?await f.async("string"):null;
+}
+function xmlUnesc(s){
+  return String(s).replace(/&lt;/g,"<").replace(/&gt;/g,">")
+    .replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,"&");
+}
+// 関連ファイルの参照先を、zip内のパスに直す
+function xlPath(target){
+  let t=String(target||"").replace(/^\//,"").replace(/^\.\//,"");
+  if(/^\.\.\//.test(t)) return t.replace(/^\.\.\//,"");
+  return t.indexOf("xl/")===0?t:"xl/"+t;
+}
+function listSheetTags(wbXml){
+  const out=[];
+  const re=/<sheet\b[^>]*?(?:\/>|>[\s\S]*?<\/sheet>)/g;
+  let m;
+  while((m=re.exec(wbXml))!==null){
+    out.push({
+      tag:m[0],
+      name:xmlUnesc((/\bname="([^"]*)"/.exec(m[0])||[])[1]||""),
+      sheetId:Number((/\bsheetId="(\d+)"/.exec(m[0])||[])[1]||0),
+      rid:(/\br:id="([^"]*)"/.exec(m[0])||[])[1]||""
+    });
+  }
+  return out;
+}
+// 計算式の依存表。シートを増減すると食い違うので消しておく（Excelが開くときに作り直す）
+async function zipDropCalcChain(zip){
+  if(!zip.file("xl/calcChain.xml"))return;
+  zip.remove("xl/calcChain.xml");
+  const ct=await zipText(zip,"[Content_Types].xml");
+  if(ct)zip.file("[Content_Types].xml",
+    ct.replace(/<Override\b[^>]*?PartName="\/xl\/calcChain\.xml"[^>]*?\/>/,""));
+  const rel=await zipText(zip,"xl/_rels/workbook.xml.rels");
+  if(rel)zip.file("xl/_rels/workbook.xml.rels",
+    rel.replace(/<Relationship\b[^>]*?Target="calcChain\.xml"[^>]*?\/>/,""));
+}
+
+async function zipRemoveSheet(zip,sheetName){
+  let wbXml=await zipText(zip,"xl/workbook.xml");
+  if(!wbXml)return false;
+  const sheets=listSheetTags(wbXml);
+  const idx=sheets.findIndex(s=>s.name===sheetName);
+  if(idx<0)return false;
+  const t=sheets[idx];
+
+  wbXml=wbXml.replace(t.tag,"");
+  // 消したシートに属する名前の定義を外し、後ろのシート番号を1つ詰める
+  wbXml=wbXml.replace(/<definedName\b[^>]*?\blocalSheetId="(\d+)"[^>]*?(?:\/>|>[\s\S]*?<\/definedName>)/g,
+    (all,n)=>Number(n)===idx?"":all);
+  wbXml=wbXml.replace(/\blocalSheetId="(\d+)"/g,
+    (all,n)=>'localSheetId="'+(Number(n)>idx?Number(n)-1:Number(n))+'"');
+  zip.file("xl/workbook.xml",wbXml);
+
+  let relXml=await zipText(zip,"xl/_rels/workbook.xml.rels");
+  if(relXml&&t.rid){
+    const rm=new RegExp('<Relationship\\b[^>]*?\\bId="'+reEsc(t.rid)+'"[^>]*?(?:\\/>|>[\\s\\S]*?<\\/Relationship>)').exec(relXml);
+    if(rm){
+      const part=xlPath((/\bTarget="([^"]*)"/.exec(rm[0])||[])[1]);
+      zip.file("xl/_rels/workbook.xml.rels",relXml.replace(rm[0],""));
+      zip.remove(part);
+      zip.remove(part.replace(/([^/]+)$/,"_rels/$1.rels"));
+      const ct=await zipText(zip,"[Content_Types].xml");
+      if(ct)zip.file("[Content_Types].xml",
+        ct.replace(new RegExp('<Override\\b[^>]*?PartName="\\/'+reEsc(part)+'"[^>]*?\\/>'),""));
+    }
+  }
+  return true;
+}
+
+// シートのXMLを、ブックの末尾に新しいシートとして登録する
+async function zipAddSheet(zip,sheetName,sheetXml,srcRelsPath){
+  let wbXml=await zipText(zip,"xl/workbook.xml");
+  let relXml=await zipText(zip,"xl/_rels/workbook.xml.rels");
+  let ct=await zipText(zip,"[Content_Types].xml");
+  if(!wbXml||!relXml||!ct)throw new Error("ブックの構成を読み取れませんでした");
+
+  const maxId=listSheetTags(wbXml).reduce((a,s)=>Math.max(a,s.sheetId),0);
+  let maxRid=0;
+  (relXml.match(/\bId="rId(\d+)"/g)||[]).forEach(x=>{maxRid=Math.max(maxRid,Number(/\d+/.exec(x)[0]));});
+  let n=1;
+  while(zip.file("xl/worksheets/sheet"+n+".xml"))n++;
+  const part="xl/worksheets/sheet"+n+".xml";
+  const rid="rId"+(maxRid+1);
+
+  zip.file(part,sheetXml);
+  if(srcRelsPath){
+    const srcRels=await zipText(zip,srcRelsPath);
+    if(srcRels){
+      // 表（テーブル）は名前が重なると壊れるので、複製の対象から外す
+      zip.file(part.replace(/([^/]+)$/,"_rels/$1.rels"),
+        srcRels.replace(/<Relationship\b[^>]*?Type="[^"]*\/table"[^>]*?\/>/g,""));
+    }
+  }
+  zip.file("xl/_rels/workbook.xml.rels",
+    relXml.replace(/<\/Relationships>\s*$/,
+      '<Relationship Id="'+rid+'" Type="'+OOXML_WS_TYPE+'" Target="worksheets/sheet'+n+'.xml"/></Relationships>'));
+  zip.file("xl/workbook.xml",
+    wbXml.replace(/<\/sheets>/,
+      '<sheet name="'+xmlEsc(sheetName)+'" sheetId="'+(maxId+1)+'" r:id="'+rid+'"/></sheets>'));
+  if(ct.indexOf('PartName="/'+part+'"')<0){
+    zip.file("[Content_Types].xml",
+      ct.replace(/<\/Types>\s*$/,'<Override PartName="/'+part+'" ContentType="'+OOXML_WS_CT+'"/></Types>'));
+  }
+  return part;
+}
+
+// 既存シートを、書式ごとそのまま複製する（styles.xmlは共通なので見た目が揃う）
+async function zipDuplicateSheet(zip,srcSheetName,newSheetName){
+  const srcPart=await findSheetXmlPath(zip,srcSheetName);
+  let xml=await zipText(zip,srcPart);
+  if(xml==null)throw new Error("複製元のシートが見つかりません");
+  xml=xml.replace(/<tableParts\b[^>]*?(?:\/>|>[\s\S]*?<\/tableParts>)/g,"");
+  const srcRels=srcPart.replace(/([^/]+)$/,"_rels/$1.rels");
+  return await zipAddSheet(zip,newSheetName,xml,zip.file(srcRels)?srcRels:null);
+}
+
+// 表形式のデータから、飾りのないシートのXMLを作る
+function rowsToSheetXml(rows){
+  let maxC=1;
+  rows.forEach(r=>{if(r&&r.length>maxC)maxC=r.length;});
+  const body=rows.map((r,ri)=>
+    '<row r="'+(ri+1)+'">'+(r||[]).map((v,ci)=>
+      (v==null||v==="")?"":
+      '<c r="'+colIdxToLetter(ci)+(ri+1)+'" t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(v)+'</t></is></c>'
+    ).join("")+'</row>'
+  ).join("");
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+    +'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+    +'<dimension ref="A1:'+colIdxToLetter(maxC-1)+Math.max(rows.length,1)+'"/>'
+    +'<sheetViews><sheetView workbookViewId="0"/></sheetViews>'
+    +'<sheetFormatPr defaultRowHeight="18"/>'
+    +'<cols><col min="1" max="1" width="14" customWidth="1"/>'
+    +'<col min="2" max="'+Math.max(maxC,2)+'" width="11" customWidth="1"/></cols>'
+    +'<sheetData>'+body+'</sheetData></worksheet>';
+}
+
+async function zipToBlob(zip){
+  return await zip.generateAsync({type:"blob",
+    mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    compression:"DEFLATE"});
 }
 
 async function writeToXlsx(input){
@@ -1994,16 +2154,13 @@ async function aiWriteToShuukei(input){
     // AIシフト表シートを新規作成
     const HOMES2=["西九条","九条","酉島","新郡山","春日出","出来島"];
     const DOW2=["日","月","火","水","木","金","土"];
-    if(wb.SheetNames.includes("AIシフト表")){
-      wb.SheetNames.splice(wb.SheetNames.indexOf("AIシフト表"),1);
-      delete wb.Sheets["AIシフト表"];
-    }
-    const wsN={};
-    wb.SheetNames.push("AIシフト表");
-    wb.Sheets["AIシフト表"]=wsN;
+    // 表の中身をいったん配列にためる（元ファイルは最後にzipとして開いて足し込む）
+    const aiRows=[];
     const sc=(r,c,v)=>{
-      const a=XLSX.utils.encode_cell({r:r-1,c:c-1});
-      wsN[a]={t:"s",v:String(v==null?"":v),w:String(v==null?"":v)};
+      while(aiRows.length<r) aiRows.push([]);
+      const row=aiRows[r-1];
+      while(row.length<c) row.push("");
+      row[c-1]=String(v==null?"":v);
     };
 
     const firstSunday=new Date(agg.dates[0]);
@@ -2054,17 +2211,15 @@ async function aiWriteToShuukei(input){
       });
       crow++; // 空行
     }
-    wsN["!ref"]=`A1:H${crow}`;
-
-    // ダウンロード
-    const outBuf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
-    const blob=new Blob([outBuf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-    const url=URL.createObjectURL(blob);
-    const a2=document.createElement("a");
-    a2.href=url;
+    // ===== 書き出し =====
+    // 元ファイルの中に「AIシフト表」シートを足す。他のシートの体裁はそのまま残る。
+    if(typeof JSZip==="undefined") throw new Error("ファイルを扱う部品が読み込めませんでした。通信環境をご確認ください");
+    const zip=await JSZip.loadAsync(buf);
+    await zipRemoveSheet(zip,"AIシフト表");
+    await zipAddSheet(zip,"AIシフト表",rowsToSheetXml(aiRows),null);
+    await zipDropCalcChain(zip);
     const d0=agg.dates[0];
-    a2.download=`シフト集計_${d0.getMonth()+1}月${d0.getDate()}日〜_AIシフト追加.xlsx`;
-    a2.click(); URL.revokeObjectURL(url);
+    downloadBlob(await zipToBlob(zip),`シフト集計_${d0.getMonth()+1}月${d0.getDate()}日〜_AIシフト追加.xlsx`);
 
     let m2=`✅ ${written}件割り当て完了！「AIシフト表」シートを追加しました。`;
     if(skipped.length>0) m2+=` ⚠️ 未照合: ${skipped.join("、")}`;
@@ -2129,35 +2284,11 @@ async function writeToShuukei(input){
     const d1=agg.dates[agg.dates.length-1];
     const sheetName=safeSheetName(`${d0.getMonth()+1}月（${d0.getMonth()+1}/${d0.getDate()}〜${d1.getMonth()+1}/${d1.getDate()}）`);
 
-    // 既存の同名シートを削除
-    if(wb.SheetNames.includes(sheetName)){
-      wb.SheetNames.splice(wb.SheetNames.indexOf(sheetName),1);
-      delete wb.Sheets[sheetName];
-    }
-
-    // マスターシートをコピーして新シート作成
-    const wsNew={};
-    // マスターのセルをコピー
-    Object.keys(wsMaster).forEach(key=>{
-      if(key.startsWith("!")) wsNew[key]=wsMaster[key];
-      else wsNew[key]=Object.assign({},wsMaster[key]);
-    });
-    wsNew["!ref"]=wsMaster["!ref"];
-
-    // シートを追加（AIシフト表の前に挿入）
-    const aiIdx=wb.SheetNames.indexOf("AIシフト表");
-    if(aiIdx>=0){
-      wb.SheetNames.splice(aiIdx,0,sheetName);
-    } else {
-      wb.SheetNames.push(sheetName);
-    }
-    wb.Sheets[sheetName]=wsNew;
-
     // ===== データを書き込む =====
+    // 書き込む場所と中身をためておき、最後に元ファイルへ差し込む
+    const edits={};
     const sc=(r,c,v)=>{
-      const addr=XLSX.utils.encode_cell({r:r-1,c:c-1});
-      if(!wsNew[addr]) wsNew[addr]={t:"s",v:""};
-      wsNew[addr].t="s"; wsNew[addr].v=String(v==null?"":v); wsNew[addr].w=String(v==null?"":v);
+      edits[colIdxToLetter(c-1)+r]=String(v==null?"":v);
     };
 
     // 記号変換
@@ -2186,13 +2317,22 @@ async function writeToShuukei(input){
     });
 
     // 出勤可能人数行を更新
-    // A列に「人数」を含む行を下から探す。見つからないときだけ従来どおり最終行に書く
-    // （最終行決め打ちだと、名簿の最終行にいる人の希望を人数で上書きしてしまう）
+    // A列を上から見て「出勤可能」を含む行を優先で探す。
+    // ※ 下から「人数」で探すと、表の下のほうにある「合計人数」などの行に
+    //   書き込んでしまうため、まず「出勤可能」で特定する。
     let lastRow=masterData.length;
-    for(let ri=masterData.length-1; ri>=1; ri--){
+    let cntRow=-1;
+    for(let ri=1; ri<masterData.length; ri++){
       const a0=masterData[ri] && masterData[ri][0];
-      if(a0 && String(a0).includes("人数")){ lastRow=ri+1; break; }
+      if(a0 && String(a0).includes("出勤可能")){ cntRow=ri; break; }
     }
+    if(cntRow<0){
+      for(let ri=1; ri<masterData.length; ri++){
+        const a0=masterData[ri] && masterData[ri][0];
+        if(a0 && String(a0).includes("人数")){ cntRow=ri; break; }
+      }
+    }
+    if(cntRow>=0) lastRow=cntRow+1;
     agg.dates.forEach(d=>{
       const md=`${d.getMonth()+1}/${d.getDate()}`;
       const colIdx=dateColMap[md];
@@ -2204,14 +2344,16 @@ async function writeToShuukei(input){
       sc(lastRow, colIdx+1, cnt||"");
     });
 
-    // ダウンロード
-    const outBuf=XLSX.write(wb,{type:"array",bookType:"xlsx"});
-    const blob=new Blob([outBuf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-    const url=URL.createObjectURL(blob);
-    const a2=document.createElement("a");
-    a2.href=url;
-    a2.download=`シフト集計_${d0.getMonth()+1}月${d0.getDate()}日〜.xlsx`;
-    a2.click(); URL.revokeObjectURL(url);
+    // ===== 書き出し =====
+    // 元ファイルの中にシートを足す方式。既存シートの罫線・色・列幅は一切触らない。
+    if(typeof JSZip==="undefined") throw new Error("ファイルを扱う部品が読み込めませんでした。通信環境をご確認ください");
+    const zip=await JSZip.loadAsync(buf);
+    await zipRemoveSheet(zip,sheetName);             // 同じ月のシートがあれば作り直す
+    const part=await zipDuplicateSheet(zip,masterName,sheetName); // 書式ごと複製
+    const sheetXml=await zipText(zip,part);
+    zip.file(part,patchSheetXml(sheetXml,edits));
+    await zipDropCalcChain(zip);
+    downloadBlob(await zipToBlob(zip),`シフト集計_${d0.getMonth()+1}月${d0.getDate()}日〜.xlsx`);
 
     let msg2=`✅ 「${sheetName}」シートを追加しました（${written}件）`;
     if(skipped.length>0) msg2+=` ⚠️ 未照合: ${skipped.join("、")}`;
