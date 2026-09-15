@@ -580,8 +580,10 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
             📂 月間シフト希望表作成用.xlsx を選んで転記
           </button>
           <input type="file" id="xlsxInput" accept=".xlsx" style="display:none" onchange="writeToXlsx(this)">
+          <div id="xlsxResult" style="display:none;margin-top:12px;border-radius:10px;padding:12px 13px;font-size:13px;line-height:1.8"></div>
           <p style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6">
-            💡 「月間シフト希望表作成用.xlsx」を選択してください。
+            💡 「月間シフト希望表作成用.xlsx」を選択してください。<br>
+            A列に氏名が無い方は、空いている行に氏名を書き足してから転記します。
           </p>
         </div>
       </div>
@@ -1644,6 +1646,36 @@ function matchNameRow(fullName,nameRowMap){
   return row;
 }
 
+// A列に氏名が無い人を書き足せる「空き行」を、上から順に探す
+// 条件は3つ
+//   ・氏名欄（A列）が空いている
+//   ・日付ヘッダー（16,17,18…）が繰り返されている行ではない
+//   ・ホーム名（西九条〜出来島）や「研修」が始まる行より上にある
+//     （そこから下はホームへの割り当て欄なので触らない）
+function findAddableRows(rows){
+  const hdr=rows[0]||[];
+  const h2=String(hdr[2]==null?"":hdr[2]).trim();
+  const h3=String(hdr[3]==null?"":hdr[3]).trim();
+
+  let limit=rows.length;
+  for(let ri=1; ri<rows.length; ri++){
+    const a=rows[ri]&&rows[ri][0];
+    if(a!=null && SHEET1_LABELS.indexOf(String(a).trim())>=0){ limit=ri; break; }
+  }
+
+  const out=[];
+  for(let ri=1; ri<limit; ri++){
+    const row=rows[ri]||[];
+    const a=row[0];
+    if(a!=null && String(a).trim()!=="") continue; // 氏名が入っている行
+    const c=String(row[2]==null?"":row[2]).trim();
+    const d=String(row[3]==null?"":row[3]).trim();
+    if(h2 && c===h2 && d===h3) continue;           // 日付ヘッダーの繰り返し行
+    out.push(ri+1);                                // rowsは0始まり、Excelは1始まり
+  }
+  return out;
+}
+
 // ヘッダー行（16,17,…,15 の数字）から「日→列index」を作る
 function buildDayColMap(rows){
   const hdr=rows[0]||[];
@@ -1812,16 +1844,27 @@ async function writeToXlsx(input){
     const dayColMap = buildDayColMap(rows);
     const colOf = day => (dayColMap[day] != null ? dayColMap[day] : dayToColIdx(day));
 
+    // A列に氏名が無い人のために、書き足せる空き行を用意しておく
+    const addableRows = findAddableRows(rows);
+    let addPos = 0;
+
     let written = 0;
     let matched = 0;
     let cmtCount = 0;
     const skipped = [];
+    const added = [];
     const edits = {}; // 「C2」→「○」の形で、書き込む場所と記号をためる
 
     Object.keys(agg.byName).forEach(name => {
-      const rowIdx = matchNameRow(name, nameRowMap);
+      let rowIdx = matchNameRow(name, nameRowMap);
 
-      if(rowIdx == null){ skipped.push(name); return; }
+      if(rowIdx == null){
+        // A列に無い人は、空いている行に氏名を書き足してから転記する
+        if(addPos >= addableRows.length){ skipped.push(name); return; }
+        rowIdx = addableRows[addPos++];
+        edits["A" + rowIdx] = name;
+        added.push(name);
+      }
       matched++;
 
       const comments = [];
@@ -1876,11 +1919,28 @@ async function writeToXlsx(input){
       downloadBlob(new Blob([outBuf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), fileName);
     }
 
+    // 画面に結果を残す（トーストは数秒で消えるため、未転記の人を見落とさないように）
+    // 氏名は職員が入力した文字列なので、画面に出す前にエスケープする
+    const nameList = arr => arr.map(xmlEsc).join("、");
+    const lines = [`✅ ${matched}名・${written}セルを転記しました`];
+    if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に氏名を書き足しました<br>　${nameList(added)}`);
+    if(cmtCount > 0) lines.push(`💬 コメント${cmtCount}名分はAI列に記入しました`);
+    if(skipped.length > 0) lines.push(`⚠️ 空き行が足りず、次の${skipped.length}名は転記できませんでした<br>　${nameList(skipped)}<br>　Excelの氏名欄に空行を作ってから、もう一度転記してください`);
+    if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
+    const box = document.getElementById("xlsxResult");
+    if(box){
+      const bad = skipped.length > 0 || !keptFormat;
+      box.style.display = "block";
+      box.style.background = bad ? "#fff3e0" : "#e8f5e9";
+      box.style.border = "1px solid " + (bad ? "#ffb74d" : "#a5d6a7");
+      box.style.color = "var(--text)";
+      box.innerHTML = lines.join("<br>");
+    }
+
     let msg = `✅ ${matched}名・${written}セル転記完了！`;
-    if(cmtCount > 0) msg += ` 💬コメント${cmtCount}名分はAI列に記入`;
-    if(skipped.length > 0) msg += ` ⚠️ 未照合${skipped.length}名: ${skipped.join("、")}`;
-    if(!keptFormat) msg += " ※罫線や色は元に戻りませんでした";
-    toast(msg, "ok");
+    if(added.length > 0) msg += ` 🆕 ${added.length}名は空き行に追加`;
+    if(skipped.length > 0) msg += ` ⚠️ ${skipped.length}名は空き行不足で未転記`;
+    toast(msg, skipped.length > 0 ? "err" : "ok");
 
   } catch(e) {
     console.error(e);
