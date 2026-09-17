@@ -2046,9 +2046,6 @@ function dayToColIdx(day){
   return day >= 16 ? day - 14 : day + 17;
 }
 
-// コメントの書き込み先。AG列(15日)・AH列(氏名の控え)の右隣がAI列。
-const COMMENT_COL = "AI";
-
 /* ===== 原紙の体裁を保ったまま転記する =====
    XLSXライブラリで書き出し直すと、罫線・色・太字・列幅・行高・用紙の向き・
    ウィンドウ枠の固定が、すべて失われてしまう（無料版は書式を書き出せないため）。
@@ -2203,7 +2200,6 @@ async function writeToXlsx(input){
 
     let written = 0;
     let matched = 0;
-    let cmtCount = 0;
     const skipped = [];
     const added = [];
     const edits = {}; // 「C2」→「○」の形で、書き込む場所と記号をためる
@@ -2222,29 +2218,18 @@ async function writeToXlsx(input){
       }
       matched++;
 
-      const comments = [];
+      // 記号だけを書き込む。コメントはExcelには入れない
+      // （必要なときは管理者メニューの「送信履歴」で日ごとに確認できる）
       agg.dates.forEach(d => {
-        const key = fmt(d);
-        const sym = agg.byName[name][key] || "";
-
-        // コメント（長押しで残したメモ）を集める。△だけでなく○や×に付いたものも拾う。
-        const cmt = agg.byName[name][key + "__comment"];
-        if(cmt) comments.push(`${d.getMonth()+1}/${d.getDate()}${sym} ${cmt}`);
-
+        const sym = agg.byName[name][fmt(d)] || "";
         if(!sym) return;
         const colIdx = colOf(d.getDate());
         edits[colIdxToLetter(colIdx) + rowIdx] = sym; // 例：C2
         written++;
       });
-
-      // コメントは氏名控え（AH列）の右隣、AI列にその人の行でまとめる
-      if(comments.length){
-        edits[COMMENT_COL + rowIdx] = comments.join(" ／ ");
-        cmtCount++;
-      }
     });
 
-    if(written === 0 && cmtCount === 0){
+    if(written === 0){
       toast("転記する記号がありません。先に集計してください","err");
       return;
     }
@@ -2279,7 +2264,6 @@ async function writeToXlsx(input){
     const nameList = arr => arr.map(xmlEsc).join("、");
     const lines = [`✅ ${matched}名・${written}セルを転記しました`];
     if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に苗字を書き足しました<br>　${nameList(added)}`);
-    if(cmtCount > 0) lines.push(`💬 コメント${cmtCount}名分はAI列に記入しました`);
     if(skipped.length > 0) lines.push(`⚠️ 空き行が足りず、次の${skipped.length}名は転記できませんでした<br>　${nameList(skipped)}<br>　Excelの氏名欄に空行を作ってから、もう一度転記してください`);
     if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
     const box = document.getElementById("xlsxResult");
