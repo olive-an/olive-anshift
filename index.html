@@ -74,6 +74,26 @@ body{
 .keep-item.on{border-color:var(--gr);background:var(--gr-bg)}
 .keep-item .sub{display:block;font-size:12px;font-weight:400;color:var(--sub);margin-top:4px}
 
+/* 受信一覧で、押した人の内容をその場に開く */
+.hist-detail{
+  border:1.5px solid var(--gr);border-top:none;
+  border-radius:0 0 10px 10px;
+  background:#fff;padding:12px;margin:-8px 0 8px;
+}
+.hd-grid{display:flex;flex-wrap:wrap;gap:6px}
+.hd-day{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 10px;border-radius:8px;
+  border:1.5px solid var(--bdr);background:#fff;
+  font-size:14px;font-weight:700;color:var(--text);
+}
+.hd-day .sym{font-size:18px;font-weight:800;line-height:1}
+.hd-day.m{background:var(--m-bg);border-color:var(--m-bd);color:var(--m)}
+.hd-day.s{background:var(--s-bg);border-color:var(--s-bd);color:var(--s)}
+.hd-day.b{background:var(--b-bg);border-color:var(--b-bd);color:var(--b)}
+.hd-day.u{color:var(--sub)}
+.hd-cmt{font-size:13px;color:var(--text);line-height:1.7;margin-top:6px}
+
 /* 管理画面の上部にいつも出す「もどる」バー */
 .admin-bar{
   position:sticky;top:0;z-index:20;
@@ -667,11 +687,6 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
           </button>
           <div id="histStatus" style="font-size:12px;color:var(--sub);margin-top:8px;line-height:1.6"></div>
           <div id="histList" style="margin-top:12px"></div>
-          <div class="preview hidden" id="histText" style="max-height:260px;margin-top:12px"></div>
-          <div class="btn-sm hidden" id="histBtns" style="margin-top:10px">
-            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="histCopy()">📋 コピー</button>
-            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="histDownload()">⬇ ファイル保存</button>
-          </div>
         </div>
       </div>
     </div>
@@ -1522,23 +1537,52 @@ function renderAdminHistory(){
   wrap.innerHTML=_histData.map((d,i)=>{
     const t=histTimeOf(d);
     const c=keepCounts(d.text);
-    return `<button class="keep-item${i===_histIdx?" on":""}" onclick="selectAdminHistory(${i})">`
+    const row=`<button class="keep-item${i===_histIdx?" on":""}" onclick="selectAdminHistory(${i})">`
       +`${xmlEsc(histNameOf(d))}`
       +`<span class="sub">${t?xmlEsc(keepStamp(t.toISOString()))+" 送信":"日時なし"}`
       +`　${xmlEsc(histPeriodOf(d))}　○${c["○"]}日 △${c["△"]}日 ×${c["×"]}日</span>`
       +`</button>`;
+    // 押した人の内容は、その行のすぐ下に開く
+    // （一覧の下にまとめて出すと、40名分の下になって見えないため）
+    return row + (i===_histIdx ? histDetailHtml(d) : "");
   }).join("");
 }
 
+// 本文から「日付・曜日・記号・コメント」を取り出す
+function histMarkRows(text){
+  const rows=[];
+  String(text||"").split("\n").forEach(line=>{
+    const m=/^\s*(\d{1,2})\/(\d{1,2})（(.)）\s*(\S)(.*)$/.exec(line);
+    if(!m)return;
+    const cmt=(m[5]||"").replace(/^[\s　]*／[\s　]*/,"").replace(/^💬/,"").trim();
+    rows.push({md:`${Number(m[1])}/${Number(m[2])}`,dow:m[3],sym:m[4],cmt});
+  });
+  return rows;
+}
+
+function histDetailHtml(d){
+  const rows=histMarkRows(d.text);
+  if(rows.length===0){
+    return `<div class="hist-detail"><div style="font-size:13px;color:var(--sub)">日ごとの記号が読み取れませんでした。</div></div>`;
+  }
+  const cls={"○":"m","△":"s","×":"b"};
+  const days=rows.map(r=>
+    `<span class="hd-day ${cls[r.sym]||"u"}">${xmlEsc(r.md)}(${xmlEsc(r.dow)})<span class="sym">${xmlEsc(r.sym)}</span></span>`
+  ).join("");
+  const cmts=rows.filter(r=>r.cmt).map(r=>
+    `<div class="hd-cmt">💬 ${xmlEsc(r.md)}（${xmlEsc(r.dow)}）${xmlEsc(r.cmt)}</div>`
+  ).join("");
+  return `<div class="hist-detail">`
+    +`<div class="hd-grid">${days}</div>`
+    +(cmts?`<div style="margin-top:10px;border-top:1px solid var(--bdr);padding-top:8px">${cmts}</div>`:"")
+    +`<div class="btn-sm" style="margin-top:12px">`
+    +`<button class="btn btn-ol" style="font-size:13px;padding:11px" onclick="histCopy()">📋 コピー</button>`
+    +`<button class="btn btn-ol" style="font-size:13px;padding:11px" onclick="histDownload()">⬇ ファイル保存</button>`
+    +`</div></div>`;
+}
+
 function selectAdminHistory(i){
-  _histIdx=i;
-  const box=document.getElementById("histText");
-  const btns=document.getElementById("histBtns");
-  const d=_histData[i];
-  if(!d||!box)return;
-  box.textContent=d.text;
-  box.classList.remove("hidden");
-  if(btns)btns.classList.remove("hidden");
+  _histIdx=(_histIdx===i?-1:i); // もう一度押すと閉じる
   renderAdminHistory();
 }
 
