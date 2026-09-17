@@ -60,11 +60,19 @@ body{
 /* 管理画面の上部にいつも出す「もどる」バー */
 .admin-bar{
   position:sticky;top:0;z-index:20;
-  background:var(--gr);padding:10px 12px;
+  background:var(--gr);
   margin:0 -12px 14px;           /* mainの左右の余白いっぱいに広げる */
-  display:flex;align-items:center;gap:10px;
   box-shadow:0 2px 10px rgba(0,0,0,.2);
 }
+.admin-bar-in{
+  max-width:560px;margin:0 auto;padding:10px 12px;
+  display:flex;align-items:center;gap:10px;
+}
+/* 管理画面は画面全体をおおう。中の各カードは読みやすい幅で中央に寄せる
+   （mainのmax-widthのままだと、パソコンの幅では左側にしか出ず、
+     裏のシフト希望の画面が見えてしまう） */
+#view-admin{max-width:none}
+#view-admin > *:not(.admin-bar){max-width:560px;margin-left:auto;margin-right:auto}
 .admin-bar .back{
   display:flex;align-items:center;gap:6px;
   padding:9px 16px;border-radius:100px;
@@ -478,8 +486,10 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
 
   <!-- いつでもシフト希望の画面に戻れるようにする -->
   <div class="admin-bar">
-    <button class="back" onclick="switchMode('input')">← もどる</button>
-    <span class="ttl">管理者メニュー</span>
+    <div class="admin-bar-in">
+      <button class="back" onclick="switchMode('input')">← もどる</button>
+      <span class="ttl">管理者メニュー</span>
+    </div>
   </div>
 
   <div class="card" id="pwCard">
