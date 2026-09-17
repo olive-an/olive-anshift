@@ -937,10 +937,20 @@ function closeConfirm(){
   document.getElementById("confirmModal").style.display="none";
 }
 
+// 送信する文章の末尾に入れる送信日時の行
+// これを入れておくと、スプレッドシート側が日時を記録していなくても、
+// 管理画面の受信一覧で「いつ送られたか」が分かる
+function stampLine(d){
+  const h=d.getHours();
+  const ampm=h<12?"AM":"PM";
+  const h12=h%12===0?12:h%12;
+  return `送信：${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）${ampm} ${h12}:${("0"+d.getMinutes()).slice(-2)}`;
+}
+
 async function doSendConfirmed(){
   closeConfirm();
   const name=(document.getElementById("empName").value||"").trim();
-  const txt=buildText();
+  const txt=buildText()+"\n"+stampLine(new Date());
   window._lastSentText = txt; // 個人保管用に保存
   const period=`${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`;
   const btn=document.getElementById("sendBtn");
@@ -1448,7 +1458,18 @@ function histTimeOf(d){
     const t=new Date(v);
     if(!isNaN(t.getTime()))return t;
   }
-  return null;
+  return parseStampFromText(d.text); // 本文末尾の「送信：…」の行から読む
+}
+
+// 「送信：2026/9/17（木）PM 2:09」の行を日時にする
+function parseStampFromText(text){
+  const m=/送信[：:]\s*(\d{4})\/(\d{1,2})\/(\d{1,2})(?:（.）)?\s*(AM|PM)?\s*(\d{1,2}):(\d{2})/.exec(String(text||""));
+  if(!m)return null;
+  let h=Number(m[5]);
+  if(m[4]==="AM"&&h===12)h=0;
+  if(m[4]==="PM"&&h<12)h+=12;
+  const d=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),h,Number(m[6]));
+  return isNaN(d.getTime())?null:d;
 }
 function histNameOf(d){
   const n=String(d.name||"").trim();
