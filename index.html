@@ -46,9 +46,10 @@ body{
 .hdr-title{color:#fff;font-size:17px;font-weight:700}
 .hdr-sub{color:rgba(255,255,255,.72);font-size:11px;margin-top:2px}
 
-/* 右上の管理者アイコン */
+/* 右上のボタン（更新・管理者） */
+.hdr-btns{margin-left:auto;flex-shrink:0;display:flex;gap:8px}
 .hdr-admin{
-  margin-left:auto;flex-shrink:0;
+  flex-shrink:0;
   width:42px;height:42px;border-radius:50%;
   background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
   color:#fff;font-size:19px;font-family:inherit;
@@ -56,6 +57,20 @@ body{
   cursor:pointer;transition:.15s;
 }
 .hdr-admin:active{background:rgba(255,255,255,.34)}
+
+/* 画面右下の「トップに戻る」 */
+.topbtn{
+  position:fixed;right:16px;bottom:20px;z-index:100;
+  width:56px;height:56px;border-radius:50%;
+  background:var(--gr);color:#fff;border:none;
+  font-family:inherit;font-size:17px;line-height:1.1;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  box-shadow:0 4px 14px rgba(0,0,0,.28);cursor:pointer;
+  opacity:0;pointer-events:none;transform:translateY(12px);transition:.2s;
+}
+.topbtn.show{opacity:.95;pointer-events:auto;transform:translateY(0)}
+.topbtn:active{background:#1b5e20}
+.topbtn-t{font-size:9px;font-weight:600;letter-spacing:.5px}
 
 /* 送信履歴 */
 .keep-link{
@@ -333,12 +348,16 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
 
 <div class="hdr">
   <div class="hdr-logo">🌿</div>
-  <div>
+  <div style="min-width:0;overflow:hidden">
     <div class="hdr-title">シフト希望フォーム</div>
     <div class="hdr-sub">おりーぶ庵株式会社</div>
   </div>
-  <button class="hdr-admin" id="adminBtn" onclick="switchMode('admin')"
-    title="管理者メニュー" aria-label="管理者メニュー">⚙️</button>
+  <div class="hdr-btns">
+    <button class="hdr-admin" id="reloadBtn" onclick="reloadPage()"
+      title="ページを最新にする" aria-label="ページを最新にする">🔄</button>
+    <button class="hdr-admin" id="adminBtn" onclick="switchMode('admin')"
+      title="管理者メニュー" aria-label="管理者メニュー">⚙️</button>
+  </div>
 </div>
 
 <!-- ===== 職員入力 ===== -->
@@ -440,9 +459,9 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
     <div class="card-b">
       <div class="preview" id="preview">名前と日付を入力してから送信ボタンを押してください。</div>
 
-      <!-- 変更の締切。対象期間から自動で日付を出す -->
+      <!-- 変更の締切（毎月7日） -->
       <div id="deadlineNote" style="background:#fff8e1;border:1.5px solid #ffca28;border-radius:10px;padding:12px 13px;margin-bottom:14px;font-size:13px;line-height:1.8;color:var(--text)">
-        <b style="color:#e65100">📅 変更できるのは <span id="deadlineDate">—</span> まで</b><br>
+        <b style="color:#e65100">📅 シフト締め切りは 7日 まで</b><br>
         送信したあとでも、締切までは何度でも直せます。<br>
         直すときは、この下の「前に送信した内容の控え」から「✏️ この内容を読み込んで直す」を押してください。<br>
         いちばん最後に送ったものが有効です。<br>
@@ -508,7 +527,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
       </button>
       <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:-4px 0 10px">
         上のカレンダーに前回の内容が入ります。直したら、もう一度送信してください。<br>
-        新しく送った方が有効になります。（変更は <span class="deadlineDate">—</span> まで）
+        新しく送った方が有効になります。（締め切りは 7日 まで）
       </p>
       <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
         📤 自分に送る・保存する
@@ -755,6 +774,10 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
 
 <div class="toast" id="toast"></div>
 
+<!-- 画面右下の「トップに戻る」 -->
+<button class="topbtn" id="topBtn" onclick="goTop()"
+  title="いちばん上に戻る" aria-label="いちばん上に戻る">⬆<span class="topbtn-t">トップ</span></button>
+
 <script>
 const ADMIN_PW="5103";
 // ★ GASのURLをここに設定（マニュアルのSTEP3で取得）
@@ -794,6 +817,7 @@ function switchMode(mode){
   } else {
     adminView.classList.add("hidden");
   }
+  topBtnUpdate();  // 表示を切り替えたら「トップに戻る」も出し直す
 }
 
 function init(){
@@ -815,6 +839,11 @@ function init(){
     renderSentState();
     draftOn(); saveDraft();
   });
+  // 右下の「トップに戻る」は、少し下へ動かしたときだけ出す
+  window.addEventListener("scroll",topBtnUpdate,{passive:true});
+  const av=document.getElementById("view-admin");
+  if(av) av.addEventListener("scroll",topBtnUpdate,{passive:true});
+  topBtnUpdate();
   // 画面を閉じるときにも下書きを残す
   window.addEventListener("pagehide",saveDraft);
   document.addEventListener("visibilitychange",()=>{ if(document.hidden) saveDraft(); });
@@ -963,20 +992,6 @@ function buzz(ms){
 }
 
 
-// 変更の締切：対象期間が始まる月の7日
-function deadlineDate(){
-  if(!rangeStart) return null;
-  return new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 7);
-}
-function renderDeadline(){
-  const d=deadlineDate();
-  if(!d) return;
-  const txt=`${d.getMonth()+1}月7日（${DOW[d.getDay()]}）`;
-  const one=document.getElementById("deadlineDate");
-  if(one) one.textContent=txt;
-  document.querySelectorAll(".deadlineDate").forEach(el=>{el.textContent=txt;});
-}
-
 function buildCal(){
   const g=document.getElementById("calGrid");g.innerHTML="";
   const total=daysBetween(rangeStart,rangeEnd)+1;
@@ -1008,7 +1023,6 @@ function buildCal(){
     g.appendChild(c);applyState(k);
   }
   updateCount();
-  renderDeadline();   // 対象期間が変わったら締切の表示も更新する
   renderPeriodText(); // 対象期間の表示
   renderSentState();
 }
@@ -2532,6 +2546,36 @@ async function writeToXlsx(input){
 
 
 
+
+/* ===== ページを最新にする（ヘッダーの🔄） =====
+   端末に古い画面が残っていても、確実に新しいものを読み直す。
+   入力の途中は下書きに残してから読み直すので、消えない。 */
+function reloadPage(){
+  buzz(10);
+  try{ saveDraft(); }catch(e){}
+  // 毎回ちがう印をURLに付けて、端末が覚えている古い画面を使わせない
+  location.replace(location.pathname + "?v=" + Date.now());
+}
+
+/* ===== 画面右下の「トップに戻る」 =====
+   管理画面はページとは別に動くので、開いているほうを上に戻す。 */
+function topScroller(){
+  const a=document.getElementById("view-admin");
+  return (a && !a.classList.contains("hidden")) ? a : null; // null はページ全体
+}
+function topBtnUpdate(){
+  const b=document.getElementById("topBtn");
+  if(!b) return;
+  const el=topScroller();
+  const y = el ? el.scrollTop : (window.pageYOffset||document.documentElement.scrollTop||0);
+  b.classList.toggle("show", y>300);
+}
+function goTop(){
+  buzz(10);
+  const el=topScroller();
+  if(el) el.scrollTo({top:0,behavior:"smooth"});
+  else window.scrollTo({top:0,behavior:"smooth"});
+}
 
 window.addEventListener("load",function(){try{init();}catch(e){console.error(e);}});
 </script>
