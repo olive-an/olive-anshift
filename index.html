@@ -494,9 +494,13 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         ⬇ ファイルで保存（テキスト）
       </button>
       <p style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px">
-        送信したときに、この端末のブラウザへ自動で保存された控えです（最新5回分）。<br>
+        送信したときに、この端末のブラウザへ自動で保存された控えです。<br>
+        ①に入れたお名前の控えだけが表示されます。ほかの方の控えは出ません。<br>
         ブラウザのデータを消すと控えも消えます。確実に残したいときは、コピーかメール、ファイル保存で手元に残してください。
       </p>
+      <button class="keep-link" onclick="keepClearOwn()" style="color:#c62828">
+        🗑 この端末から自分の控えを消す
+      </button>
     </div>
   </div>
 
@@ -755,6 +759,7 @@ function init(){
   // ※ 期間の反映はapplyAdminPeriod()ボタンで行う
   document.getElementById("empName").addEventListener("input",e=>{
     refreshPreview();if(e.target.value)markStep(1);
+    renderKeepCard(); // 入力された名前の控えだけを出す
   });
 }
 
@@ -936,7 +941,19 @@ async function doSendConfirmed(){
 /* ===== 送信した内容の控え（本人用・この端末のブラウザに保存） =====
    送信のたびに控えを保存し、あとから確認・コピー・メール・ファイル保存ができます。 */
 const KEEP_KEY="oliveShiftKeep";
-const KEEP_MAX=5;
+const KEEP_MAX=20; // 端末ごとの保存上限。何人かで使う端末でも各自の控えが残るようにする
+
+// 控えは「①お名前」に入れた方のものだけを表示する
+// 同じ端末を何人かで使っても、他の方の控えが見えないようにするため
+function keepOwnerKey(){
+  const el=document.getElementById("empName");
+  return normName(el?el.value:"");
+}
+function keepListForOwner(){
+  const key=keepOwnerKey();
+  if(!key)return[];
+  return keepList().filter(h=>normName(h.name)===key);
+}
 
 function keepList(){
   try{
@@ -979,7 +996,7 @@ let keepIdx=0; // 履歴のどれを表示しているか（0が最新）
 function renderKeepCard(){
   const card=document.getElementById("keepCard");
   if(!card)return;
-  const list=keepList();
+  const list=keepListForOwner();
   if(list.length===0){card.style.display="none";return}
   card.style.display="block";
   keepIdx=0;
@@ -993,14 +1010,14 @@ function renderKeepCard(){
 function setKeepListLabel(open){
   const btn=document.getElementById("keepListBtn");
   if(!btn)return;
-  const n=keepList().length;
+  const n=keepListForOwner().length;
   btn.textContent=(open?"📕 送信履歴を閉じる（":"📖 送信履歴を見る（")+n+"件）";
 }
 
 function renderKeepList(){
   const wrap=document.getElementById("keepListWrap");
   if(!wrap)return;
-  const list=keepList();
+  const list=keepListForOwner();
   wrap.innerHTML=list.map((h,i)=>{
     const c=keepCounts(h.text);
     return `<button class="keep-item${i===keepIdx?" on":""}" onclick="selectKeep(${i})">`
@@ -1025,9 +1042,23 @@ function selectKeep(i){
 }
 
 function keepCurrent(){
-  const list=keepList();
+  const list=keepListForOwner();
   if(list.length===0)return null;
   return list[keepIdx]||list[0];
+}
+
+// この端末に残っている「その方の控え」だけを消す
+function keepClearOwn(){
+  const key=keepOwnerKey();
+  if(!key){toast("お名前を入力してください","err");return}
+  const nm=(document.getElementById("empName").value||"").trim();
+  if(!confirm(`${nm}さんの控えを、この端末から消します。\nよろしいですか？\n（送信済みの内容が消えるわけではありません）`))return;
+  try{
+    const rest=keepList().filter(h=>normName(h.name)!==key);
+    localStorage.setItem(KEEP_KEY,JSON.stringify(rest));
+  }catch(e){}
+  renderKeepCard();
+  toast("この端末の控えを消しました","ok");
 }
 
 function renderKeep(){
