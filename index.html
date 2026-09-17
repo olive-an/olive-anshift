@@ -463,6 +463,18 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
       <div id="sentDone" style="display:none;background:#e8f5e9;border-radius:12px;padding:20px;margin-top:12px;text-align:center">
         <p style="font-size:22px;font-weight:800;color:var(--gr)">✅ 送信完了！</p>
         <p style="font-size:13px;color:var(--sub);margin-top:6px">ご提出ありがとうございました🌿</p>
+
+        <!-- 間違いに気づいたときの入り口 -->
+        <div style="margin-top:16px;background:#fff;border:1.5px solid var(--gr);border-radius:12px;padding:13px">
+          <p style="font-size:13px;font-weight:700;color:var(--gr);margin-bottom:4px">間違えていませんか？</p>
+          <p style="font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:10px">
+            送ったあとでも直せます。取り消しの手続きはいりません。<br>
+            送り直すと、前に送った分は使われなくなります。
+          </p>
+          <button class="btn btn-gr" style="font-size:15px;padding:14px;margin-bottom:0;background:#1b5e20" onclick="startRedo()">
+            ✏️ 送った内容を直して送り直す
+          </button>
+        </div>
         <!-- 送信履歴コピーボタン -->
         <div style="margin-top:16px;border-top:1px solid #a5d6a7;padding-top:16px">
           <p style="font-size:12px;color:var(--sub);margin-bottom:10px">
@@ -923,7 +935,9 @@ function renderSentState(){
     box.innerHTML=`<b style="color:var(--gr)">✅ この期間は送信済みです</b><br>`
       +`${xmlEsc(keepStamp(last.sentAt))} 送信`
       +(mine.length>1?`（${mine.length}回）`:"")
-      +`<br><span style="color:var(--sub)">直したいときは、この下の控えから読み込んでください。</span>`;
+      +`<br><span style="color:var(--sub)">間違えていたら、下のボタンから送り直せます。取り消しの手続きはいりません。</span>`
+      +`<button class="btn btn-gr" style="font-size:14px;padding:12px;margin:10px 0 0;background:#1b5e20" onclick="startRedo()">`
+      +`✏️ 送った内容を直して送り直す</button>`;
   }else{
     box.style.background="#fff8e1";
     box.style.border="1.5px solid #ffca28";
@@ -1306,7 +1320,24 @@ function renderKeep(){
   box.textContent=h.text;
 }
 // 控えの内容をカレンダーに戻す（直して出し直せるようにするため）
-function keepLoadToForm(){
+/* ===== 送り直す =====
+   「間違えた、取り消して出し直したい」に応えるための入り口。
+   実際には取り消しではなく、新しく送り直すことで前の分が使われなくなる。 */
+function startRedo(){
+  // 送信完了の表示を閉じて、送信ボタンを押せる状態に戻す
+  const done=document.getElementById("sentDone");
+  if(done) done.style.display="none";
+  const btn=document.getElementById("sendBtn");
+  if(btn){
+    btn.style.display="";
+    btn.disabled=false;
+    btn.style.opacity="1";
+    btn.textContent="📨　送　信";
+  }
+  keepLoadToForm(true); // 確認なしで最新の控えを読み込む
+}
+
+function keepLoadToForm(silent){
   const h=keepCurrent();
   if(!h){toast("控えがありません","err");return}
 
@@ -1321,7 +1352,7 @@ function keepLoadToForm(){
       +`今の対象期間（${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}）とは違うため読み込めません。`);
     return;
   }
-  if(!confirm(`前回送信した内容をカレンダーに入れます。\n今の入力は上書きされます。よろしいですか？`))return;
+  if(!silent && !confirm(`前回送信した内容をカレンダーに入れます。\n今の入力は上書きされます。よろしいですか？`))return;
 
   state={}; commentState={};
   inRange.forEach(r=>{
@@ -1339,7 +1370,7 @@ function keepLoadToForm(){
   const skipped=rows.length-inRange.length;
   toast(skipped>0
     ? `読み込みました（${skipped}日分は期間外のため除きました）`
-    : "前回の内容を読み込みました","ok");
+    : (silent ? "直したら、もう一度送信してください" : "前回の内容を読み込みました"),"ok");
 
   const cal=document.getElementById("calGrid");
   if(cal) cal.scrollIntoView({behavior:"smooth",block:"center"});
