@@ -46,17 +46,34 @@ body{
 .hdr-title{color:#fff;font-size:17px;font-weight:700}
 .hdr-sub{color:rgba(255,255,255,.72);font-size:11px;margin-top:2px}
 
-/* タブ */
-.tabs{display:flex;background:#1b5e20}
-.tab{
-  flex:1;padding:11px 0;
-  border:none;background:none;cursor:pointer;
-  color:rgba(255,255,255,.6);font-size:13px;font-weight:600;
-  font-family:inherit;
-  border-bottom:3px solid transparent;transition:.15s;
+/* 右上の管理者アイコン */
+.hdr-admin{
+  margin-left:auto;flex-shrink:0;
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+  color:#fff;font-size:19px;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:.15s;
 }
-.tab.on{color:#fff;border-bottom-color:#a5d6a7}
-.tab:active{background:rgba(255,255,255,.08)}
+.hdr-admin:active{background:rgba(255,255,255,.34)}
+
+/* 管理画面の上部にいつも出す「もどる」バー */
+.admin-bar{
+  position:sticky;top:0;z-index:20;
+  background:var(--gr);padding:10px 12px;
+  margin:0 -12px 14px;           /* mainの左右の余白いっぱいに広げる */
+  display:flex;align-items:center;gap:10px;
+  box-shadow:0 2px 10px rgba(0,0,0,.2);
+}
+.admin-bar .back{
+  display:flex;align-items:center;gap:6px;
+  padding:9px 16px;border-radius:100px;
+  background:#fff;color:var(--gr);
+  border:none;font-family:inherit;font-size:14px;font-weight:700;
+  cursor:pointer;
+}
+.admin-bar .back:active{background:#e8f5e9}
+.admin-bar .ttl{color:#fff;font-size:14px;font-weight:700}
 
 /* メイン */
 main{padding:16px 12px;max-width:560px;margin:0 auto}
@@ -275,10 +292,8 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
     <div class="hdr-title">シフト希望フォーム</div>
     <div class="hdr-sub">おりーぶ庵株式会社</div>
   </div>
-</div>
-<div class="tabs">
-  <button class="tab on" id="tab-input" onclick="switchMode('input')">📅 シフト希望</button>
-  <button class="tab" id="tab-admin" onclick="switchMode('admin')">📊 管理者メニュー</button>
+  <button class="hdr-admin" id="adminBtn" onclick="switchMode('admin')"
+    title="管理者メニュー" aria-label="管理者メニュー">⚙️</button>
 </div>
 
 <!-- ===== 職員入力 ===== -->
@@ -291,36 +306,6 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
       <div class="si on" id="s1"><span class="si-n">①</span>名前</div>
       <div class="si" id="s2"><span class="si-n">②</span>日付</div>
       <div class="si" id="s3"><span class="si-n">③</span>送信</div>
-    </div>
-  </div>
-
-  <!-- ===== 送信した内容の控え（本人用・端末に保存） ===== -->
-  <div class="card" id="keepCard" style="display:none">
-    <div class="card-h">
-      <span class="card-hn">🗂</span>
-      <div>
-        <div class="card-hl">前に送信した内容の控え</div>
-        <div class="card-hs" id="keepMeta">—</div>
-      </div>
-    </div>
-    <div class="card-b">
-      <select class="inp" id="keepSelect" onchange="renderKeep()"
-        style="display:none;margin-bottom:10px;font-size:14px"></select>
-      <div class="preview" id="keepText" style="max-height:220px;margin-bottom:12px">—</div>
-      <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
-        📤 自分に送る・保存する
-      </button>
-      <div class="btn-sm">
-        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepCopy()">📋 コピー</button>
-        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepMail()">✉ メールで送る</button>
-      </div>
-      <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepDownload()">
-        ⬇ ファイルで保存（テキスト）
-      </button>
-      <p style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px">
-        送信したときに、この端末のブラウザへ自動で保存された控えです（最新5回分）。<br>
-        ブラウザのデータを消すと控えも消えます。確実に残したいときは、コピーかメール、ファイル保存で手元に残してください。
-      </p>
     </div>
   </div>
 
@@ -455,11 +440,47 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
     </div>
   </div>
 
+  <!-- ===== 送信した内容の控え（本人用・端末に保存） ===== -->
+  <div class="card" id="keepCard" style="display:none">
+    <div class="card-h">
+      <span class="card-hn">🗂</span>
+      <div>
+        <div class="card-hl">前に送信した内容の控え</div>
+        <div class="card-hs" id="keepMeta">—</div>
+      </div>
+    </div>
+    <div class="card-b">
+      <select class="inp" id="keepSelect" onchange="renderKeep()"
+        style="display:none;margin-bottom:10px;font-size:14px"></select>
+      <div class="preview" id="keepText" style="max-height:220px;margin-bottom:12px">—</div>
+      <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
+        📤 自分に送る・保存する
+      </button>
+      <div class="btn-sm">
+        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepCopy()">📋 コピー</button>
+        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepMail()">✉ メールで送る</button>
+      </div>
+      <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepDownload()">
+        ⬇ ファイルで保存（テキスト）
+      </button>
+      <p style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px">
+        送信したときに、この端末のブラウザへ自動で保存された控えです（最新5回分）。<br>
+        ブラウザのデータを消すと控えも消えます。確実に残したいときは、コピーかメール、ファイル保存で手元に残してください。
+      </p>
+    </div>
+  </div>
+
   <footer>© おりーぶ庵株式会社　シフト希望フォーム<br>Googleアカウント不要・アプリ不要</footer>
 </main>
 
 <!-- ===== 管理者 ===== -->
-<main class="hidden" id="view-admin" style="position:fixed;top:0;left:0;width:100%;height:100%;overflow-y:auto;z-index:10;background:var(--cream)">
+<main class="hidden" id="view-admin" style="position:fixed;top:0;left:0;width:100%;height:100%;overflow-y:auto;z-index:60;background:var(--cream);padding-top:0">
+
+  <!-- いつでもシフト希望の画面に戻れるようにする -->
+  <div class="admin-bar">
+    <button class="back" onclick="switchMode('input')">← もどる</button>
+    <span class="ttl">管理者メニュー</span>
+  </div>
 
   <div class="card" id="pwCard">
     <div class="card-b">
@@ -680,17 +701,13 @@ function switchMode(mode){
   // view-inputは常に表示（カレンダーを維持）
   // 管理者メニューはオーバーレイとして表示
   const adminView = document.getElementById("view-admin");
-  const tabInput  = document.getElementById("tab-input");
-  const tabAdmin  = document.getElementById("tab-admin");
+  if(!adminView) return;
 
   if(mode==="admin"){
     adminView.classList.remove("hidden");
-    tabAdmin.classList.add("on");
-    tabInput.classList.remove("on");
+    adminView.scrollTop = 0;
   } else {
     adminView.classList.add("hidden");
-    tabInput.classList.add("on");
-    tabAdmin.classList.remove("on");
   }
 }
 
