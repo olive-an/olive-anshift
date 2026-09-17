@@ -3,6 +3,11 @@ name: Deploy shift form to Netlify (olive-anshift)
 # main へ push すると、シフト希望フォームを公開サイトへ自動デプロイします。
 # 公開先: https://olive-anshift.netlify.app/
 # 認証: リポジトリSecret NETLIFY_AUTH_TOKEN（設定済み）
+#
+# 職員が実際に使うURLは GitHub Pages（https://olive-an.github.io/olive-anshift/）で、
+# そちらは別の仕組みで公開されるため、このNetlify公開が止まっても影響はありません。
+# Netlify側のアカウント残高切れ（403 Account credit usage exceeded）のときは、
+# 失敗にせず「見送り」として記録します。残高が戻れば次のpushから自動で再開します。
 
 on:
   push:
@@ -28,8 +33,39 @@ jobs:
             echo "::error::NETLIFY_AUTH_TOKEN が未設定です。"
             exit 1
           fi
+
+          # 公開するフォルダの中にログを作らないよう、ログは作業用フォルダへ置く
+          log="$RUNNER_TEMP/netlify-deploy.log"
+
+          set +e
           npx -y netlify-cli@17 deploy \
             --prod \
             --dir=. \
             --site=766f0953-70c9-44e5-b30b-9c936f23cbbf \
-            --message "auto-deploy ${{ github.sha }}"
+            --message "auto-deploy ${{ github.sha }}" 2>&1 | tee "$log"
+          code=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$code" -eq 0 ]; then
+            echo "✅ Netlify へ公開しました。" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Netlify アカウントの残高切れ・支払い停止による拒否かどうかを判定する
+          if grep -qiE 'credit usage exceeded|"status": ?40[23]|payment required' "$log"; then
+            echo "::warning::Netlify のアカウント残高切れ（403）のため、今回の公開は見送りました。"
+            {
+              echo "### ⏭️ Netlify への公開を見送りました"
+              echo ""
+              echo "Netlify から「Account credit usage exceeded」（アカウントの残高切れ）が返ったため、"
+              echo "このワークフローは失敗にせず見送りとして終了しました。"
+              echo ""
+              echo "- 職員が使う **GitHub Pages**（https://olive-an.github.io/olive-anshift/ ）は"
+              echo "  この件の影響を受けず、最新の内容で公開されています。"
+              echo "- Netlify 側の残高を追加すると、次回の push から自動で公開が再開します。"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "::error::Netlify への公開に失敗しました（終了コード $code）。ログを確認してください。"
+          exit "$code"
