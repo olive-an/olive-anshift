@@ -57,6 +57,23 @@ body{
 }
 .hdr-admin:active{background:rgba(255,255,255,.34)}
 
+/* 送信履歴 */
+.keep-link{
+  display:inline-flex;align-items:center;gap:6px;
+  background:none;border:none;padding:6px 0;
+  color:var(--gr);font-family:inherit;font-size:14px;font-weight:700;
+  text-decoration:underline;cursor:pointer;
+}
+.keep-item{
+  display:block;width:100%;text-align:left;
+  background:#fff;border:1.5px solid var(--bdr);border-radius:10px;
+  padding:10px 12px;margin-bottom:6px;
+  font-family:inherit;font-size:14px;font-weight:700;color:var(--text);
+  cursor:pointer;
+}
+.keep-item.on{border-color:var(--gr);background:var(--gr-bg)}
+.keep-item .sub{display:block;font-size:12px;font-weight:400;color:var(--sub);margin-top:4px}
+
 /* 管理画面の上部にいつも出す「もどる」バー */
 .admin-bar{
   position:sticky;top:0;z-index:20;
@@ -458,12 +475,17 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
       </div>
     </div>
     <div class="card-b">
-      <select class="inp" id="keepSelect" onchange="renderKeep()"
-        style="display:none;margin-bottom:10px;font-size:14px"></select>
+      <div style="margin-bottom:10px">
+        <button class="keep-link" id="keepListBtn" onclick="toggleKeepList()">📖 送信履歴を見る</button>
+        <div id="keepListWrap" style="display:none;margin-top:6px"></div>
+      </div>
       <div class="preview" id="keepText" style="max-height:220px;margin-bottom:12px">—</div>
       <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
         📤 自分に送る・保存する
       </button>
+      <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:-4px 0 10px">
+        LINE・メール・メモなど、送り先を選べます。LINEなら自分だけのトーク（Keepメモ）にも残せます。
+      </p>
       <div class="btn-sm">
         <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepCopy()">📋 コピー</button>
         <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepMail()">✉ メールで送る</button>
@@ -932,38 +954,88 @@ function keepSave(name,period,text){
   }catch(e){/* プライベートモードなど保存できない場合は何もしない */}
   renderKeepCard();
 }
+// 送信日時の表示（例：9/17（木）AM 8:00）
 function keepStamp(iso){
   const d=new Date(iso);
   if(isNaN(d.getTime()))return"";
-  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）${("0"+d.getHours()).slice(-2)}:${("0"+d.getMinutes()).slice(-2)} 送信`;
+  const h=d.getHours();
+  const ampm=h<12?"AM":"PM";
+  const h12=h%12===0?12:h%12;
+  return `${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）${ampm} ${h12}:${("0"+d.getMinutes()).slice(-2)}`;
 }
+
+// 控えの本文から ○△× の日数を数える（「9/16（水）○」の行を読む）
+function keepCounts(text){
+  const c={"○":0,"△":0,"×":0};
+  String(text||"").split("\n").forEach(line=>{
+    const m=/^\s*\d+\/\d+（.）\s*(.)/.exec(line);
+    if(m && c[m[1]]!=null) c[m[1]]++;
+  });
+  return c;
+}
+
+let keepIdx=0; // 履歴のどれを表示しているか（0が最新）
+
 function renderKeepCard(){
   const card=document.getElementById("keepCard");
-  const sel=document.getElementById("keepSelect");
-  if(!card||!sel)return;
+  if(!card)return;
   const list=keepList();
   if(list.length===0){card.style.display="none";return}
   card.style.display="block";
-  sel.innerHTML=list.map((h,i)=>
-    `<option value="${i}">${keepStamp(h.sentAt)||"送信日時不明"}${h.period?"／"+h.period:""}</option>`
-  ).join("");
-  sel.style.display=list.length>1?"block":"none";
-  sel.value="0";
+  keepIdx=0;
+  const wrap=document.getElementById("keepListWrap");
+  if(wrap)wrap.style.display="none"; // 最初は閉じておく
+  setKeepListLabel(false);
+  renderKeepList();
   renderKeep();
 }
+
+function setKeepListLabel(open){
+  const btn=document.getElementById("keepListBtn");
+  if(!btn)return;
+  const n=keepList().length;
+  btn.textContent=(open?"📕 送信履歴を閉じる（":"📖 送信履歴を見る（")+n+"件）";
+}
+
+function renderKeepList(){
+  const wrap=document.getElementById("keepListWrap");
+  if(!wrap)return;
+  const list=keepList();
+  wrap.innerHTML=list.map((h,i)=>{
+    const c=keepCounts(h.text);
+    return `<button class="keep-item${i===keepIdx?" on":""}" onclick="selectKeep(${i})">`
+      +`${xmlEsc(keepStamp(h.sentAt)||"送信日時不明")} 送信${i===0?"（最新）":""}`
+      +`<span class="sub">${xmlEsc(h.period||"")}　○${c["○"]}日 △${c["△"]}日 ×${c["×"]}日</span>`
+      +`</button>`;
+  }).join("");
+}
+
+function toggleKeepList(){
+  const wrap=document.getElementById("keepListWrap");
+  if(!wrap)return;
+  const willOpen=(wrap.style.display==="none");
+  wrap.style.display=willOpen?"block":"none";
+  setKeepListLabel(willOpen);
+}
+
+function selectKeep(i){
+  keepIdx=i;
+  renderKeepList();
+  renderKeep();
+}
+
 function keepCurrent(){
   const list=keepList();
   if(list.length===0)return null;
-  const sel=document.getElementById("keepSelect");
-  const i=sel?Number(sel.value||0):0;
-  return list[i]||list[0];
+  return list[keepIdx]||list[0];
 }
+
 function renderKeep(){
   const h=keepCurrent();
   const meta=document.getElementById("keepMeta");
   const box=document.getElementById("keepText");
   if(!h||!box)return;
-  if(meta)meta.textContent=`${keepStamp(h.sentAt)}${h.name?"／"+h.name:""}`;
+  if(meta)meta.textContent=`${keepStamp(h.sentAt)} 送信${h.name?"／"+h.name:""}`;
   box.textContent=h.text;
 }
 function keepFileName(h){
