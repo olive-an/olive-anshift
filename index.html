@@ -447,6 +447,24 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         💬 日付を選んでコメントを追加
       </button>
       <div id="commentList" style="margin-top:8px;font-size:12px;color:var(--sub);line-height:1.8"></div>
+
+      <!-- 前に送信した控えがあるときだけ出す。控えの中身は一番下のカードで見られる -->
+      <div id="keepQuick" style="display:none;margin-top:14px;border-top:1px solid var(--bdr);padding-top:14px">
+        <div style="font-size:13px;font-weight:700;color:var(--gr);margin-bottom:10px">🗂 前に送信した内容</div>
+        <button class="btn btn-gr" style="font-size:15px;padding:14px;background:#1b5e20" onclick="keepLoadToForm()">
+          ✏️ この内容を読み込んで直す
+        </button>
+        <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:-4px 0 10px">
+          上のカレンダーに前回の内容が入ります。直したら、もう一度送信してください。<br>
+          新しく送った方が有効になります。（締め切りは 7日 まで）
+        </p>
+        <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
+          📤 自分に送る・保存する
+        </button>
+        <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:-4px 0 0">
+          LINE・メール・メモなど、送り先を選べます。LINEなら自分だけのトーク（Keepメモ）にも残せます。
+        </p>
+      </div>
     </div>
   </div>
 
@@ -463,7 +481,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
       <div id="deadlineNote" style="background:#fff8e1;border:1.5px solid #ffca28;border-radius:10px;padding:12px 13px;margin-bottom:14px;font-size:13px;line-height:1.8;color:var(--text)">
         <b style="color:#e65100">📅 シフト締め切りは 7日 まで</b><br>
         送信したあとでも、締切までは何度でも直せます。<br>
-        直すときは、この下の「前に送信した内容の控え」から「✏️ この内容を読み込んで直す」を押してください。<br>
+        直すときは、②の「日付を選んでコメントを追加」の下にある「✏️ この内容を読み込んで直す」を押してください。<br>
         いちばん最後に送ったものが有効です。<br>
         <span style="color:#c62828">締切を過ぎてからの変更は、フォームではなく直接ご連絡ください。</span>
       </div>
@@ -522,23 +540,11 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         <div id="keepListWrap" style="display:none;margin-top:6px"></div>
       </div>
       <div class="preview" id="keepText" style="max-height:220px;margin-bottom:12px">—</div>
-      <button class="btn btn-gr" style="font-size:15px;padding:14px;background:#1b5e20" onclick="keepLoadToForm()">
-        ✏️ この内容を読み込んで直す
-      </button>
-      <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:-4px 0 10px">
-        上のカレンダーに前回の内容が入ります。直したら、もう一度送信してください。<br>
-        新しく送った方が有効になります。（締め切りは 7日 まで）
-      </p>
-      <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
-        📤 自分に送る・保存する
-      </button>
-      <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:-4px 0 10px">
-        LINE・メール・メモなど、送り先を選べます。LINEなら自分だけのトーク（Keepメモ）にも残せます。
-      </p>
       <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepCopy()">📋 コピー</button>
       <p style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px">
         送信したときに、この端末のブラウザへ自動で保存された控えです。<br>
         ①に入れたお名前の控えだけが表示されます。ほかの方の控えは出ません。<br>
+        直すとき・手元に残すときのボタンは、②の「日付を選んでコメントを追加」の下にあります。<br>
         ブラウザのデータを消すと控えも消えます。確実に残したいときは、「自分に送る・保存する」かコピーで手元に残してください。
       </p>
       <button class="keep-link" onclick="keepClearOwn()" style="color:#c62828">
@@ -1260,9 +1266,16 @@ let keepIdx=0; // 履歴のどれを表示しているか（0が最新）
 function renderKeepCard(){
   const card=document.getElementById("keepCard");
   if(!card)return;
+  // ②の下に出す「読み込んで直す・自分に送る」も、控えがあるときだけ出す
+  const quick=document.getElementById("keepQuick");
   const list=keepListForOwner();
-  if(list.length===0){card.style.display="none";return}
+  if(list.length===0){
+    card.style.display="none";
+    if(quick)quick.style.display="none";
+    return;
+  }
   card.style.display="block";
+  if(quick)quick.style.display="block";
   keepIdx=0;
   const wrap=document.getElementById("keepListWrap");
   if(wrap)wrap.style.display="none"; // 最初は閉じておく
