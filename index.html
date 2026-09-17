@@ -614,7 +614,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
           <div id="xlsxResult" style="display:none;margin-top:12px;border-radius:10px;padding:12px 13px;font-size:13px;line-height:1.8"></div>
           <p style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6">
             💡 「月間シフト希望表作成用.xlsx」を選択してください。<br>
-            A列に氏名が無い方は、空いている行に氏名を書き足してから転記します。
+            A列に氏名が無い方は、空いている行に苗字を書き足してから転記します。
           </p>
         </div>
       </div>
@@ -1703,6 +1703,22 @@ function findAddableRows(rows){
   return out;
 }
 
+// フルネームから苗字だけを取り出す（A列は苗字だけで揃えるため）
+// 2文字では切れない姓があるので、よくあるものを先に確認する
+const LONG_SURNAMES = ["岩久保","佐々木","長谷川","小笠原","五十嵐","久保田","大久保",
+                       "小野寺","宇佐美","阿久津","波多野","安孫子","勅使河原"];
+function surnameOf(fullName){
+  const s = String(fullName==null?"":fullName).trim();
+  if(!s) return s;
+  const head = s.split(/[\s　]+/)[0];
+  if(head && head !== s) return head;        // ①「岩久保　太郎」のようにスペースで分かれている
+  if(!/[一-鿿]/.test(s)) return s;   // ② 漢字を含まない（カタカナ等）は切らない
+  for(let i=0;i<LONG_SURNAMES.length;i++){   // ③ 3文字以上の姓
+    if(s.indexOf(LONG_SURNAMES[i])===0) return LONG_SURNAMES[i];
+  }
+  return s.length > 2 ? s.slice(0,2) : s;    // ④ それ以外は先頭2文字
+}
+
 // ヘッダー行（16,17,…,15 の数字）から「日→列index」を作る
 function buildDayColMap(rows){
   const hdr=rows[0]||[];
@@ -1886,11 +1902,13 @@ async function writeToXlsx(input){
       let rowIdx = matchNameRow(name, nameRowMap);
 
       if(rowIdx == null){
-        // A列に無い人は、空いている行に氏名を書き足してから転記する
+        // A列に無い人は、空いている行に苗字を書き足してから転記する
+        // （A列は苗字だけで揃っているため、フルネームではなく苗字を入れる）
         if(addPos >= addableRows.length){ skipped.push(name); return; }
         rowIdx = addableRows[addPos++];
-        edits["A" + rowIdx] = name;
-        added.push(name);
+        const sur = surnameOf(name);
+        edits["A" + rowIdx] = sur;
+        added.push(sur === name ? name : `${sur}（${name}）`);
       }
       matched++;
 
@@ -1950,7 +1968,7 @@ async function writeToXlsx(input){
     // 氏名は職員が入力した文字列なので、画面に出す前にエスケープする
     const nameList = arr => arr.map(xmlEsc).join("、");
     const lines = [`✅ ${matched}名・${written}セルを転記しました`];
-    if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に氏名を書き足しました<br>　${nameList(added)}`);
+    if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に苗字を書き足しました<br>　${nameList(added)}`);
     if(cmtCount > 0) lines.push(`💬 コメント${cmtCount}名分はAI列に記入しました`);
     if(skipped.length > 0) lines.push(`⚠️ 空き行が足りず、次の${skipped.length}名は転記できませんでした<br>　${nameList(skipped)}<br>　Excelの氏名欄に空行を作ってから、もう一度転記してください`);
     if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
