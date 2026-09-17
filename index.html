@@ -365,14 +365,16 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         <label class="lbl" for="empName">お名前<span class="req">（必須）</span></label>
         <input class="inp" type="text" id="empName" placeholder="例：岩久保　太郎"
           autocomplete="name" inputmode="text">
+        <button class="keep-link" id="clearNameBtn" onclick="forgetMe()" style="display:none;font-size:13px">
+          別の人が使う場合はこちら
+        </button>
+        <!-- この期間を送信済みかどうか -->
+        <div id="sentState" style="display:none;margin-top:10px;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.7"></div>
       </div>
       <div class="field">
         <label class="lbl">対象期間</label>
-        <div class="period-row" style="pointer-events:none;opacity:0.7">
-          <input class="inp" type="date" id="dateStart" readonly tabindex="-1">
-          <span class="period-sep">〜</span>
-          <input class="inp" type="date" id="dateEnd" readonly tabindex="-1">
-        </div>
+        <div id="periodText" style="background:var(--sand);border:1.5px solid var(--bdr);border-radius:10px;padding:12px 13px;font-size:15px;font-weight:700;line-height:1.7">—</div>
+        <input type="hidden" id="dateStart"><input type="hidden" id="dateEnd">
         <p style="font-size:12px;color:var(--sub);margin-top:8px;line-height:1.5">
           ※ 対象期間は管理者が設定します。
         </p>
@@ -401,7 +403,10 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
           -webkit-tap-highlight-color:transparent;
         ">💬 コメント</button>
       </div>
-      <div class="hint-box">👆 日付をタップ → ○ → △ → × → 空白 の順で変わります</div>
+      <div class="hint-box">
+        👆 日付をタップ → ○ → △ → × → 空白 の順で変わります<br>
+        💬 日付を長押しすると、その日にコメントを付けられます
+      </div>
       <div class="cal-meta">
         <span class="cal-period" id="calRange">—</span>
         <span class="cal-days" id="calCount">—</span>
@@ -720,6 +725,8 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
       <div style="font-size:12px;color:var(--sub);margin-bottom:10px" id="confirmPeriod"></div>
       <!-- カウンター -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="confirmCount"></div>
+      <!-- 未入力の注意 -->
+      <div id="confirmWarn" style="display:none;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;color:#e65100"></div>
       <!-- 記号一覧 -->
       <div style="font-size:12px;line-height:1.9;font-family:monospace;white-space:pre-wrap" id="confirmList"></div>
     </div>
@@ -785,13 +792,162 @@ function init(){
   document.getElementById("aDateEnd").value=fmt(e);
   rangeStart=s;rangeEnd=e;
   buildCal();refreshPreview();
-  renderKeepCard(); // 前に送信した控えがあれば表示
+  fillSavedName();   // この端末で前に使った名前を入れる
+  restoreDraft();    // 入力の途中があれば戻す
+  renderKeepCard();  // 前に送信した控えがあれば表示
+  renderSentState(); // この期間を送信済みかどうか
   // ※ 期間の反映はapplyAdminPeriod()ボタンで行う
   document.getElementById("empName").addEventListener("input",e=>{
     refreshPreview();if(e.target.value)markStep(1);
-    renderKeepCard(); // 入力された名前の控えだけを出す
+    renderKeepCard();   // 入力された名前の控えだけを出す
+    renderSentState();
+    draftOn(); saveDraft();
   });
+  // 画面を閉じるときにも下書きを残す
+  window.addEventListener("pagehide",saveDraft);
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden) saveDraft(); });
 }
+
+/* ===== 入力の下書きを端末に残す =====
+   30日分タップしたあとで画面を閉じても、続きから入力できるようにする。
+   送信が終わったら消す。 */
+const DRAFT_KEY="oliveShiftDraft";
+let draftOff=false; // 送信が済んだあと、次の操作までは下書きを作らない
+
+function saveDraft(){
+  if(draftOff) return;
+  if(!rangeStart) return;
+  try{
+    const name=(document.getElementById("empName")?.value||"").trim();
+    // 日付を1つも入れていないときは下書きを作らない。
+    // 名前だけの下書きが残ると、共有の端末で前の人の名前が出てしまうため。
+    if(Object.keys(state).length===0 && Object.keys(commentState||{}).length===0) return;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      name, period:fmt(rangeStart)+"_"+fmt(rangeEnd),
+      state, commentState, savedAt:new Date().toISOString()
+    }));
+  }catch(e){/* 保存できない端末では何もしない */}
+}
+function clearDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+
+// 送信後でも、日付を触り直したらまた下書きを残す
+function draftOn(){ draftOff=false; }
+function loadDraft(){
+  try{
+    const raw=localStorage.getItem(DRAFT_KEY);
+    if(!raw) return null;
+    const d=JSON.parse(raw);
+    // 対象期間が変わっていたら使わない（先月の下書きを出さないため）
+    if(!d || d.period!==fmt(rangeStart)+"_"+fmt(rangeEnd)) return null;
+    return d;
+  }catch(e){ return null; }
+}
+function restoreDraft(){
+  const d=loadDraft();
+  if(!d) return false;
+  const hasMarks=d.state && Object.keys(d.state).length>0;
+  if(!hasMarks && !d.name) return false;
+  if(d.name) document.getElementById("empName").value=d.name;
+  state=d.state||{}; commentState=d.commentState||{};
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  for(let i=0;i<total;i++) applyState(fmt(addDays(rangeStart,i)));
+  updateCount(); refreshPreview();
+  if(typeof updateCommentList==="function") updateCommentList();
+  if(hasMarks) toast("入力の続きを復元しました","ok");
+  return true;
+}
+
+/* ===== 名前を覚える =====
+   毎回フルネームを打つ手間と、打ち間違いによる表記ゆれを減らす。
+   ただし共有の端末では、前の人の名前を出さないようにする。 */
+const NAMES_KEY="oliveShiftNames";
+
+function rememberName(name){
+  const n=String(name||"").trim();
+  if(!n) return;
+  try{
+    const list=JSON.parse(localStorage.getItem(NAMES_KEY)||"[]");
+    const norm=normName(n);
+    if(!list.some(x=>normName(x)===norm)) list.push(n);
+    localStorage.setItem(NAMES_KEY, JSON.stringify(list.slice(0,5)));
+  }catch(e){}
+}
+function savedNames(){
+  try{ const v=JSON.parse(localStorage.getItem(NAMES_KEY)||"[]"); return Array.isArray(v)?v:[]; }
+  catch(e){ return []; }
+}
+function fillSavedName(){
+  const el=document.getElementById("empName");
+  const btn=document.getElementById("clearNameBtn");
+  if(!el) return;
+  const list=savedNames();
+  // この端末で使われた名前が1人分のときだけ自動で入れる。
+  // 2人以上なら共有の端末とみなし、入れない。
+  if(list.length===1 && !el.value){
+    el.value=list[0];
+    markStep(1);
+  }
+  if(btn) btn.style.display = el.value ? "inline-flex" : "none";
+}
+function forgetMe(){
+  if(!confirm("この端末に覚えている名前と、入力の下書きを消します。\nよろしいですか？\n（送信済みの内容は消えません）"))return;
+  try{ localStorage.removeItem(NAMES_KEY); }catch(e){}
+  clearDraft();
+  const el=document.getElementById("empName");
+  if(el) el.value="";
+  state={}; commentState={};
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  for(let i=0;i<total;i++) applyState(fmt(addDays(rangeStart,i)));
+  updateCount(); refreshPreview(); renderKeepCard(); renderSentState();
+  const btn=document.getElementById("clearNameBtn");
+  if(btn) btn.style.display="none";
+  toast("この端末の名前と下書きを消しました","ok");
+}
+
+/* ===== この期間を送信済みかどうかを上に出す ===== */
+function renderSentState(){
+  const box=document.getElementById("sentState");
+  const btn=document.getElementById("clearNameBtn");
+  if(!box) return;
+  const name=(document.getElementById("empName")?.value||"").trim();
+  if(btn) btn.style.display = name ? "inline-flex" : "none";
+  if(!name || !rangeStart){ box.style.display="none"; return; }
+
+  const period=`${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`;
+  const mine=keepListForOwner().filter(h=>String(h.period||"").trim()===period);
+  box.style.display="block";
+  if(mine.length>0){
+    const last=mine[0];
+    box.style.background="#e8f5e9";
+    box.style.border="1.5px solid #a5d6a7";
+    box.innerHTML=`<b style="color:var(--gr)">✅ この期間は送信済みです</b><br>`
+      +`${xmlEsc(keepStamp(last.sentAt))} 送信`
+      +(mine.length>1?`（${mine.length}回）`:"")
+      +`<br><span style="color:var(--sub)">直したいときは、この下の控えから読み込んでください。</span>`;
+  }else{
+    box.style.background="#fff8e1";
+    box.style.border="1.5px solid #ffca28";
+    box.innerHTML=`<b style="color:#e65100">📝 この期間はまだ送信していません</b><br>`
+      +`<span style="color:var(--sub)">日付を選んで、下の送信ボタンを押してください。</span>`;
+  }
+}
+
+/* ===== 対象期間を読みやすく出す ===== */
+function renderPeriodText(){
+  const el=document.getElementById("periodText");
+  if(!el||!rangeStart) return;
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  el.innerHTML=`${rangeStart.getFullYear()}年${rangeStart.getMonth()+1}月${rangeStart.getDate()}日（${DOW[rangeStart.getDay()]}）`
+    +`　〜　${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日（${DOW[rangeEnd.getDay()]}）`
+    +`<br><span style="font-size:13px;font-weight:400;color:var(--sub)">全${total}日間</span>`;
+}
+
+/* ===== タップしたときに短く振動させる =====
+   Androidでは動く。iPhoneのSafariは対応していないため何も起きない。 */
+function buzz(ms){
+  try{ if(navigator.vibrate) navigator.vibrate(ms||12); }catch(e){}
+}
+
 
 // 変更の締切：対象期間が始まる月の7日
 function deadlineDate(){
@@ -838,7 +994,9 @@ function buildCal(){
     g.appendChild(c);applyState(k);
   }
   updateCount();
-  renderDeadline(); // 対象期間が変わったら締切の表示も更新する
+  renderDeadline();   // 対象期間が変わったら締切の表示も更新する
+  renderPeriodText(); // 対象期間の表示
+  renderSentState();
 }
 
 const CYCLE=["","○","△","×"];
@@ -846,6 +1004,8 @@ function cycleCell(k){
   const cur=state[k]||"",next=CYCLE[(CYCLE.indexOf(cur)+1)%CYCLE.length];
   if(next)state[k]=next;else delete state[k];
   applyState(k);updateCount();refreshPreview();markStep(2);
+  buzz(12);      // 押した手ごたえ（Androidのみ）
+  draftOn(); saveDraft();
 }
 function applyState(k){
   const el=document.querySelector(`.day[data-k="${k}"]`);if(!el)return;
@@ -872,19 +1032,19 @@ function updateCount(){
 function allMaru(){
   const total=daysBetween(rangeStart,rangeEnd)+1;
   for(let i=0;i<total;i++){const k=fmt(addDays(rangeStart,i));state[k]="○";applyState(k);}
-  updateCount();refreshPreview();toast("全日を ○ にしました","ok");markStep(2);
+  updateCount();refreshPreview();toast("全日を ○ にしました","ok");markStep(2);buzz(25);draftOn();saveDraft();
 }
 function allBatsu(){
   const total=daysBetween(rangeStart,rangeEnd)+1;
   for(let i=0;i<total;i++){const k=fmt(addDays(rangeStart,i));state[k]="×";applyState(k);}
-  updateCount();refreshPreview();toast("全日を × にしました","ok");markStep(2);
+  updateCount();refreshPreview();toast("全日を × にしました","ok");markStep(2);buzz(25);draftOn();saveDraft();
 }
 function clearAll(){
   if(!confirm("入力をすべて消去しますか？"))return;
   state={};
   const total=daysBetween(rangeStart,rangeEnd)+1;
   for(let i=0;i<total;i++)applyState(fmt(addDays(rangeStart,i)));
-  updateCount();refreshPreview();toast("クリアしました","ok");
+  updateCount();refreshPreview();toast("クリアしました","ok");buzz(25);draftOn();saveDraft();
 }
 
 function buildText(){
@@ -946,6 +1106,26 @@ function doSend(){
     `<span style="background:#f5f5f5;color:#666;padding:4px 10px;border-radius:100px;font-size:12px">未入力 ${u}日</span>`;
   document.getElementById("confirmList").textContent=
     details.length>0 ? details.join("\n") : "（入力なし）";
+
+  // 未入力の日が残っているときは、目立つ形で知らせる
+  const warn=document.getElementById("confirmWarn");
+  if(warn){
+    if(u>0){
+      const days=[];
+      for(let i=0;i<total;i++){
+        const d=addDays(rangeStart,i);
+        if(!state[fmt(d)]) days.push(`${d.getMonth()+1}/${d.getDate()}`);
+      }
+      const head=days.slice(0,10).join("、")+(days.length>10?` ほか${days.length-10}日`:"");
+      warn.innerHTML=`<b>⚠️ まだ ${u}日 入力していません</b><br>`
+        +`<span style="font-size:12px">${xmlEsc(head)}</span><br>`
+        +`<span style="font-size:12px">このまま送ると、その日は空欄で届きます。</span>`;
+      warn.style.display="block";
+    }else{
+      warn.style.display="none";
+    }
+  }
+
   const modal=document.getElementById("confirmModal");
   modal.style.display="flex";
 }
@@ -1155,6 +1335,7 @@ function keepLoadToForm(){
   if(typeof updateCommentList==="function") updateCommentList();
   markStep(2);
 
+  draftOn(); saveDraft(); // 読み込んだ内容も下書きとして残す
   const skipped=rows.length-inRange.length;
   toast(skipped>0
     ? `読み込みました（${skipped}日分は期間外のため除きました）`
@@ -1211,6 +1392,11 @@ function showSentDone(btn){
   if(done)done.style.display="block";
   if(btn)btn.style.display="none";
   markStep(3);
+  rememberName(document.getElementById("empName")?.value); // 次回から名前を入れておく
+  draftOff=true;     // 画面を閉じるときの保存で復活させない
+  clearDraft();      // 送信が済んだので下書きは消す
+  renderSentState(); // 「送信済み」に切り替える
+  buzz([30,60,30]);  // 送信できた合図（Androidのみ）
   toast("✅ 送信しました！","ok");
 }
 
