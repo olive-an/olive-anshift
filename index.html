@@ -548,6 +548,9 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         <button class="btn btn-gr" onclick="showAdminSection('xlsxSection')" style="background:#1b5e20">
           📂　Excelに転記する
         </button>
+        <button class="btn btn-ol" onclick="showAdminSection('histSection')" style="margin-top:12px">
+          📬　送信履歴を見る（受信一覧）
+        </button>
       </div>
     </div>
 
@@ -646,6 +649,31 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
       </div>
 
 
+    </div>
+
+    <!-- 送信履歴（受信一覧）セクション -->
+    <div class="hidden" id="histSection">
+      <div class="card">
+        <div class="card-h">
+          <span class="card-hn">📬</span>
+          <div>
+            <div class="card-hl">送信履歴（受信一覧）</div>
+            <div class="card-hs">誰がいつ送ったかを一覧で確認できます</div>
+          </div>
+        </div>
+        <div class="card-b">
+          <button class="btn btn-gr" onclick="loadAdminHistory()">
+            ☁️　受信データを読み込む
+          </button>
+          <div id="histStatus" style="font-size:12px;color:var(--sub);margin-top:8px;line-height:1.6"></div>
+          <div id="histList" style="margin-top:12px"></div>
+          <div class="preview hidden" id="histText" style="max-height:260px;margin-top:12px"></div>
+          <div class="btn-sm hidden" id="histBtns" style="margin-top:10px">
+            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="histCopy()">📋 コピー</button>
+            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="histDownload()">⬇ ファイル保存</button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1210,8 +1238,9 @@ function pwCheck(){
 
 function showAdminSection(id){
   // 全セクションを隠す
-  ["aggSection","xlsxSection"].forEach(s=>{
-    document.getElementById(s).classList.add("hidden");
+  ["aggSection","xlsxSection","histSection"].forEach(s=>{
+    const el=document.getElementById(s);
+    if(el)el.classList.add("hidden");
   });
   const backBtn = document.getElementById("backBtn");
   if(id){
@@ -1401,6 +1430,119 @@ async function loadFromGAS(){
   }catch(e){
     toast("読み込みエラー："+e.message,"err");
   }
+}
+
+/* ===== 管理者用：送信履歴（受信一覧） =====
+   スプレッドシートに届いている提出を、送信日時つきで一覧にする。
+   管理者の画面なので、全員の氏名を表示する。 */
+let _histData=[];
+let _histIdx=-1;
+
+// GASが返す項目名はスクリプト次第なので、日時になりそうなものを順に探す
+const HIST_TIME_KEYS=["time","timestamp","date","sentAt","ts","createdAt",
+                      "日時","送信日時","タイムスタンプ"];
+function histTimeOf(d){
+  for(let i=0;i<HIST_TIME_KEYS.length;i++){
+    const v=d[HIST_TIME_KEYS[i]];
+    if(v==null||v==="")continue;
+    const t=new Date(v);
+    if(!isNaN(t.getTime()))return t;
+  }
+  return null;
+}
+function histNameOf(d){
+  const n=String(d.name||"").trim();
+  return n || extractName(d.text||"") || "（不明）";
+}
+function histPeriodOf(d){
+  if(d.period)return String(d.period).trim();
+  const m=/期間[：:]\s*([^\n\r]+)/.exec(d.text||"");
+  return m?m[1].trim():"";
+}
+
+async function loadAdminHistory(){
+  const status=document.getElementById("histStatus");
+  if(!GAS_URL||GAS_URL==="YOUR_GAS_URL"){
+    if(status){status.textContent="GASのURLが設定されていません";status.style.color="#c62828";}
+    return;
+  }
+  if(status){status.textContent="読み込み中…";status.style.color="var(--sub)";}
+  try{
+    const data=await fetchGASData();
+    _histData=(data||[]).filter(d=>d&&d.text);
+    _histIdx=-1;
+    // 新しい順に並べる（日時が取れないものは受信した順のまま後ろへ）
+    _histData.sort((a,b)=>{
+      const ta=histTimeOf(a),tb=histTimeOf(b);
+      if(ta&&tb)return tb-ta;
+      if(ta)return -1;
+      if(tb)return 1;
+      return 0;
+    });
+    renderAdminHistory();
+    const noTime=_histData.filter(d=>!histTimeOf(d)).length;
+    if(status){
+      status.innerHTML=`✅ ${_histData.length}名分を読み込みました`
+        +(noTime?`<br>※ ${noTime}件は送信日時が記録されていないため「日時なし」と表示しています`:"");
+      status.style.color="var(--gr)";
+    }
+  }catch(e){
+    if(status){status.textContent="読み込みエラー："+e.message;status.style.color="#c62828";}
+  }
+}
+
+function renderAdminHistory(){
+  const wrap=document.getElementById("histList");
+  if(!wrap)return;
+  if(_histData.length===0){
+    wrap.innerHTML=`<p style="font-size:13px;color:var(--sub)">まだ届いている提出がありません。</p>`;
+    return;
+  }
+  wrap.innerHTML=_histData.map((d,i)=>{
+    const t=histTimeOf(d);
+    const c=keepCounts(d.text);
+    return `<button class="keep-item${i===_histIdx?" on":""}" onclick="selectAdminHistory(${i})">`
+      +`${xmlEsc(histNameOf(d))}`
+      +`<span class="sub">${t?xmlEsc(keepStamp(t.toISOString()))+" 送信":"日時なし"}`
+      +`　${xmlEsc(histPeriodOf(d))}　○${c["○"]}日 △${c["△"]}日 ×${c["×"]}日</span>`
+      +`</button>`;
+  }).join("");
+}
+
+function selectAdminHistory(i){
+  _histIdx=i;
+  const box=document.getElementById("histText");
+  const btns=document.getElementById("histBtns");
+  const d=_histData[i];
+  if(!d||!box)return;
+  box.textContent=d.text;
+  box.classList.remove("hidden");
+  if(btns)btns.classList.remove("hidden");
+  renderAdminHistory();
+}
+
+function histCurrent(){ return _histData[_histIdx]||null; }
+
+function histCopy(){
+  const d=histCurrent();
+  if(!d){toast("一覧から選んでください","err");return}
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(d.text)
+      .then(()=>toast("コピーしました","ok"))
+      .catch(()=>{keepCopyFallback(d.text);toast("コピーしました","ok")});
+  }else{
+    keepCopyFallback(d.text);toast("コピーしました","ok");
+  }
+}
+
+function histDownload(){
+  const d=histCurrent();
+  if(!d){toast("一覧から選んでください","err");return}
+  const nm=histNameOf(d).replace(/[\\/:*?"<>|]/g,"");
+  const pd=histPeriodOf(d).replace(/[\\/:*?"<>|]/g,"-");
+  downloadBlob(new Blob(["﻿"+d.text],{type:"text/plain;charset=utf-8"}),
+               `シフト希望_${nm}_${pd}.txt`);
+  toast("ファイルに保存しました","ok");
 }
 
 function fetchGASData(){
