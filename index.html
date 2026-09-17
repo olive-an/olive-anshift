@@ -454,32 +454,12 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
           <p style="font-size:12px;color:var(--sub);margin-bottom:10px">
             📋 個人保管用（あとで「前に送信した内容の控え」からも確認できます）
           </p>
-          <button onclick="copySentHistory()" style="
-            display:inline-flex;align-items:center;gap:6px;
-            padding:11px 20px;border-radius:100px;
-            font-size:14px;font-weight:700;
-            background:#fff;color:var(--gr);
-            border:2px solid var(--gr);
-            cursor:pointer;font-family:inherit;
-            -webkit-tap-highlight-color:transparent;
-          ">📋 送信内容をコピー</button>
-          <button class="btn btn-gr" style="margin-top:12px;font-size:15px;padding:14px" onclick="keepShare()">
+          <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
             📤 自分に送る・保存する
           </button>
-          <div class="btn-sm">
-            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepMail()">✉ メールで送る</button>
-            <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepDownload()">⬇ ファイル保存</button>
-          </div>
-          <div id="copyHistoryMsg" style="font-size:12px;color:var(--gr);margin-top:8px;display:none">
-            ✅ コピーしました！メモ帳などに貼り付けて保管できます
-          </div>
-          <div id="sentHistoryPreview" style="
-            margin-top:10px;background:#fff;border-radius:8px;
-            padding:10px;font-size:11px;color:var(--sub);
-            text-align:left;line-height:1.7;max-height:120px;
-            overflow-y:auto;display:none;
-            border:1px solid #a5d6a7;
-          "></div>
+          <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepDownload()">
+            ⬇ ファイルで保存（テキスト）
+          </button>
         </div>
       </div>
     </div>
@@ -506,17 +486,14 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
       <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:-4px 0 10px">
         LINE・メール・メモなど、送り先を選べます。LINEなら自分だけのトーク（Keepメモ）にも残せます。
       </p>
-      <div class="btn-sm">
-        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepCopy()">📋 コピー</button>
-        <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepMail()">✉ メールで送る</button>
-      </div>
+      <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepCopy()">📋 コピー</button>
       <button class="btn btn-ol" style="font-size:13px;padding:12px" onclick="keepDownload()">
         ⬇ ファイルで保存（テキスト）
       </button>
       <p style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:4px">
         送信したときに、この端末のブラウザへ自動で保存された控えです。<br>
         ①に入れたお名前の控えだけが表示されます。ほかの方の控えは出ません。<br>
-        ブラウザのデータを消すと控えも消えます。確実に残したいときは、コピーかメール、ファイル保存で手元に残してください。
+        ブラウザのデータを消すと控えも消えます。確実に残したいときは、「自分に送る・保存する」かコピー、ファイル保存で手元に残してください。
       </p>
       <button class="keep-link" onclick="keepClearOwn()" style="color:#c62828">
         🗑 この端末から自分の控えを消す
@@ -1181,43 +1158,6 @@ function keepDownload(){
   a.click();
   setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
   toast("ファイルに保存しました","ok");
-}
-
-function copySentHistory(){
-  const txt = document.getElementById("helperPreview") ?
-    document.getElementById("sentHistoryText") : null;
-  // buildTextで最後に送信したテキストを取得
-  const text = window._lastSentText || buildText();
-  if(!text){ return; }
-  // プレビュー表示
-  const preview = document.getElementById("sentHistoryPreview");
-  if(preview){
-    preview.textContent = text;
-    preview.style.display = "block";
-  }
-  // クリップボードにコピー
-  if(navigator.clipboard){
-    navigator.clipboard.writeText(text).then(()=>{
-      const msg = document.getElementById("copyHistoryMsg");
-      if(msg){ msg.style.display="block"; setTimeout(()=>msg.style.display="none",3000); }
-      toast("送信内容をコピーしました","ok");
-    }).catch(()=>{
-      // fallback
-      const ta=document.createElement("textarea");
-      ta.value=text; document.body.appendChild(ta);
-      ta.select(); document.execCommand("copy");
-      document.body.removeChild(ta);
-      toast("送信内容をコピーしました","ok");
-    });
-  } else {
-    const ta=document.createElement("textarea");
-    ta.value=text; document.body.appendChild(ta);
-    ta.select(); document.execCommand("copy");
-    document.body.removeChild(ta);
-    const msg = document.getElementById("copyHistoryMsg");
-    if(msg){ msg.style.display="block"; setTimeout(()=>msg.style.display="none",3000); }
-    toast("送信内容をコピーしました","ok");
-  }
 }
 
 function showSentDone(btn){
