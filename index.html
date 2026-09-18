@@ -603,6 +603,37 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
       </div>
     </div>
 
+    <!-- 対象期間の設定。毎月ここで変える -->
+    <div class="card" id="periodCard">
+      <div class="card-h">
+        <span class="card-hn">📅</span>
+        <div>
+          <div class="card-hl">対象期間を変える</div>
+          <div class="card-hs">職員のカレンダーと集計に使う期間です</div>
+        </div>
+      </div>
+      <div class="card-b">
+        <div style="background:var(--sand);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px">
+          いまの対象期間：<b id="periodNow" style="color:var(--gr)">—</b>
+        </div>
+        <div class="period-row">
+          <input class="inp" type="date" id="aDateStart">
+          <span class="period-sep">〜</span>
+          <input class="inp" type="date" id="aDateEnd">
+        </div>
+        <button class="btn btn-gr" onclick="applyAdminPeriod()" style="margin-top:12px;font-size:14px;padding:13px">
+          ✅ この期間に変更する
+        </button>
+        <div id="periodApplyMsg" style="margin-top:8px;font-size:12px;color:var(--gr);display:none">
+          ✅ シフト希望の期間を更新しました
+        </div>
+        <p style="font-size:12px;color:var(--sub);line-height:1.6;margin-top:10px">
+          変えると、職員のカレンダーがその期間に入れ替わります。<br>
+          入力の途中だったものは消えるので、締切前の入れ替えにはご注意ください。
+        </p>
+      </div>
+    </div>
+
     <!-- 戻るボタン -->
     <div class="hidden" id="backBtn" style="margin-bottom:12px">
       <button class="btn btn-ol" onclick="showAdminSection(null)" style="font-size:14px;padding:11px">
@@ -612,23 +643,6 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
 
     <!-- 集計セクション -->
     <div class="hidden" id="aggSection">
-
-      <div class="card">
-        <div class="card-h"><span class="card-hn">📅</span><div><div class="card-hl">集計期間</div></div></div>
-        <div class="card-b">
-          <div class="period-row">
-            <input class="inp" type="date" id="aDateStart">
-            <span class="period-sep">〜</span>
-            <input class="inp" type="date" id="aDateEnd">
-          </div>
-          <button class="btn btn-gr" onclick="applyAdminPeriod()" style="margin-top:12px;font-size:14px;padding:13px">
-            ✅ 日付変更確定
-          </button>
-          <div id="periodApplyMsg" style="margin-top:8px;font-size:12px;color:var(--gr);display:none">
-            ✅ シフト希望の期間を更新しました
-          </div>
-        </div>
-      </div>
 
       <!-- 非表示データバッファ（loadFromGAS用） -->
       <textarea id="pasteArea" style="display:none"></textarea>
@@ -833,7 +847,7 @@ function init(){
   document.getElementById("aDateStart").value=fmt(s);
   document.getElementById("aDateEnd").value=fmt(e);
   rangeStart=s;rangeEnd=e;
-  buildCal();refreshPreview();
+  buildCal();refreshPreview();renderPeriodNow();
   fillSavedName();   // この端末で前に使った名前を入れる
   restoreDraft();    // 入力の途中があれば戻す
   renderKeepCard();  // 前に送信した控えがあれば表示
@@ -995,6 +1009,14 @@ function renderPeriodText(){
    Androidでは動く。iPhoneのSafariは対応していないため何も起きない。 */
 function buzz(ms){
   try{ if(navigator.vibrate) navigator.vibrate(ms||12); }catch(e){}
+}
+
+/* 管理者メニューに、いま使っている対象期間を出す */
+function renderPeriodNow(){
+  const el=document.getElementById("periodNow");
+  if(!el||!rangeStart||!rangeEnd) return;
+  el.textContent=`${rangeStart.getMonth()+1}月${rangeStart.getDate()}日 〜 ${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日`
+    +`（全${daysBetween(rangeStart,rangeEnd)+1}日間）`;
 }
 
 
@@ -1498,14 +1520,17 @@ function showAdminSection(id){
     if(el)el.classList.add("hidden");
   });
   const backBtn = document.getElementById("backBtn");
+  const periodCard = document.getElementById("periodCard"); // 期間の設定はメニュー画面だけに出す
   if(id){
     // 指定セクションを表示
     document.getElementById(id).classList.remove("hidden");
     document.getElementById("adminMenu").classList.add("hidden");
+    if(periodCard) periodCard.classList.add("hidden");
     backBtn.classList.remove("hidden");
   } else {
     // メニュー画面に戻る
     document.getElementById("adminMenu").classList.remove("hidden");
+    if(periodCard) periodCard.classList.remove("hidden");
     backBtn.classList.add("hidden");
   }
 }
@@ -1635,7 +1660,7 @@ function applyAdminPeriod(){
   document.getElementById("dateStart").value=fmt(as);
   document.getElementById("dateEnd").value=fmt(ae);
   state={}; commentState={};
-  buildCal(); refreshPreview();
+  buildCal(); refreshPreview(); renderPeriodNow();
 
   // 集計結果もリセット
   window._agg = null;
