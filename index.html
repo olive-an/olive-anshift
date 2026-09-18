@@ -2650,7 +2650,9 @@ async function writeToXlsx(input){
         rowIdx = addableRows[addPos++];
         const sur = surnameOf(name);
         edits["A" + rowIdx] = sur;
-        added.push(sur === name ? name : `${sur}（${name}）`);
+        // どの行に入れたかも知らせる。空き行は見つかった順なので、
+        // 別のホームの並びの中に入ることがあるため。
+        added.push((sur === name ? name : `${sur}（${name}）`) + `＝${rowIdx}行目`);
       }
       matched++;
 
@@ -2731,7 +2733,9 @@ async function writeToXlsx(input){
     lines.push(stamped > 0
       ? `🕒 ${stamped}名の送信日時を、${TIME_COL}列のその人の行に書き込みました`
       : `🕒 送信日時が分かる提出がありませんでした（${TIME_COL}列は空のままです）`);
-    if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に苗字を書き足しました<br>　${nameList(added)}`);
+    if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に苗字を書き足しました<br>　${nameList(added)}<br>　`
+      + `<span style="color:#c62828">空き行は見つかった順に使うため、別のホームの並びに入ることがあります。`
+      + `決まった場所に入れたいときは、Excelのその人のホームの行に、あらかじめ苗字を書いておいてください。</span>`);
     if(skipped.length > 0) lines.push(`⚠️ 空き行が足りず、次の${skipped.length}名は転記できませんでした<br>　${nameList(skipped)}<br>　Excelの氏名欄に空行を作ってから、もう一度転記してください`);
     if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
     const box = document.getElementById("xlsxResult");
