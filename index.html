@@ -2481,6 +2481,22 @@ function patchSheetXml(xml,edits){
   return xml;
 }
 
+/* 元の表より右（コメントのAJ列など）へ書くときは、シートの範囲も広げておく。
+   範囲の書き方が違うファイルでは何もしない（壊さないため）。 */
+function widenDimension(xml,edits){
+  const m=/<dimension\s+ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"\s*\/>/.exec(xml);
+  if(!m) return xml;
+  let maxCol=colLetterToNum(m[3]), maxRow=Number(m[4]);
+  Object.keys(edits).forEach(addr=>{
+    const c=/^([A-Z]+)(\d+)$/.exec(addr);
+    if(!c) return;
+    maxCol=Math.max(maxCol,colLetterToNum(c[1]));
+    maxRow=Math.max(maxRow,Number(c[2]));
+  });
+  return xml.replace(m[0],
+    `<dimension ref="${m[1]}${m[2]}:${colIdxToLetter(maxCol-1)}${maxRow}"/>`);
+}
+
 // 元ファイルのzipを開き、セルだけ差し替えて同じzipとして返す
 async function writeCellsKeepingFormat(arrayBuffer,sheetName,edits){
   const zip=await JSZip.loadAsync(arrayBuffer);
@@ -2488,7 +2504,7 @@ async function writeCellsKeepingFormat(arrayBuffer,sheetName,edits){
   const file=zip.file(path);
   if(!file) throw new Error("シートのデータが見つかりません（"+path+"）");
   const xml=await file.async("string");
-  zip.file(path,patchSheetXml(xml,edits));
+  zip.file(path,patchSheetXml(widenDimension(xml,edits),edits));
   return await zip.generateAsync({type:"blob",
     mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     compression:"DEFLATE"});
@@ -2501,6 +2517,9 @@ function downloadBlob(blob,filename){
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
+
+// コメントを書き込む列。表の右の空いている場所
+const CMT_COL = "AJ";
 
 async function writeToXlsx(input){
   const agg = window._agg;
@@ -2535,6 +2554,7 @@ async function writeToXlsx(input){
 
     let written = 0;
     let matched = 0;
+    let commented = 0;
     const skipped = [];
     const added = [];
     const edits = {}; // 「C2」→「○」の形で、書き込む場所と記号をためる
@@ -2553,15 +2573,24 @@ async function writeToXlsx(input){
       }
       matched++;
 
-      // 記号だけを書き込む。コメントはExcelには入れない
-      // （必要なときは管理者メニューの「送信履歴」で日ごとに確認できる）
+      // 記号を日付の列へ書き込む
+      const cmts = [];
       agg.dates.forEach(d => {
-        const sym = agg.byName[name][fmt(d)] || "";
+        const key = fmt(d);
+        const cmt = agg.byName[name][key + "__comment"];
+        if(cmt) cmts.push(`${d.getMonth()+1}/${d.getDate()} ${cmt}`);
+        const sym = agg.byName[name][key] || "";
         if(!sym) return;
         const colIdx = colOf(d.getDate());
         edits[colIdxToLetter(colIdx) + rowIdx] = sym; // 例：C2
         written++;
       });
+
+      // コメントは表の右のAJ列へ、その人の行に合わせてまとめて書く
+      if(cmts.length){
+        edits[CMT_COL + rowIdx] = cmts.join(" ／ ");
+        commented++;
+      }
     });
 
     if(written === 0){
@@ -2586,10 +2615,16 @@ async function writeToXlsx(input){
 
     if(!keptFormat){
       // 予備：体裁は崩れるが、数字と記号だけは必ず出せるようにしておく
+      const rng = XLSX.utils.decode_range(ws["!ref"] || "A1");
       Object.keys(edits).forEach(addr => {
         if(!ws[addr]) ws[addr] = {t:"s", v:""};
         ws[addr].t = "s"; ws[addr].v = edits[addr]; ws[addr].w = edits[addr];
+        // 元の表より右（コメントのAJ列）も範囲に入れておく
+        const c = XLSX.utils.decode_cell(addr);
+        if(c.c > rng.e.c) rng.e.c = c.c;
+        if(c.r > rng.e.r) rng.e.r = c.r;
       });
+      ws["!ref"] = XLSX.utils.encode_range(rng);
       const outBuf = XLSX.write(wb, {type:"array", bookType:"xlsx", cellStyles:true});
       downloadBlob(new Blob([outBuf], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), fileName);
     }
@@ -2598,6 +2633,7 @@ async function writeToXlsx(input){
     // 氏名は職員が入力した文字列なので、画面に出す前にエスケープする
     const nameList = arr => arr.map(xmlEsc).join("、");
     const lines = [`✅ ${matched}名・${written}セルを転記しました`];
+    if(commented > 0) lines.push(`💬 コメントのあった${commented}名は、${CMT_COL}列のその人の行に書き込みました`);
     if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に苗字を書き足しました<br>　${nameList(added)}`);
     if(skipped.length > 0) lines.push(`⚠️ 空き行が足りず、次の${skipped.length}名は転記できませんでした<br>　${nameList(skipped)}<br>　Excelの氏名欄に空行を作ってから、もう一度転記してください`);
     if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
