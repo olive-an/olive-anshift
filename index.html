@@ -2091,6 +2091,7 @@ function parseAll(){
     stamps[name]=t;
   });
   window._aggCounts=counts;
+  window._aggStamps=stamps;   // 氏名 → 採用した提出の送信日時
   if(!Object.keys(byName).length){
     toast(`有効なデータがありません。上の期間（${s.getMonth()+1}/${s.getDate()}〜${e.getMonth()+1}/${e.getDate()}）と本文の日付が合っているか確認してください`,"err");
     return;
@@ -2163,9 +2164,15 @@ function renderAgg(byName,s,e){
   thead.appendChild(trh);tbl.appendChild(thead);
   const tbody=document.createElement("tbody");
   const names=Object.keys(byName);
+  const stamps=window._aggStamps||{};
   names.forEach(nm=>{
     const tr=document.createElement("tr");
-    const td0=document.createElement("td");td0.textContent=nm;tr.appendChild(td0);
+    const td0=document.createElement("td");
+    // 氏名の下に、その人がいつ出したかを小さく出す
+    td0.innerHTML=xmlEsc(nm)
+      +`<span style="display:block;font-weight:400;font-size:10px;color:var(--sub)">`
+      +(stamps[nm]?xmlEsc(keepStamp(stamps[nm].toISOString())):"日時なし")+`</span>`;
+    tr.appendChild(td0);
     dates.forEach(d=>{
       const k=fmt(d),v=byName[nm][k]||"";
       const cmt=byName[nm][k+"__comment"]||"";
@@ -2497,9 +2504,9 @@ function widenDimension(xml,edits){
     `<dimension ref="${m[1]}${m[2]}:${colIdxToLetter(maxCol-1)}${maxRow}"/>`);
 }
 
-/* コメント欄が印刷にも出るように、印刷範囲をコメントの列まで広げる。
+/* 書き足した欄（コメント・送信日時）が印刷にも出るように、印刷範囲を広げる。
    すでに足りている場合や、書き方が違うファイルでは何もしない。 */
-function widenPrintArea(wbXml,sheetIdx){
+function widenPrintArea(wbXml,sheetIdx,lastCol){
   return wbXml.replace(/<definedName\b[^>]*name="_xlnm\.Print_Area"[^>]*>[^<]*<\/definedName>/g,tag=>{
     const li=/localSheetId="(\d+)"/.exec(tag);
     if(li && Number(li[1])!==sheetIdx) return tag;   // 別のシートの設定は触らない
@@ -2507,8 +2514,8 @@ function widenPrintArea(wbXml,sheetIdx){
     if(!body) return tag;
     const m=/^(.*!\$[A-Z]+\$\d+:\$)([A-Z]+)(\$\d+)$/.exec(body[1]);
     if(!m) return tag;
-    if(colLetterToNum(m[2])>=colLetterToNum(CMT_COL)) return tag; // すでに入っている
-    return tag.replace(body[1], m[1]+CMT_COL+m[3]);
+    if(colLetterToNum(m[2])>=colLetterToNum(lastCol)) return tag; // すでに入っている
+    return tag.replace(body[1], m[1]+lastCol+m[3]);
   });
 }
 
@@ -2523,10 +2530,10 @@ async function sheetIndexOf(zip,sheetName){
   return i<0?0:i;
 }
 
-/* コメントが読める幅を確保する。
+/* 書き足した欄が読める幅を確保する。
    すでに同じ列を含む指定があるファイルには触らない（幅を壊さないため）。 */
-function setCommentColWidth(xml){
-  const colNum=colLetterToNum(CMT_COL);
+function setColWidth(xml,col,width){
+  const colNum=colLetterToNum(col);
   const cm=/<cols>([\s\S]*?)<\/cols>/.exec(xml);
   if(!cm) return xml;
   const items=cm[1].match(/<col\b[^>]*\/>/g)||[];
@@ -2536,7 +2543,7 @@ function setCommentColWidth(xml){
     return mn<=colNum && colNum<=mx;
   });
   if(covered) return xml;
-  const newCol='<col min="'+colNum+'" max="'+colNum+'" width="'+CMT_COL_WIDTH+'" customWidth="1"/>';
+  const newCol='<col min="'+colNum+'" max="'+colNum+'" width="'+width+'" customWidth="1"/>';
   let out="",inserted=false;
   items.forEach(it=>{
     const mn=Number((/\bmin="(\d+)"/.exec(it)||[])[1]||0);
@@ -2548,21 +2555,24 @@ function setCommentColWidth(xml){
 }
 
 // 元ファイルのzipを開き、セルだけ差し替えて同じzipとして返す
-async function writeCellsKeepingFormat(arrayBuffer,sheetName,edits,hasComment){
+async function writeCellsKeepingFormat(arrayBuffer,sheetName,edits,extraCols){
   const zip=await JSZip.loadAsync(arrayBuffer);
   const path=await findSheetXmlPath(zip,sheetName);
   const file=zip.file(path);
   if(!file) throw new Error("シートのデータが見つかりません（"+path+"）");
   const xml=await file.async("string");
   let sheetXml=patchSheetXml(widenDimension(xml,edits),edits);
-  if(hasComment) sheetXml=setCommentColWidth(sheetXml);
+  (extraCols||[]).forEach(([col,width])=>{ sheetXml=setColWidth(sheetXml,col,width); });
   zip.file(path,sheetXml);
 
-  if(hasComment){
+  // 書き足した欄まで印刷されるように、印刷範囲もいちばん右の列まで広げる
+  if(extraCols && extraCols.length){
+    const lastCol=extraCols.map(c=>c[0])
+      .reduce((a,b)=>colLetterToNum(a)>=colLetterToNum(b)?a:b);
     const wbFile=zip.file("xl/workbook.xml");
     if(wbFile){
       const wbXml=await wbFile.async("string");
-      zip.file("xl/workbook.xml",widenPrintArea(wbXml,await sheetIndexOf(zip,sheetName)));
+      zip.file("xl/workbook.xml",widenPrintArea(wbXml,await sheetIndexOf(zip,sheetName),lastCol));
     }
   }
   return await zip.generateAsync({type:"blob",
@@ -2582,6 +2592,9 @@ function downloadBlob(blob,filename){
 const CMT_COL = "AJ";
 // コメントが1行で読める幅（印刷にも出せるようにこの幅を付ける）
 const CMT_COL_WIDTH = 45;
+// 送信日時を書く列。コメントの隣
+const TIME_COL = "AK";
+const TIME_COL_WIDTH = 22;
 
 async function writeToXlsx(input){
   const agg = window._agg;
@@ -2617,6 +2630,7 @@ async function writeToXlsx(input){
     let written = 0;
     let matched = 0;
     let commented = 0;
+    let stamped = 0;
     const skipped = [];
     const added = [];
     const edits = {}; // 「C2」→「○」の形で、書き込む場所と記号をためる
@@ -2653,6 +2667,13 @@ async function writeToXlsx(input){
         edits[CMT_COL + rowIdx] = cmts.join(" ／ ");
         commented++;
       }
+
+      // いつ出された希望かが分かるよう、送信日時をその隣の列に書く
+      const st = (window._aggStamps || {})[name];
+      if(st){
+        edits[TIME_COL + rowIdx] = keepStamp(st.toISOString()) + " 送信";
+        stamped++;
+      }
     });
 
     if(written === 0){
@@ -2665,7 +2686,10 @@ async function writeToXlsx(input){
     let keptFormat = true;
     if(typeof JSZip !== "undefined"){
       try{
-        const blob = await writeCellsKeepingFormat(buf, wsName, edits, commented > 0);
+        const extraCols = [];
+        if(commented > 0) extraCols.push([CMT_COL, CMT_COL_WIDTH]);
+        if(stamped   > 0) extraCols.push([TIME_COL, TIME_COL_WIDTH]);
+        const blob = await writeCellsKeepingFormat(buf, wsName, edits, extraCols);
         downloadBlob(blob, fileName);
       }catch(err){
         console.error(err);
@@ -2696,6 +2720,7 @@ async function writeToXlsx(input){
     const nameList = arr => arr.map(xmlEsc).join("、");
     const lines = [`✅ ${matched}名・${written}セルを転記しました`];
     if(commented > 0) lines.push(`💬 コメントのあった${commented}名は、${CMT_COL}列のその人の行に書き込みました（印刷にも出ます）`);
+    if(stamped > 0) lines.push(`🕒 ${stamped}名の送信日時を、${TIME_COL}列のその人の行に書き込みました`);
     if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に苗字を書き足しました<br>　${nameList(added)}`);
     if(skipped.length > 0) lines.push(`⚠️ 空き行が足りず、次の${skipped.length}名は転記できませんでした<br>　${nameList(skipped)}<br>　Excelの氏名欄に空行を作ってから、もう一度転記してください`);
     if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
