@@ -2161,6 +2161,9 @@ function renderAgg(byName,s,e){
     if(d.getDay()===0)th.className="sun";if(d.getDay()===6)th.className="sat";
     trh.appendChild(th);
   });
+  // いちばん右にコメント欄を置く（Excelのコメント列と同じ中身）
+  const thc=document.createElement("th");thc.textContent="コメント";
+  thc.style.minWidth="180px";trh.appendChild(thc);
   thead.appendChild(trh);tbl.appendChild(thead);
   const tbody=document.createElement("tbody");
   const names=Object.keys(byName);
@@ -2189,6 +2192,16 @@ function renderAgg(byName,s,e){
       }
       tr.appendChild(td);
     });
+    // その人のコメントを、日付つきでまとめて右端に出す
+    const cmts=[];
+    dates.forEach(d=>{
+      const c=byName[nm][fmt(d)+"__comment"];
+      if(c) cmts.push(`${d.getMonth()+1}/${d.getDate()} ${c}`);
+    });
+    const tdc=document.createElement("td");
+    tdc.style.cssText="text-align:left;font-size:11px;line-height:1.6;white-space:normal;color:var(--text)";
+    tdc.textContent=cmts.join(" ／ ");
+    tr.appendChild(tdc);
     tbody.appendChild(tr);
   });
   ["○","△","×"].forEach(sym=>{
@@ -2198,6 +2211,7 @@ function renderAgg(byName,s,e){
       let c=0;const k=fmt(d);names.forEach(nm=>{if(byName[nm][k]===sym)c++;});
       const td=document.createElement("td");td.textContent=c||"";tr.appendChild(td);
     });
+    tr.appendChild(document.createElement("td")); // コメント欄の分
     tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
@@ -2437,6 +2451,27 @@ async function findSheetXmlPath(zip,sheetName){
   return target.indexOf("xl/")===0?target:"xl/"+target;
 }
 
+/* 原紙に無い行を、行ごと作って差し込む。
+   名簿に無い人を表のいちばん下に足すときに使う。行番号の順は必ず守る。 */
+function insertNewRow(xml,rowNum,cells){
+  const cellXml=cells.slice().sort((a,b)=>a.col-b.col).map(e=>
+    (e.val==null||e.val==="")
+      ? ""
+      : '<c r="'+e.addr+'" t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(e.val)+'</t></is></c>'
+  ).join("");
+  if(!cellXml) return xml;
+  const newRow='<row r="'+rowNum+'">'+cellXml+'</row>';
+  const rows=xml.match(/<row\b[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g)||[];
+  for(let i=0;i<rows.length;i++){
+    const r=/\br="(\d+)"/.exec(rows[i]);
+    if(r && Number(r[1])>rowNum){
+      const at=xml.indexOf(rows[i]);
+      return xml.slice(0,at)+newRow+xml.slice(at);
+    }
+  }
+  return xml.replace(/<\/sheetData>/,newRow+"</sheetData>");
+}
+
 // シートXMLの中の、指定セルの中身だけを差し替える（書式のs属性はそのまま残す）
 function patchSheetXml(xml,edits){
   const byRow={};
@@ -2451,7 +2486,7 @@ function patchSheetXml(xml,edits){
     //   次の </c> までをまとめて消してしまう。必ず控えめ（*?）にすること。
     const rowRe=new RegExp('<row\\b[^>]*?\\br="'+rowNum+'"[^>]*?(?:\\/>|>[\\s\\S]*?<\\/row>)');
     const rm=rowRe.exec(xml);
-    if(!rm)return; // 原紙に無い行には書き込まない
+    if(!rm){ xml=insertNewRow(xml,Number(rowNum),byRow[rowNum]); return; }
     let rowXml=rm[0];
     // 空行（<row .../>）は中身を入れられる形に開く
     if(/\/>$/.test(rowXml)) rowXml=rowXml.replace(/\/>$/,"></row>");
@@ -2511,16 +2546,18 @@ function widenDimension(xml,edits){
 
 /* 書き足した欄（コメント・送信日時）が印刷にも出るように、印刷範囲を広げる。
    すでに足りている場合や、書き方が違うファイルでは何もしない。 */
-function widenPrintArea(wbXml,sheetIdx,lastCol){
+function widenPrintArea(wbXml,sheetIdx,lastCol,lastRow){
   return wbXml.replace(/<definedName\b[^>]*name="_xlnm\.Print_Area"[^>]*>[^<]*<\/definedName>/g,tag=>{
     const li=/localSheetId="(\d+)"/.exec(tag);
     if(li && Number(li[1])!==sheetIdx) return tag;   // 別のシートの設定は触らない
     const body=/>([^<]*)</.exec(tag);
     if(!body) return tag;
-    const m=/^(.*!\$[A-Z]+\$\d+:\$)([A-Z]+)(\$\d+)$/.exec(body[1]);
+    const m=/^(.*!\$[A-Z]+\$\d+:\$)([A-Z]+)\$(\d+)$/.exec(body[1]);
     if(!m) return tag;
-    if(colLetterToNum(m[2])>=colLetterToNum(lastCol)) return tag; // すでに入っている
-    return tag.replace(body[1], m[1]+lastCol+m[3]);
+    const col=colLetterToNum(m[2])>=colLetterToNum(lastCol) ? m[2] : lastCol;
+    const row=Math.max(Number(m[3]), lastRow||0);
+    if(col===m[2] && row===Number(m[3])) return tag;  // すでに入っている
+    return tag.replace(body[1], m[1]+col+"$"+row);
   });
 }
 
@@ -2570,14 +2607,19 @@ async function writeCellsKeepingFormat(arrayBuffer,sheetName,edits,extraCols){
   (extraCols||[]).forEach(([col,width])=>{ sheetXml=setColWidth(sheetXml,col,width); });
   zip.file(path,sheetXml);
 
-  // 書き足した欄まで印刷されるように、印刷範囲もいちばん右の列まで広げる
+  // 書き足した欄や、下に足した行まで印刷されるように、印刷範囲も広げる
   if(extraCols && extraCols.length){
     const lastCol=extraCols.map(c=>c[0])
       .reduce((a,b)=>colLetterToNum(a)>=colLetterToNum(b)?a:b);
+    let lastRow=0;
+    Object.keys(edits).forEach(addr=>{
+      const m=/^[A-Z]+(\d+)$/.exec(addr);
+      if(m) lastRow=Math.max(lastRow,Number(m[1]));
+    });
     const wbFile=zip.file("xl/workbook.xml");
     if(wbFile){
       const wbXml=await wbFile.async("string");
-      zip.file("xl/workbook.xml",widenPrintArea(wbXml,await sheetIndexOf(zip,sheetName),lastCol));
+      zip.file("xl/workbook.xml",widenPrintArea(wbXml,await sheetIndexOf(zip,sheetName),lastCol,lastRow));
     }
   }
   return await zip.generateAsync({type:"blob",
@@ -2628,15 +2670,29 @@ async function writeToXlsx(input){
     const dayColMap = buildDayColMap(rows);
     const colOf = day => (dayColMap[day] != null ? dayColMap[day] : dayToColIdx(day));
 
-    // A列に氏名が無い人のために、書き足せる空き行を用意しておく
-    const addableRows = findAddableRows(rows);
-    let addPos = 0;
+    /* A列に氏名が無い人は、表のいちばん下に行を足して転記する。
+       途中の空き行は使わない。A列が空でもAH列に氏名がある行（その人の行）が
+       あり、そこへ別人の名前を書くと持ち主が入れ替わってしまうため。 */
+    let appendRow = rows.length + 2;   // 表の最終行から1行あけたところ
+    let appendHeaderDone = false;
+    function ensureAppendHeader(){
+      if(appendHeaderDone) return;
+      edits["A" + appendRow] = "▼ 名簿に無い方（自動で追加）";
+      appendRow++;
+      edits["A" + appendRow] = "氏名";
+      agg.dates.forEach(d => {
+        edits[colIdxToLetter(colOf(d.getDate())) + appendRow] = String(d.getDate());
+      });
+      edits[CMT_COL + appendRow] = "コメント";
+      edits[TIME_COL + appendRow] = "送信日時";
+      appendRow++;
+      appendHeaderDone = true;
+    }
 
     let written = 0;
     let matched = 0;
     let commented = 0;
     let stamped = 0;
-    const skipped = [];
     const added = [];
     const edits = {}; // 「C2」→「○」の形で、書き込む場所と記号をためる
 
@@ -2644,14 +2700,11 @@ async function writeToXlsx(input){
       let rowIdx = matchNameRow(name, nameRowMap);
 
       if(rowIdx == null){
-        // A列に無い人は、空いている行に苗字を書き足してから転記する
-        // （A列は苗字だけで揃っているため、フルネームではなく苗字を入れる）
-        if(addPos >= addableRows.length){ skipped.push(name); return; }
-        rowIdx = addableRows[addPos++];
+        // A列は苗字だけで揃っているため、フルネームではなく苗字を入れる
+        ensureAppendHeader();
+        rowIdx = appendRow++;
         const sur = surnameOf(name);
         edits["A" + rowIdx] = sur;
-        // どの行に入れたかも知らせる。空き行は見つかった順なので、
-        // 別のホームの並びの中に入ることがあるため。
         added.push((sur === name ? name : `${sur}（${name}）`) + `＝${rowIdx}行目`);
       }
       matched++;
@@ -2733,14 +2786,12 @@ async function writeToXlsx(input){
     lines.push(stamped > 0
       ? `🕒 ${stamped}名の送信日時を、${TIME_COL}列のその人の行に書き込みました`
       : `🕒 送信日時が分かる提出がありませんでした（${TIME_COL}列は空のままです）`);
-    if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に苗字を書き足しました<br>　${nameList(added)}<br>　`
-      + `<span style="color:#c62828">空き行は見つかった順に使うため、別のホームの並びに入ることがあります。`
-      + `決まった場所に入れたいときは、Excelのその人のホームの行に、あらかじめ苗字を書いておいてください。</span>`);
-    if(skipped.length > 0) lines.push(`⚠️ 空き行が足りず、次の${skipped.length}名は転記できませんでした<br>　${nameList(skipped)}<br>　Excelの氏名欄に空行を作ってから、もう一度転記してください`);
+    if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、表のいちばん下に行を足して転記しました<br>　${nameList(added)}<br>　`
+      + `<span style="color:#c62828">決まった場所に入れたいときは、Excelのその人のホームの行に、あらかじめ苗字を書いておいてください。</span>`);
     if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
     const box = document.getElementById("xlsxResult");
     if(box){
-      const bad = skipped.length > 0 || !keptFormat;
+      const bad = !keptFormat;
       box.style.display = "block";
       box.style.background = bad ? "#fff3e0" : "#e8f5e9";
       box.style.border = "1px solid " + (bad ? "#ffb74d" : "#a5d6a7");
@@ -2749,9 +2800,8 @@ async function writeToXlsx(input){
     }
 
     let msg = `✅ ${matched}名・${written}セル転記完了！`;
-    if(added.length > 0) msg += ` 🆕 ${added.length}名は空き行に追加`;
-    if(skipped.length > 0) msg += ` ⚠️ ${skipped.length}名は空き行不足で未転記`;
-    toast(msg, skipped.length > 0 ? "err" : "ok");
+    if(added.length > 0) msg += ` 🆕 ${added.length}名は下に行を追加`;
+    toast(msg, "ok");
 
   } catch(e) {
     console.error(e);
