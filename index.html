@@ -2205,6 +2205,11 @@ function renderAgg(byName,s,e){
   const counts=window._aggCounts||{};
   const redone=names.filter(n=>(counts[n]||0)>1);
   let meta=`${s.getMonth()+1}/${s.getDate()}〜${e.getMonth()+1}/${e.getDate()} ／ ${names.length}名`;
+  // コメントが届いているかを、Excelに落とす前に確かめられるようにする
+  const cmtNames=names.filter(nm=>Object.keys(byName[nm]).some(k=>k.endsWith("__comment")));
+  meta+=cmtNames.length
+    ? ` ／ 💬 コメントあり ${cmtNames.length}名：${cmtNames.join("、")}`
+    : ` ／ 💬 コメントなし`;
   if(redone.length) meta+=` ／ 🔁 出し直し ${redone.length}名（最新を採用）：${redone.join("、")}`;
   document.getElementById("aggMeta").textContent=meta;
   window._agg={byName,dates};
@@ -2719,8 +2724,13 @@ async function writeToXlsx(input){
     // 氏名は職員が入力した文字列なので、画面に出す前にエスケープする
     const nameList = arr => arr.map(xmlEsc).join("、");
     const lines = [`✅ ${matched}名・${written}セルを転記しました`];
-    if(commented > 0) lines.push(`💬 コメントのあった${commented}名は、${CMT_COL}列のその人の行に書き込みました（印刷にも出ます）`);
-    if(stamped > 0) lines.push(`🕒 ${stamped}名の送信日時を、${TIME_COL}列のその人の行に書き込みました`);
+    // 0件のときも必ず書く。「機能が動いていない」のか「コメントが無い」のか分かるようにする
+    lines.push(commented > 0
+      ? `💬 コメントのあった${commented}名は、${CMT_COL}列のその人の行に書き込みました（印刷にも出ます）`
+      : `💬 コメントは1件もありませんでした（コメント付きの提出が届いていません）`);
+    lines.push(stamped > 0
+      ? `🕒 ${stamped}名の送信日時を、${TIME_COL}列のその人の行に書き込みました`
+      : `🕒 送信日時が分かる提出がありませんでした（${TIME_COL}列は空のままです）`);
     if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に苗字を書き足しました<br>　${nameList(added)}`);
     if(skipped.length > 0) lines.push(`⚠️ 空き行が足りず、次の${skipped.length}名は転記できませんでした<br>　${nameList(skipped)}<br>　Excelの氏名欄に空行を作ってから、もう一度転記してください`);
     if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
