@@ -2497,14 +2497,74 @@ function widenDimension(xml,edits){
     `<dimension ref="${m[1]}${m[2]}:${colIdxToLetter(maxCol-1)}${maxRow}"/>`);
 }
 
+/* コメント欄が印刷にも出るように、印刷範囲をコメントの列まで広げる。
+   すでに足りている場合や、書き方が違うファイルでは何もしない。 */
+function widenPrintArea(wbXml,sheetIdx){
+  return wbXml.replace(/<definedName\b[^>]*name="_xlnm\.Print_Area"[^>]*>[^<]*<\/definedName>/g,tag=>{
+    const li=/localSheetId="(\d+)"/.exec(tag);
+    if(li && Number(li[1])!==sheetIdx) return tag;   // 別のシートの設定は触らない
+    const body=/>([^<]*)</.exec(tag);
+    if(!body) return tag;
+    const m=/^(.*!\$[A-Z]+\$\d+:\$)([A-Z]+)(\$\d+)$/.exec(body[1]);
+    if(!m) return tag;
+    if(colLetterToNum(m[2])>=colLetterToNum(CMT_COL)) return tag; // すでに入っている
+    return tag.replace(body[1], m[1]+CMT_COL+m[3]);
+  });
+}
+
+// ブックの中で何番目のシートかを返す（印刷範囲はこの番号で結びついている）
+async function sheetIndexOf(zip,sheetName){
+  const wbXml=await zip.file("xl/workbook.xml").async("string");
+  const tags=wbXml.match(/<sheet\b[^>]*\/?>/g)||[];
+  const i=tags.findIndex(t=>{
+    const nm=/name="([^"]*)"/.exec(t);
+    return nm && nm[1]===sheetName;
+  });
+  return i<0?0:i;
+}
+
+/* コメントが読める幅を確保する。
+   すでに同じ列を含む指定があるファイルには触らない（幅を壊さないため）。 */
+function setCommentColWidth(xml){
+  const colNum=colLetterToNum(CMT_COL);
+  const cm=/<cols>([\s\S]*?)<\/cols>/.exec(xml);
+  if(!cm) return xml;
+  const items=cm[1].match(/<col\b[^>]*\/>/g)||[];
+  const covered=items.some(it=>{
+    const mn=Number((/\bmin="(\d+)"/.exec(it)||[])[1]||0);
+    const mx=Number((/\bmax="(\d+)"/.exec(it)||[])[1]||0);
+    return mn<=colNum && colNum<=mx;
+  });
+  if(covered) return xml;
+  const newCol='<col min="'+colNum+'" max="'+colNum+'" width="'+CMT_COL_WIDTH+'" customWidth="1"/>';
+  let out="",inserted=false;
+  items.forEach(it=>{
+    const mn=Number((/\bmin="(\d+)"/.exec(it)||[])[1]||0);
+    if(!inserted && mn>colNum){ out+=newCol; inserted=true; }
+    out+=it;
+  });
+  if(!inserted) out+=newCol;
+  return xml.replace(/<cols>[\s\S]*?<\/cols>/,'<cols>'+out+'</cols>');
+}
+
 // 元ファイルのzipを開き、セルだけ差し替えて同じzipとして返す
-async function writeCellsKeepingFormat(arrayBuffer,sheetName,edits){
+async function writeCellsKeepingFormat(arrayBuffer,sheetName,edits,hasComment){
   const zip=await JSZip.loadAsync(arrayBuffer);
   const path=await findSheetXmlPath(zip,sheetName);
   const file=zip.file(path);
   if(!file) throw new Error("シートのデータが見つかりません（"+path+"）");
   const xml=await file.async("string");
-  zip.file(path,patchSheetXml(widenDimension(xml,edits),edits));
+  let sheetXml=patchSheetXml(widenDimension(xml,edits),edits);
+  if(hasComment) sheetXml=setCommentColWidth(sheetXml);
+  zip.file(path,sheetXml);
+
+  if(hasComment){
+    const wbFile=zip.file("xl/workbook.xml");
+    if(wbFile){
+      const wbXml=await wbFile.async("string");
+      zip.file("xl/workbook.xml",widenPrintArea(wbXml,await sheetIndexOf(zip,sheetName)));
+    }
+  }
   return await zip.generateAsync({type:"blob",
     mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     compression:"DEFLATE"});
@@ -2520,6 +2580,8 @@ function downloadBlob(blob,filename){
 
 // コメントを書き込む列。表の右の空いている場所
 const CMT_COL = "AJ";
+// コメントが1行で読める幅（印刷にも出せるようにこの幅を付ける）
+const CMT_COL_WIDTH = 45;
 
 async function writeToXlsx(input){
   const agg = window._agg;
@@ -2603,7 +2665,7 @@ async function writeToXlsx(input){
     let keptFormat = true;
     if(typeof JSZip !== "undefined"){
       try{
-        const blob = await writeCellsKeepingFormat(buf, wsName, edits);
+        const blob = await writeCellsKeepingFormat(buf, wsName, edits, commented > 0);
         downloadBlob(blob, fileName);
       }catch(err){
         console.error(err);
@@ -2633,7 +2695,7 @@ async function writeToXlsx(input){
     // 氏名は職員が入力した文字列なので、画面に出す前にエスケープする
     const nameList = arr => arr.map(xmlEsc).join("、");
     const lines = [`✅ ${matched}名・${written}セルを転記しました`];
-    if(commented > 0) lines.push(`💬 コメントのあった${commented}名は、${CMT_COL}列のその人の行に書き込みました`);
+    if(commented > 0) lines.push(`💬 コメントのあった${commented}名は、${CMT_COL}列のその人の行に書き込みました（印刷にも出ます）`);
     if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空き行に苗字を書き足しました<br>　${nameList(added)}`);
     if(skipped.length > 0) lines.push(`⚠️ 空き行が足りず、次の${skipped.length}名は転記できませんでした<br>　${nameList(skipped)}<br>　Excelの氏名欄に空行を作ってから、もう一度転記してください`);
     if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
