@@ -2351,10 +2351,6 @@ function matchNameRow(fullName,nameRowMap){
 //   ・ホーム名（西九条〜出来島）や「研修」が始まる行より上にある
 //     （そこから下はホームへの割り当て欄なので触らない）
 function findAddableRows(rows){
-  const hdr=rows[0]||[];
-  const h2=String(hdr[2]==null?"":hdr[2]).trim();
-  const h3=String(hdr[3]==null?"":hdr[3]).trim();
-
   let limit=rows.length;
   for(let ri=1; ri<rows.length; ri++){
     const a=rows[ri]&&rows[ri][0];
@@ -2364,11 +2360,9 @@ function findAddableRows(rows){
   const out=[];
   for(let ri=1; ri<limit; ri++){
     const row=rows[ri]||[];
-    const a=row[0];
-    if(a!=null && String(a).trim()!=="") continue; // 氏名が入っている行
-    const c=String(row[2]==null?"":row[2]).trim();
-    const d=String(row[3]==null?"":row[3]).trim();
-    if(h2 && c===h2 && d===h3) continue;           // 日付ヘッダーの繰り返し行
+    // 行のどこかに何か入っていたら使わない。
+    // A列が空でも、ほかの列に氏名がある行（その人の行）を書き換えないため。
+    if(row.some(v=>v!=null && String(v).trim()!=="")) continue;
     out.push(ri+1);                                // rowsは0始まり、Excelは1始まり
   }
   return out;
@@ -2670,9 +2664,12 @@ async function writeToXlsx(input){
     const dayColMap = buildDayColMap(rows);
     const colOf = day => (dayColMap[day] != null ? dayColMap[day] : dayToColIdx(day));
 
-    /* A列に氏名が無い人は、表のいちばん下に行を足して転記する。
-       途中の空き行は使わない。A列が空でもAH列に氏名がある行（その人の行）が
-       あり、そこへ別人の名前を書くと持ち主が入れ替わってしまうため。 */
+    /* A列に氏名が無い人の置き場所。
+       まず表の中の空き行を使う。ただし「何も入っていない行」だけに限る。
+       A列が空でもAH列に氏名がある行（その人の行）へ書くと、持ち主が
+       入れ替わってしまうため。空き行が尽きたら、表の下に行を足す。 */
+    const addableRows = findAddableRows(rows);
+    let addPos = 0;
     let appendRow = rows.length + 2;   // 表の最終行から1行あけたところ
     let appendHeaderDone = false;
     function ensureAppendHeader(){
@@ -2693,6 +2690,7 @@ async function writeToXlsx(input){
     let matched = 0;
     let commented = 0;
     let stamped = 0;
+    let appended = 0;
     const added = [];
     const edits = {}; // 「C2」→「○」の形で、書き込む場所と記号をためる
 
@@ -2701,8 +2699,13 @@ async function writeToXlsx(input){
 
       if(rowIdx == null){
         // A列は苗字だけで揃っているため、フルネームではなく苗字を入れる
-        ensureAppendHeader();
-        rowIdx = appendRow++;
+        if(addPos < addableRows.length){
+          rowIdx = addableRows[addPos++];      // 表の中の空き行
+        }else{
+          ensureAppendHeader();
+          rowIdx = appendRow++;                // 空き行が尽きたら下に足す
+          appended++;
+        }
         const sur = surnameOf(name);
         edits["A" + rowIdx] = sur;
         added.push((sur === name ? name : `${sur}（${name}）`) + `＝${rowIdx}行目`);
@@ -2786,7 +2789,9 @@ async function writeToXlsx(input){
     lines.push(stamped > 0
       ? `🕒 ${stamped}名の送信日時を、${TIME_COL}列のその人の行に書き込みました`
       : `🕒 送信日時が分かる提出がありませんでした（${TIME_COL}列は空のままです）`);
-    if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、表のいちばん下に行を足して転記しました<br>　${nameList(added)}<br>　`
+    if(added.length > 0) lines.push(`🆕 A列に氏名が無かった${added.length}名は、空いている行に苗字を書き足しました`
+      + (appended > 0 ? `（うち${appended}名は空き行が足りず、表のいちばん下に行を足しました）` : "")
+      + `<br>　${nameList(added)}<br>　`
       + `<span style="color:#c62828">決まった場所に入れたいときは、Excelのその人のホームの行に、あらかじめ苗字を書いておいてください。</span>`);
     if(!keptFormat) lines.push("※ 罫線や色は元に戻りませんでした");
     const box = document.getElementById("xlsxResult");
@@ -2800,7 +2805,7 @@ async function writeToXlsx(input){
     }
 
     let msg = `✅ ${matched}名・${written}セル転記完了！`;
-    if(added.length > 0) msg += ` 🆕 ${added.length}名は下に行を追加`;
+    if(added.length > 0) msg += ` 🆕 ${added.length}名を空き行に追加`;
     toast(msg, "ok");
 
   } catch(e) {
