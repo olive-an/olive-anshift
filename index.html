@@ -459,10 +459,10 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
           新しく送った方が有効になります。（締め切りは 7日 まで）
         </p>
         <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
-          📤 自分に送る・保存する
+          📤 この控えを自分に送る・保存する
         </button>
         <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:-4px 0 0">
-          LINE・メール・メモなど、送り先を選べます。LINEなら自分だけのトーク（Keepメモ）にも残せます。
+          前に送信した内容を、そのまま手元へ残せます。LINEなら自分だけのトーク（Keepメモ）にも残せます。
         </p>
       </div>
     </div>
@@ -485,6 +485,15 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:11px;border-top
         いちばん最後に送ったものが有効です。<br>
         <span style="color:#c62828">締切を過ぎてからの変更は、フォームではなく直接ご連絡ください。</span>
       </div>
+
+      <!-- 送る前に手元へ残す。押してから下の送信ボタンへ進む -->
+      <button class="btn btn-gr" id="saveBeforeSendBtn" onclick="shareCurrent()" style="font-size:15px;padding:14px">
+        📤 送る前に自分に保存する
+      </button>
+      <p style="font-size:12px;color:var(--sub);line-height:1.6;margin:-4px 0 14px">
+        いま入力している内容を、そのまま手元へ残せます。LINE・メール・メモなど送り先を選べます。<br>
+        保存してから、下の「送信」を押してください。
+      </p>
 
       <button class="btn" id="sendBtn" onclick="doSend()" style="
         background:var(--gr);color:#fff;
@@ -1441,6 +1450,35 @@ function keepCopyFallback(text){
   ta.select();document.execCommand("copy");
   document.body.removeChild(ta);
 }
+/* ===== 送る前に、いま入力している内容を手元へ残す =====
+   送信ずみの控えではなく、画面にいま出ている内容をそのまま渡す。 */
+async function shareCurrent(){
+  const name=(document.getElementById("empName").value||"").trim();
+  if(!name){
+    toast("①のお名前を入力してください","err");
+    document.getElementById("empName").focus();
+    return;
+  }
+  const text=buildText();
+  const title=`シフト希望 ${name}`
+    +`（${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}）`;
+  if(navigator.share){
+    try{
+      await navigator.share({title,text});
+      return;
+    }catch(e){
+      if(e&&e.name==="AbortError")return; // 本人がキャンセルした場合
+    }
+  }
+  // 共有に未対応の端末はメール作成に切り替える
+  const url="mailto:?subject="+encodeURIComponent(title)+"&body="+encodeURIComponent(text);
+  if(url.length>1900){
+    keepCopyFallback(text);
+    toast("本文が長いため、コピーも取りました","ok");
+  }
+  location.href=url;
+}
+
 async function keepShare(){
   const h=keepCurrent();
   if(!h){toast("控えがありません","err");return}
