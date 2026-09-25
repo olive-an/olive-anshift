@@ -35,32 +35,33 @@ body{
 
 /* ヘッダー */
 .hdr{
-  background:var(--gr);
+  background:#fff;
   padding:14px 16px;
   display:flex;align-items:center;gap:12px;
   position:sticky;top:0;z-index:50;
-  box-shadow:0 2px 10px rgba(0,0,0,.2);
+  border-bottom:3px solid var(--gr);
+  box-shadow:0 2px 10px rgba(0,0,0,.12);
 }
 .hdr-logo{
   width:42px;height:42px;border-radius:50%;
-  background:rgba(255,255,255,.18);
+  background:var(--gr-bg);
   display:flex;align-items:center;justify-content:center;
   font-size:22px;flex-shrink:0;
 }
-.hdr-title{color:#fff;font-size:19px;font-weight:700}
-.hdr-sub{color:rgba(255,255,255,.72);font-size:13px;margin-top:2px}
+.hdr-title{color:var(--text);font-size:19px;font-weight:700}
+.hdr-sub{color:#555;font-size:13px;margin-top:2px}
 
 /* 右上のボタン（更新・管理者） */
 .hdr-btns{margin-left:auto;flex-shrink:0;display:flex;gap:8px}
 .hdr-admin{
   flex-shrink:0;
   width:42px;height:42px;border-radius:50%;
-  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
-  color:#fff;font-size:19px;font-family:inherit;
+  background:var(--gr-bg);border:2px solid var(--gr-bdr);
+  color:var(--gr);font-size:19px;font-family:inherit;
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;transition:.15s;
 }
-.hdr-admin:active{background:rgba(255,255,255,.34)}
+.hdr-admin:active{background:#c8e6c9}
 
 /* 画面右下の「トップに戻る」 */
 .topbtn{
@@ -144,22 +145,22 @@ main{padding:16px 12px;max-width:560px;margin:0 auto}
 
 /* ステップバナー */
 .banner{
-  background:var(--gr);border-radius:var(--r);
+  background:var(--gr-bg);border:2px solid var(--gr-bdr);border-radius:var(--r);
   padding:18px;margin-bottom:18px;
 }
-.banner h2{color:#fff;font-size:20px;font-weight:700;margin-bottom:4px}
-.banner p{color:rgba(255,255,255,.8);font-size:14px;line-height:1.6}
+.banner h2{color:var(--text);font-size:20px;font-weight:700;margin-bottom:4px}
+.banner p{color:var(--text);font-size:14px;line-height:1.6}
 .sbar{
   display:flex;margin-top:12px;
-  background:rgba(255,255,255,.12);border-radius:9px;overflow:hidden;
+  background:#fff;border:1px solid var(--gr-bdr);border-radius:9px;overflow:hidden;
 }
 .si{
   flex:1;text-align:center;padding:8px 4px;
-  font-size:12px;font-weight:600;color:rgba(255,255,255,.6);
+  font-size:12px;font-weight:700;color:#888;
 }
-.si.on{background:rgba(255,255,255,.18);color:#fff}
+.si.on{background:var(--gr-bg);color:var(--text)}
 .si-n{display:block;font-size:19px;font-weight:800;margin-bottom:1px}
-.si.on .si-n{color:#a5d6a7}
+.si.on .si-n{color:var(--gr)}
 
 /* カード */
 .card{
@@ -217,11 +218,11 @@ main{padding:16px 12px;max-width:560px;margin:0 auto}
 .cal-days{font-size:14px;color:var(--sub)}
 
 /* カレンダー */
-.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;width:100%;-webkit-user-select:none;user-select:none}
-.dow{text-align:center;font-size:13px;font-weight:700;padding:5px 0;color:var(--sub);min-width:0;overflow:hidden}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;width:100%;-webkit-user-select:none;user-select:none}
+.dow{text-align:center;font-size:14px;font-weight:700;padding:5px 0;color:var(--sub);min-width:0;overflow:hidden}
 .dow.sun{color:var(--sun)} .dow.sat{color:var(--sat)}
 .day{
-  height:50px;
+  height:62px;
   display:flex;flex-direction:column;
   align-items:center;justify-content:center;
   border-radius:9px;border:2px solid var(--bdr);
@@ -238,9 +239,9 @@ main{padding:16px 12px;max-width:560px;margin:0 auto}
 .day.vm{background:var(--m-bg);border-color:var(--m-bd)}
 .day.vs{background:var(--s-bg);border-color:var(--s-bd)}
 .day.vb{background:var(--b-bg);border-color:var(--b-bd)}
-.dn{font-size:12px;font-weight:600;color:var(--sub);line-height:1;margin-bottom:2px}
+.dn{font-size:14px;font-weight:700;color:#555;line-height:1;margin-bottom:3px}
 .day.sun .dn{color:var(--sun)} .day.sat .dn{color:var(--sat)} .day.hol .dn{color:var(--sun)}
-.ds{font-size:20px;line-height:1;font-weight:700;min-height:21px}
+.ds{font-size:26px;line-height:1;font-weight:700;min-height:27px}
 .day.vm .ds{color:var(--m)} .day.vs .ds{color:var(--s)} .day.vb .ds{color:var(--b)}
 
 /* カウンター */
@@ -339,11 +340,11 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
 
 /* レスポンシブ */
 @media(max-width:360px){
-  .day{height:44px!important} .ds{font-size:17px}
+  .day{height:54px!important} .ds{font-size:22px}
   .btn{font-size:16px;padding:14px}
 }
 @media(min-width:480px){
-  .day{height:54px!important} .ds{font-size:22px}
+  .day{height:68px!important} .ds{font-size:28px}
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
