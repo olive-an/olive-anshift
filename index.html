@@ -176,7 +176,7 @@ main{padding:16px 12px;max-width:560px;margin:0 auto}
 }
 .card-hn{font-size:24px}
 .card-hl{font-size:18px;font-weight:700;color:var(--gr)}
-.card-hs{font-size:14px;color:var(--sub);margin-top:1px}
+.card-hs{font-size:14px;color:var(--text);margin-top:1px}
 .card-b{padding:16px}
 
 /* 入力 */
@@ -210,8 +210,8 @@ main{padding:16px 12px;max-width:560px;margin:0 auto}
 
 .hint-box{
   background:var(--sand);border-radius:9px;
-  padding:11px 13px;font-size:14px;
-  color:var(--text);margin-bottom:12px;line-height:1.7;
+  padding:13px 15px;font-size:16px;
+  color:var(--text);margin-bottom:12px;line-height:1.8;
 }
 .cal-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px}
 .cal-period{font-size:18px;font-weight:700}
@@ -499,7 +499,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
       </button>
       <p style="font-size:15px;color:var(--text);line-height:1.8;margin:2px 0 16px">
         いま入力している内容を、そのまま手元へ残せます。LINE・メール・メモなど送り先を選べます。<br>
-        保存してから、下の「送信」を押してください。
+        <b style="font-size:17px">保存してから、下の「送信」を押してください。</b>
       </p>
 
       <button class="btn" id="sendBtn" onclick="doSend()" style="
@@ -973,10 +973,8 @@ function renderSentState(){
 function renderPeriodText(){
   const el=document.getElementById("periodText");
   if(!el||!rangeStart) return;
-  const total=daysBetween(rangeStart,rangeEnd)+1;
   el.innerHTML=`${rangeStart.getFullYear()}年${rangeStart.getMonth()+1}月${rangeStart.getDate()}日（${DOW[rangeStart.getDay()]}）`
-    +`　〜　${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日（${DOW[rangeEnd.getDay()]}）`
-    +`<br><span style="font-size:13px;font-weight:400;color:var(--sub)">全${total}日間</span>`;
+    +`　〜　${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日（${DOW[rangeEnd.getDay()]}）`;
 }
 
 /* ===== タップしたときに短く振動させる =====
