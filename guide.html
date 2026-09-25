@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シフト希望フォームの使い方 | おりーぶ庵</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg stroke='%232e3e50' stroke-width='3.4' stroke-linecap='round' fill='none'%3E%3Cpath d='M14 5v9'/%3E%3Cpath d='M23 5v9'/%3E%3Cpath d='M32 5v9'/%3E%3Cpath d='M41 5v9'/%3E%3Cpath d='M50 5v9'/%3E%3C/g%3E%3Crect x='5' y='9.5' width='54' height='48' rx='6' fill='%23ffffff'/%3E%3Cpath d='M5 15.5a6 6 0 0 1 6-6h42a6 6 0 0 1 6 6v5.5H5z' fill='%23f4614f'/%3E%3Cg fill='%23d3dfe8'%3E%3Crect x='10' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='18.8' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='27.6' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='36.4' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='45.2' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='10' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='18.8' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='36.4' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='10' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='18.8' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='27.6' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='36.4' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='45.2' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='10' y='45' width='7.6' height='5.6' rx='1'/%3E%3Crect x='18.8' y='45' width='7.6' height='5.6' rx='1'/%3E%3Crect x='36.4' y='45' width='7.6' height='5.6' rx='1'/%3E%3Crect x='45.2' y='45' width='7.6' height='5.6' rx='1'/%3E%3C/g%3E%3Cg fill='%23f5c33c'%3E%3Crect x='27.6' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='45.2' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='27.6' y='45' width='7.6' height='5.6' rx='1'/%3E%3C/g%3E%3Cg stroke='%232e3e50' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round' fill='none'%3E%3Cpath d='M29.4 33.5l1.7 1.8 2.9-3.1'/%3E%3Cpath d='M47 33.5l1.7 1.8 2.9-3.1'/%3E%3Cpath d='M29.4 47.5l1.7 1.8 2.9-3.1'/%3E%3C/g%3E%3Crect x='5' y='9.5' width='54' height='48' rx='6' fill='none' stroke='%232e3e50' stroke-width='3.4'/%3E%3C/svg%3E">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gr:#2e7d32; --gr2:#388e3c; --gr-bg:#e8f5e9; --gr-bdr:#66bb6a;
+  --cream:#f7f6f2; --sand:#f0ede4; --bdr:#ddd8cc;
+  --text:#1a1a1a; --sub:#555;
+  --m:#1b5e20; --m-bg:#c8e6c9; --m-bd:#4caf50;
+  --s:#bf360c; --s-bg:#ffe0b2; --s-bd:#ff8f00;
+  --b:#b71c1c; --b-bg:#ffcdd2; --b-bd:#e53935;
+}
+body{
+  font-family:-apple-system,'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic','Meiryo',sans-serif;
+  background:var(--cream); color:var(--text);
+  line-height:1.8; -webkit-text-size-adjust:100%;
+}
+.sheet{max-width:720px;margin:0 auto;padding:18px 16px 40px}
+
+/* 見出し */
+.head{
+  background:#fff;border:3px solid var(--gr);border-radius:16px;
+  padding:20px 18px;text-align:center;margin-bottom:18px;
+}
+.head .ttl{font-size:28px;font-weight:800;color:var(--gr);line-height:1.4}
+.head .sub{font-size:18px;font-weight:700;margin-top:6px}
+.head .org{font-size:15px;color:var(--sub);margin-top:8px}
+
+/* 手順のカード */
+.step{
+  background:#fff;border:2px solid var(--bdr);border-radius:14px;
+  padding:16px;margin-bottom:14px;
+}
+.step-h{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.no{
+  flex-shrink:0;width:38px;height:38px;border-radius:50%;
+  background:var(--gr);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:800;
+}
+.step-t{font-size:21px;font-weight:800;color:var(--gr);line-height:1.4;padding-top:3px}
+.step-b{font-size:17px}
+.step-b p+p{margin-top:8px}
+
+/* 補足の枠 */
+.box{
+  background:var(--sand);border-radius:10px;
+  padding:12px 14px;margin-top:10px;font-size:16px;
+}
+.box b{color:var(--gr)}
+.two{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.two>div{flex:1;min-width:220px;background:var(--sand);border-radius:10px;padding:12px 14px;font-size:16px}
+.two .t{font-weight:800;margin-bottom:4px}
+
+/* ボタンの見本 */
+.demo{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  background:var(--gr);color:#fff;border-radius:10px;
+  padding:10px 18px;font-size:17px;font-weight:700;margin-top:4px;
+}
+.demo.ol{background:#fff;color:var(--gr);border:2px solid var(--gr)}
+
+/* ○△×の見本 */
+.marks{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.mk{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:100px;
+  font-size:17px;font-weight:700;border:2px solid;
+}
+.mk.m{background:var(--m-bg);color:var(--m);border-color:var(--m-bd)}
+.mk.s{background:var(--s-bg);color:var(--s);border-color:var(--s-bd)}
+.mk.b{background:var(--b-bg);color:var(--b);border-color:var(--b-bd)}
+.flow{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  font-size:22px;font-weight:800;margin-top:10px;
+}
+.flow span{background:#fff;border:2px solid var(--bdr);border-radius:9px;padding:4px 14px;min-width:48px;text-align:center}
+.flow .ar{border:none;background:none;font-size:18px;color:var(--sub);padding:0;min-width:0}
+
+/* URL */
+.url{
+  display:block;background:var(--gr-bg);border:2px solid var(--gr-bdr);
+  border-radius:10px;padding:12px 14px;margin-top:10px;
+  font-size:17px;font-weight:700;color:var(--gr);
+  word-break:break-all;text-align:center;text-decoration:none;
+}
+
+/* 締切 */
+.deadline{
+  background:#fff8e1;border:3px solid #ffca28;border-radius:14px;
+  padding:18px;margin-bottom:14px;
+}
+.deadline .t{font-size:24px;font-weight:800;color:#c62828;text-align:center;margin-bottom:10px}
+.deadline p{font-size:17px}
+.deadline p+p{margin-top:6px}
+
+/* 締め */
+.foot{
+  background:var(--gr-bg);border:2px solid var(--gr-bdr);border-radius:14px;
+  padding:18px;text-align:center;
+}
+.foot .t{font-size:21px;font-weight:800;color:var(--gr);margin-bottom:6px}
+.foot p{font-size:16px}
+.foot .org{font-size:16px;font-weight:700;margin-top:10px}
+
+@media print{
+  body{background:#fff}
+  .sheet{max-width:none;padding:0}
+  .step,.deadline,.foot,.head{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="head">
+    <div class="ttl">🌿 シフト希望フォーム<br>の使い方</div>
+    <div class="sub">スマホで3ステップ。タップするだけです</div>
+    <div class="org">おりーぶ庵株式会社</div>
+  </div>
+
+  <div class="step">
+    <div class="step-h">
+      <div class="no">1</div>
+      <div class="step-t">届いたURLを開く</div>
+    </div>
+    <div class="step-b">
+      <p>LINEやメールで届いたURLをタップして開きます。</p>
+      <a class="url" href="https://olive-an.github.io/olive-anshift/">https://olive-an.github.io/olive-anshift/</a>
+      <div class="box">Googleアカウントもアプリも要りません。スマホでもパソコンでも使えます。</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-h">
+      <div class="no">2</div>
+      <div class="step-t">ホーム画面に追加しておく<br>（おすすめ）</div>
+    </div>
+    <div class="step-b">
+      <p>次回から、すぐに開けるようになります。</p>
+      <div class="two">
+        <div>
+          <div class="t">iPhone（Safari）</div>
+          共有ボタン → 「ホーム画面に追加」 → 追加
+        </div>
+        <div>
+          <div class="t">Android（Chrome）</div>
+          右上の ⋮ → 「ホーム画面に追加」 → 追加
+        </div>
+      </div>
+      <div class="box">カレンダーのアイコンがホーム画面に並びます。</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-h">
+      <div class="no">3</div>
+      <div class="step-t">お名前を入れる</div>
+    </div>
+    <div class="step-b">
+      <p>①の欄に、フルネームで入力します。</p>
+      <div class="box">同じ端末を何人かで使う場合も、毎回ご自分の名前を入れてください。名前は残りません。</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-h">
+      <div class="no">4</div>
+      <div class="step-t">日付をタップして希望を選ぶ</div>
+    </div>
+    <div class="step-b">
+      <p>②のカレンダーで、日付をタップするたびに記号が変わります。</p>
+      <div class="flow">
+        <span>○</span><span class="ar">→</span><span>△</span><span class="ar">→</span><span>×</span><span class="ar">→</span><span>空白</span>
+      </div>
+      <div class="marks">
+        <div class="mk m">○ 出勤できる</div>
+        <div class="mk s">△ 要相談</div>
+        <div class="mk b">× 出勤できない</div>
+      </div>
+      <div class="box">
+        <b>💬 その日に一言を添えたいとき</b><br>
+        日付を長押しすると、コメントを付けられます。<br>
+        例：午前のみ可／夕方以降は不可／通院のため休み
+      </div>
+      <div class="box">
+        <b>まとめて入れたいとき</b><br>
+        「○ 全日 出勤可」「× 全日 不可」を押すと、全部の日が一度に入ります。そのあと違う日だけ直せます。
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-h">
+      <div class="no">5</div>
+      <div class="step-t">送る前に自分に保存する<br>（任意）</div>
+    </div>
+    <div class="step-b">
+      <div class="demo">📤 送る前に自分に保存する</div>
+      <p>入力した内容を、自分の手元に残せます。LINEなら自分だけのトーク（Keepメモ）にも保存できます。</p>
+      <div class="box">送らなくても構いません。あとで見返したい方だけどうぞ。</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-h">
+      <div class="no">6</div>
+      <div class="step-t">送信する</div>
+    </div>
+    <div class="step-b">
+      <div class="demo">📨　送　信</div>
+      <p>③の「送信」を押すと、確認の画面が出ます。内容を見て、もう一度「送信する」を押してください。</p>
+      <div class="box"><b>✅ 送信完了！</b> と出れば終わりです。おつかれさまでした。</div>
+    </div>
+  </div>
+
+  <div class="deadline">
+    <div class="t">📅 シフト締め切りは 7日 まで</div>
+    <p>送信したあとでも、締切までは何度でも直せます。取り消しの手続きはいりません。</p>
+    <p>直すときは、②の「日付を選んでコメントを追加」の下にある<br>
+      <span class="demo ol" style="font-size:16px;padding:8px 14px">✏️ この内容を読み込んで直す</span><br>
+      を押すと、前に送った内容が戻ってきます。直して、もう一度送信してください。</p>
+    <p><b>いちばん最後に送ったものが有効です。</b></p>
+  </div>
+
+  <div class="step">
+    <div class="step-h">
+      <div class="no">＋</div>
+      <div class="step-t">困ったときは</div>
+    </div>
+    <div class="step-b">
+      <div class="two">
+        <div>
+          <div class="t">画面が古いままのとき</div>
+          右上の 🔄 を押すと、最新の画面になります。入力はリセットされます。
+        </div>
+        <div>
+          <div class="t">最初からやり直したいとき</div>
+          ②の「🗑 クリア」で、入れた○△×を全部消せます。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="t">これで提出完了です！</div>
+    <p>分からないことがあれば、お気軽にお問合せください。</p>
+    <div class="org">🌿 おりーぶ庵株式会社</div>
+  </div>
+
+</div>
+</body>
+</html>
