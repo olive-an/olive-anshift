@@ -360,7 +360,8 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
   </div>
   <div class="hdr-btns">
     <button class="hdr-admin" id="reloadBtn" onclick="reloadPage()"
-      title="ページを最新にする" aria-label="ページを最新にする">🔄</button>
+      title="最新にする（入力はリセットされます）"
+      aria-label="最新にする。入力はリセットされます">🔄</button>
     <button class="hdr-admin" id="adminBtn" onclick="switchMode('admin')"
       title="管理者メニュー" aria-label="管理者メニュー">⚙️</button>
   </div>
@@ -2782,8 +2783,15 @@ async function writeToXlsx(input){
    端末に古い画面が残っていても、確実に新しいものを読み直す。
    入力の途中は下書きに残してから読み直すので、消えない。 */
 function reloadPage(){
+  // 入力の途中があるときだけ、消していいか確かめる
+  const hasInput = Object.keys(state).length > 0
+    || Object.keys(commentState||{}).length > 0
+    || (document.getElementById("empName")?.value||"").trim() !== "";
+  if(hasInput && !confirm("入力した内容を消して、まっさらな画面にします。\nよろしいですか？\n\n（送信済みの内容は消えません）")) return;
   buzz(10);
-  try{ saveDraft(); }catch(e){}
+  // 下書きを残さない。押したら必ずまっさらな状態で読み直す
+  draftOff = true;          // 画面を閉じるときの保存でも復活させない
+  try{ clearDraft(); }catch(e){}
   // 毎回ちがう印をURLに付けて、端末が覚えている古い画面を使わせない
   location.replace(location.pathname + "?v=" + Date.now());
 }
