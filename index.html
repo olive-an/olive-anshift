@@ -43,11 +43,14 @@ body{
   box-shadow:0 2px 10px rgba(0,0,0,.12);
 }
 .hdr-logo{
-  width:42px;height:42px;border-radius:50%;
-  background:var(--gr-bg);
+  width:46px;height:46px;border-radius:50%;
+  background:#fff;border:2px solid var(--gr-bdr);
   display:flex;align-items:center;justify-content:center;
-  font-size:22px;flex-shrink:0;
+  overflow:hidden;flex-shrink:0;
 }
+.hdr-logo img{width:100%;height:100%;object-fit:contain;display:block}
+/* バナーの上に出す、おりーぶ庵のロゴ */
+.banner-logo{display:block;height:52px;width:auto;margin:0 auto 10px}
 .hdr-title{color:var(--text);font-size:19px;font-weight:700}
 .hdr-sub{color:#555;font-size:13px;margin-top:2px}
 
@@ -353,7 +356,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
 <body>
 
 <div class="hdr">
-  <div class="hdr-logo">🌿</div>
+  <div class="hdr-logo"><img src="logo-mark.png" alt="おりーぶ庵"></div>
   <div style="min-width:0;overflow:hidden">
     <div class="hdr-title">シフト希望フォーム</div>
     <div class="hdr-sub">おりーぶ庵株式会社</div>
@@ -371,7 +374,8 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
 <main id="view-input">
 
   <div class="banner">
-    <h2>🌿 シフト希望</h2>
+    <img class="banner-logo" src="logo.png" alt="おりーぶ庵">
+    <h2>シフト希望</h2>
     <p>3ステップで完了します。全部タップするだけです！</p>
     <div class="sbar">
       <div class="si on" id="s1"><span class="si-n">①</span>名前</div>
