@@ -499,13 +499,20 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         いちばん最後に送ったものが有効です。
       </div>
 
-      <!-- 送る前に手元へ残す。押してから下の送信ボタンへ進む -->
-      <button class="btn btn-gr" id="saveBeforeSendBtn" onclick="shareCurrent()" style="font-size:15px;padding:14px">
-        📤 送る前に自分に保存する
-      </button>
-      <p style="font-size:15px;color:var(--text);line-height:1.8;margin:2px 0 16px">
-        いま入力している内容を、そのまま手元へ残せます。LINE・メール・メモなど送り先を選べます。<br>
-        <b style="font-size:17px">保存してから、下の「送信」を押してください。</b>
+      <!-- 手元に残したい人だけが使う欄。送信の邪魔にならないよう、枠で分けて控えめにする -->
+      <div style="background:var(--sand);border:1.5px solid var(--bdr);border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-size:16px;font-weight:700;margin-bottom:4px">📎 控えを手元に残す</div>
+        <p style="font-size:15px;line-height:1.7;margin-bottom:12px">
+          残さなくても送信できます。必要な方だけどうぞ。
+        </p>
+        <div class="btn-sm">
+          <button class="btn btn-gr" id="saveBeforeSendBtn" onclick="shareCurrent()">📤 自分に送る</button>
+          <button class="btn btn-ol" id="copyCurrentBtn" onclick="doCopy()">📋 コピー</button>
+        </div>
+      </div>
+
+      <p style="font-size:17px;font-weight:700;line-height:1.7;margin-bottom:6px;text-align:center">
+        入力できたら、下の「送信」を押してください。
       </p>
 
       <button class="btn" id="sendBtn" onclick="doSend()" style="
@@ -1110,7 +1117,7 @@ async function doCopy(){
   const txt=buildText();
   try{await navigator.clipboard.writeText(txt);}
   catch(e){const t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}
-  toast("コピーしました！","ok");markStep(3);
+  toast("コピーしました。LINEやメモに貼り付けられます","ok");markStep(3);
 }
 
 function doSend(){
