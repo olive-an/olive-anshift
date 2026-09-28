@@ -1358,6 +1358,12 @@ async function doSendConfirmed(){
     return;
   }
 
+  // カレンダーの画像も一緒に送り、事務所への通知メールに添えてもらう。
+  // 通信を軽くするため、控え用より小さめ（等倍）で作る
+  let image="";
+  try{ image=buildCalendarCanvas(1).toDataURL("image/png").split(",")[1]||""; }
+  catch(e){ image=""; }
+
   try{
     await fetch(GAS_URL,{
       method:"POST",
@@ -1365,7 +1371,7 @@ async function doSendConfirmed(){
       // no-cors では application/json は使えず、ブラウザに外されてしまう。
       // text/plain なら必ず届く。GAS側は中身をそのまま読むので支障はない
       headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({name,period,text:txt})
+      body:JSON.stringify({name,period,text:txt,image})
     });
   }catch(e){
     sendFailed(btn,"通信ができませんでした。電波の良いところでもう一度お試しください。");
@@ -1652,7 +1658,7 @@ function _wrap(c,text,x,y,maxW,lh){
   return n;
 }
 
-function buildCalendarCanvas(){
+function buildCalendarCanvas(scale){
   const name=(document.getElementById("empName").value||"").trim();
   const total=daysBetween(rangeStart,rangeEnd)+1;
   const lead=rangeStart.getDay();
@@ -1679,7 +1685,7 @@ function buildCalendarCanvas(){
   const H = HEAD+NAME+PERIOD+DOWH+GRID+16+CNT+cmtH+FOOT;
 
   const cv=document.createElement("canvas");
-  const S=2; cv.width=W*S; cv.height=H*S;
+  const S=scale||2; cv.width=W*S; cv.height=H*S;
   const c=cv.getContext("2d"); c.scale(S,S);
   c.textBaseline="middle";
 
