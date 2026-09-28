@@ -552,6 +552,9 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         width:100%;
       ">📨　送　信</button>
 
+      <!-- 届かなかったときだけ出る。黙って「完了」にしないための欄 -->
+      <div id="sendFailBox" style="display:none;background:#ffebee;border:2.5px solid #e53935;border-radius:12px;padding:15px;margin-top:12px;font-size:17px;line-height:1.8;color:#b71c1c"></div>
+
 
 
       <div id="sentDone" style="display:none;background:#e8f5e9;border-radius:12px;padding:20px;margin-top:12px;text-align:center">
@@ -1230,30 +1233,77 @@ function stampLine(d){
 async function doSendConfirmed(){
   closeConfirm();
   const name=(document.getElementById("empName").value||"").trim();
-  const txt=buildText()+"\n"+stampLine(new Date());
+  const stamp=stampLine(new Date());
+  const txt=buildText()+"\n"+stamp;
   window._lastSentText = txt; // 個人保管用に保存
   const period=`${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`;
   const btn=document.getElementById("sendBtn");
   if(btn){btn.disabled=true;btn.style.opacity="0.6";btn.textContent="送信中...";}
+  const fail=document.getElementById("sendFailBox");
+  if(fail) fail.style.display="none";
 
-  if(GAS_URL && GAS_URL!=="YOUR_GAS_URL"){
-    try{
-      await fetch(GAS_URL,{
-        method:"POST",
-        mode:"no-cors",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({name,period,text:txt})
-      });
-      keepSave(name,period,txt);
-      showSentDone(btn);
-    }catch(e){
-      toast("送信エラーが発生しました","err");
-      if(btn){btn.disabled=false;btn.style.opacity="1";btn.textContent="📨　送　信";}
-    }
-  }else{
+  if(!(GAS_URL && GAS_URL!=="YOUR_GAS_URL")){
     keepSave(name,period,txt);
     showSentDone(btn);
+    return;
   }
+
+  try{
+    await fetch(GAS_URL,{
+      method:"POST",
+      mode:"no-cors",
+      // no-cors では application/json は使えず、ブラウザに外されてしまう。
+      // text/plain なら必ず届く。GAS側は中身をそのまま読むので支障はない
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({name,period,text:txt})
+    });
+  }catch(e){
+    sendFailed(btn,"通信ができませんでした。電波の良いところでもう一度お試しください。");
+    return;
+  }
+
+  // no-cors では返事の中身が読めないため、本当に記録されたかを見に行く。
+  // これをしないと、届いていなくても「送信完了」と出てしまう
+  if(btn) btn.textContent="確認中...";
+  const ok=await confirmArrived(name,stamp);
+  keepSave(name,period,txt);
+  if(ok===false){
+    sendFailed(btn,"事務所に届いていません。もう一度「送信」を押してください。");
+    return;
+  }
+  showSentDone(btn);
+  if(ok===null) toast("送信しました（到着の確認はできませんでした）","ok");
+}
+
+/* 送ったものが本当に記録されたかを確かめる。
+   true=届いた / false=届いていない / null=確認そのものができなかった */
+async function confirmArrived(name,stamp){
+  const key=normName(name);
+  for(let i=0;i<3;i++){
+    await new Promise(r=>setTimeout(r, i===0?1500:2500));
+    let rows;
+    try{ rows=await fetchGASData(); }
+    catch(e){ return null; }
+    const hit=rows.some(r=>
+      normName(r.name)===key && String(r.text||"").indexOf(stamp)>=0
+    );
+    if(hit) return true;
+  }
+  return false;
+}
+
+/* 届かなかったときに、はっきり出す。入力はそのまま残す */
+function sendFailed(btn,msg){
+  if(btn){ btn.disabled=false; btn.style.opacity="1"; btn.textContent="📨　送　信"; }
+  const box=document.getElementById("sendFailBox");
+  if(box){
+    box.innerHTML='<b style="font-size:19px">⚠️ 送信できていません</b><br>'+xmlEsc(msg)
+      +'<br><span style="font-size:15px">入力した内容は消えていません。そのまま残っています。</span>';
+    box.style.display="block";
+    box.scrollIntoView({behavior:"smooth",block:"center"});
+  }
+  buzz([60,80,60]);
+  toast("送信できていません","err");
 }
 
 /* ===== 送信した内容の控え（本人用・この端末のブラウザに保存） =====
@@ -1710,6 +1760,8 @@ function keepMail(){
 function showSentDone(btn){
   const done=document.getElementById("sentDone");
   if(done)done.style.display="block";
+  const fail=document.getElementById("sendFailBox");
+  if(fail)fail.style.display="none";
   if(btn)btn.style.display="none";
   markStep(3);
   draftOff=true;     // 画面を閉じるときの保存で復活させない
