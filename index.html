@@ -1626,13 +1626,6 @@ function canvasToBlob(cv){
     else res(null);
   });
 }
-function downloadBlob(blob,fname){
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download=fname; a.style.display="none";
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),60000);
-}
 
 /* ===== 送る前に、いま入力している内容を手元へ残す =====
    送信ずみの控えではなく、画面にいま出ている内容をカレンダーの画像で渡す。 */
@@ -1645,7 +1638,12 @@ async function shareCurrent(){
   }
   const period=`${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`;
   const title=`シフト希望 ${name}（${period}）`;
-  const fname=`シフト希望_${name}_${period.replace(/\//g,"")}.png`;
+  const per=period.replace(/\//g,"").replace("〜","-");
+  // 共有するときは日本語のままの名前。ファイル名に使えない文字と空白は _ にする
+  const fnameShare=`シフト希望_${name.replace(/[\\\/:*?"<>|\s]+/g,"_")}_${per}.png`;
+  // 端末に保存するときは英数字だけにする。日本語の名前だと、名前ごと落ちて
+  // 拡張子の無い「download」になり、画像として開けない端末があるため
+  const fnameSave=`shift-${per}.png`;
 
   let blob=null;
   try{ blob=await canvasToBlob(buildCalendarCanvas()); }catch(e){ blob=null; }
@@ -1653,7 +1651,7 @@ async function shareCurrent(){
   if(blob){
     // 画像のまま共有できる端末（iPhone・Androidのほとんど）
     try{
-      const file=new File([blob],fname,{type:"image/png"});
+      const file=new File([blob],fnameShare,{type:"image/png"});
       if(navigator.canShare && navigator.canShare({files:[file]}) && navigator.share){
         await navigator.share({files:[file],title});
         return;
@@ -1663,7 +1661,7 @@ async function shareCurrent(){
     }
     // 共有に未対応のときは、端末に画像として保存する
     try{
-      downloadBlob(blob,fname);
+      downloadBlob(blob,fnameSave);
       toast("カレンダーの画像を保存しました","ok");
       return;
     }catch(e){}
@@ -2822,11 +2820,18 @@ async function writeCellsKeepingFormat(arrayBuffer,sheetName,edits,extraCols){
     compression:"DEFLATE"});
 }
 
+// Excelの書き出しと、控えのカレンダー画像の保存の両方で使う
 function downloadBlob(blob,filename){
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
-  a.href=url;a.download=filename;a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  a.href=url;a.download=filename;a.rel="noopener";a.style.display="none";
+  // 画面に入れてから押す。入れないと保存が始まらない端末があるため
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{
+    try{ document.body.removeChild(a); }catch(e){}
+    URL.revokeObjectURL(url);
+  },1000);
 }
 
 
