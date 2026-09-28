@@ -585,15 +585,6 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
             ✏️ 送った内容を直して送り直す
           </button>
         </div>
-        <!-- 送信履歴コピーボタン -->
-        <div style="margin-top:16px;border-top:1px solid #a5d6a7;padding-top:16px">
-          <p style="font-size:14px;color:var(--sub);margin-bottom:10px">
-            📋 個人保管用（あとで「前に送信した内容の控え」からも確認できます）
-          </p>
-          <button class="btn btn-gr" style="font-size:15px;padding:14px" onclick="keepShare()">
-            📤 自分に送る・保存する
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -617,8 +608,8 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
       <p style="font-size:14px;color:var(--sub);line-height:1.8;margin-top:6px">
         送信したときに、この端末のブラウザへ自動で保存された控えです。<br>
         ①に入れたお名前の控えだけが表示されます。ほかの方の控えは出ません。<br>
-        直すとき・手元に残すときのボタンは、②の「日付を選んでコメントを追加」の下にあります。<br>
-        ブラウザのデータを消すと控えも消えます。確実に残したいときは、「自分に送る・保存する」かコピーで手元に残してください。
+        直すときのボタンは、②の「日付を選んでコメントを追加」の下にあります。<br>
+        ブラウザのデータを消すと控えも消えます。確実に残したいときは、③の「📷 カレンダー形式画像で保存」か、上の「📋 コピー」で手元に残してください。
       </p>
       <button class="keep-link" onclick="keepClearOwn()" style="color:#c62828">
         🗑 この端末から自分の控えを消す
@@ -1406,7 +1397,7 @@ let keepIdx=0; // 履歴のどれを表示しているか（0が最新）
 function renderKeepCard(){
   const card=document.getElementById("keepCard");
   if(!card)return;
-  // ②の下に出す「読み込んで直す・自分に送る」も、控えがあるときだけ出す
+  // ②の下に出す「この内容を読み込んで直す」も、控えがあるときだけ出す
   const quick=document.getElementById("keepQuick");
   const list=keepListForOwner();
   if(list.length===0){
@@ -1787,20 +1778,6 @@ async function shareCurrent(){
   location.href=url;
 }
 
-async function keepShare(){
-  const h=keepCurrent();
-  if(!h){toast("控えがありません","err");return}
-  const title=`シフト希望の控え${h.name?" "+h.name:""}${h.period?"（"+h.period+"）":""}`;
-  if(navigator.share){
-    try{
-      await navigator.share({title,text:h.text});
-      return;
-    }catch(e){
-      if(e&&e.name==="AbortError")return; // 本人がキャンセルした場合
-    }
-  }
-  keepMail(); // 共有に未対応の端末はメール作成に切り替え
-}
 function keepMail(){
   const h=keepCurrent();
   if(!h){toast("控えがありません","err");return}
