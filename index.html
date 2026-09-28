@@ -2617,12 +2617,25 @@ const SHEET1_LABELS = ["西九条","九条","酉島","春日出","新郡山","�
 const KANJI_VARIANTS = {
   "廣":"広","淺":"浅","髙":"高","﨑":"崎","嵜":"崎","齋":"斎","齊":"斉",
   "邊":"辺","邉":"辺","澤":"沢","瀧":"滝","嶋":"島","濱":"浜","濵":"浜",
-  "冨":"富","眞":"真","檜":"桧","栁":"柳","桒":"桑","國":"国","龍":"竜"
+  "冨":"富","眞":"真","檜":"桧","栁":"柳","桒":"桑","國":"国","龍":"竜",
+  "𠮷":"吉","德":"徳","惠":"恵","榮":"栄","櫻":"桜","藏":"蔵","實":"実"
 };
 function normName(v){
-  return String(v==null?"":v)
-    .replace(/[\s　]/g,"")
-    .split("").map(ch=>KANJI_VARIANTS[ch]||ch).join("");
+  // Array.from で1文字ずつ分ける（「𠮷」のような4バイト文字を壊さないため）
+  return Array.from(String(v==null?"":v).normalize("NFC").replace(/[\s　]/g,""))
+    .map(ch=>KANJI_VARIANTS[ch]||ch).join("");
+}
+
+// A列で氏名を探す。A列が空なら、右端の氏名欄（AH列）も見る
+const NAME_COL_RIGHT = 33; // AH列（0始まり）
+function nameCellOf(row){
+  const a=row&&row[0];
+  if(a!=null && String(a).trim()) return String(a).trim();
+  const r=row&&row[NAME_COL_RIGHT];
+  if(r==null) return "";
+  const s=String(r).trim();
+  if(!s || /^[\d.]+$/.test(s)) return "";   // 数式の結果の「0」などは氏名ではない
+  return s;
 }
 
 // シートのA列から「氏名→Excelの行番号」を作る
@@ -2630,9 +2643,7 @@ function buildNameRowMap(rows){
   const map={};
   rows.forEach((row,ri)=>{
     if(ri===0) return; // 1行目は日付ヘッダー
-    const raw=row&&row[0];
-    if(raw==null) return;
-    const name=String(raw).trim();
+    const name=nameCellOf(row);
     if(!name) return;
     if(SHEET1_LABELS.indexOf(name)>=0) return;
     if(/人数|合計|^計$/.test(name)) return;
