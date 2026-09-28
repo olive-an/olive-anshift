@@ -541,10 +541,9 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         </p>
         <!-- 名前が長いので、横に並べず1つずつ置く -->
         <button class="btn btn-gr" id="saveBeforeSendBtn" onclick="shareCurrent()">📷 カレンダー形式画像で保存</button>
-        <button class="btn btn-ol" id="lineBossBtn" onclick="lineToBoss()" style="margin-top:8px">💬 岩久保に送信</button>
         <p style="font-size:14px;color:var(--sub);line-height:1.7;margin-top:8px">
-          「カレンダー形式画像で保存」は、この画面のままの形の画像になります。<br>
-          「岩久保に送信」はLINEが開きます。送り先から岩久保を選んでください。
+          この画面のままの形の画像になります。<br>
+          事務所には「送信」だけで届きます。ここは自分用の控えです。
         </p>
 
         <!-- 作った画像をその場に出す。ここから長押しで写真アプリに入れられる -->
@@ -1176,33 +1175,6 @@ function renderCalName(){
 
 function markStep(n){
   for(let i=1;i<=3;i++)document.getElementById("s"+i).classList.toggle("on",i<=n);
-}
-
-/* ===== 入力した内容を、LINEで岩久保へ送る =====
-   LINEには「相手を決めて開く」仕組みが無いため、
-   本文を入れた状態でLINEを開き、送り先は本人に選んでもらう。
-   開けなかったときのために、先に文字をコピーしておく。 */
-async function lineToBoss(){
-  const name=(document.getElementById("empName").value||"").trim();
-  if(!name){
-    toast("①のお名前を入力してください","err");
-    const el=document.getElementById("empName");
-    el.focus(); el.scrollIntoView({behavior:"smooth",block:"center"});
-    return;
-  }
-  const text=buildText();
-  try{ await navigator.clipboard.writeText(text); }
-  catch(e){ try{ keepCopyFallback(text); }catch(e2){} }
-
-  const url="https://line.me/R/msg/text/?"+encodeURIComponent(text);
-  if(url.length>8000){
-    // 長すぎてLINEが開けないことがあるので、貼り付けに切り替えてもらう
-    toast("長いためコピーしました。LINEを開いて貼り付けてください","ok");
-    return;
-  }
-  toast("LINEが開きます。送り先から岩久保を選んでください","ok");
-  buzz(12);
-  location.href=url;
 }
 
 async function doCopy(){
