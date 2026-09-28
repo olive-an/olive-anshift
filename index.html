@@ -849,16 +849,10 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
       <div style="font-size:19px;font-weight:700;color:var(--gr);margin-bottom:6px">送信内容の確認</div>
       <div style="font-size:15px;color:var(--text)">内容を確認してから送信してください</div>
     </div>
-    <!-- 確認内容 -->
-    <div style="background:var(--sand);border-radius:12px;padding:14px;margin-bottom:16px;max-height:260px;overflow-y:auto">
-      <div style="font-size:16px;font-weight:700;color:var(--gr);margin-bottom:8px" id="confirmName"></div>
-      <div style="font-size:15px;color:var(--text);margin-bottom:10px" id="confirmPeriod"></div>
-      <!-- カウンター -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="confirmCount"></div>
-      <!-- 未入力の注意 -->
-      <div id="confirmWarn" style="display:none;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.7;color:#e65100"></div>
-      <!-- 記号一覧 -->
-      <div style="font-size:12px;line-height:1.9;font-family:monospace;white-space:pre-wrap" id="confirmList"></div>
+    <!-- 確認内容。送るものと同じカレンダーの画像をそのまま出す -->
+    <div style="background:var(--sand);border-radius:12px;padding:10px;margin-bottom:16px;max-height:52vh;overflow-y:auto">
+      <img id="confirmImg" alt="送信する内容"
+        style="display:block;width:100%;height:auto;border-radius:8px;background:#fff">
     </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-cl" style="flex:1;font-size:14px;padding:13px" onclick="closeConfirm()">
@@ -1252,46 +1246,12 @@ function doSend(){
     buzz([60,80,60]);
     return;
   }
-  const name=g.name;
-  const total=daysBetween(rangeStart,rangeEnd)+1;
-  let m=0,s=0,b=0,u=0;
-  const details=[];
-  for(let i=0;i<total;i++){
-    const d=addDays(rangeStart,i),k=fmt(d),v=state[k]||"";
-    if(v==="○")m++;else if(v==="△")s++;else if(v==="×")b++;else u++;
-    if(v) details.push(`${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）${v}`);
-  }
-
-  // 確認モーダルを表示
-  document.getElementById("confirmName").textContent=`👤 ${name}`;
-  document.getElementById("confirmPeriod").textContent=
-    `📅 ${rangeStart.getMonth()+1}/${rangeStart.getDate()} 〜 ${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`;
-  document.getElementById("confirmCount").innerHTML=
-    `<span style="background:#c8e6c9;color:#1b5e20;padding:4px 10px;border-radius:100px;font-size:12px;font-weight:700">○ ${m}日</span>`+
-    `<span style="background:#ffe0b2;color:#e65100;padding:4px 10px;border-radius:100px;font-size:12px;font-weight:700">△ ${s}日</span>`+
-    `<span style="background:#ffcdd2;color:#c62828;padding:4px 10px;border-radius:100px;font-size:12px;font-weight:700">× ${b}日</span>`+
-    `<span style="background:#f5f5f5;color:#666;padding:4px 10px;border-radius:100px;font-size:12px">未入力 ${u}日</span>`;
-  document.getElementById("confirmList").textContent=
-    details.length>0 ? details.join("\n") : "（入力なし）";
-
-  // 未入力の日が残っているときは、目立つ形で知らせる
-  const warn=document.getElementById("confirmWarn");
-  if(warn){
-    if(u>0){
-      const days=[];
-      for(let i=0;i<total;i++){
-        const d=addDays(rangeStart,i);
-        if(!state[fmt(d)]) days.push(`${d.getMonth()+1}/${d.getDate()}`);
-      }
-      const head=days.slice(0,10).join("、")+(days.length>10?` ほか${days.length-10}日`:"");
-      warn.innerHTML=`<b>⚠️ まだ ${u}日 入力していません</b><br>`
-        +`<span style="font-size:12px">${xmlEsc(head)}</span><br>`
-        +`<span style="font-size:12px">このまま送ると、その日は空欄で届きます。</span>`;
-      warn.style.display="block";
-    }else{
-      warn.style.display="none";
-    }
-  }
+  // 送るものと同じカレンダーの画像を作って出す。
+  // 文字の一覧より、送ったあとの形のまま見えるほうが間違いに気づきやすい
+  try{
+    document.getElementById("confirmImg").src=
+      buildCalendarCanvas(1.5).toDataURL("image/png");
+  }catch(e){}
 
   const modal=document.getElementById("confirmModal");
   modal.style.display="flex";
