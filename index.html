@@ -215,6 +215,16 @@ main{padding:16px 12px;max-width:560px;margin:0 auto}
   padding:13px 15px;font-size:16px;
   color:var(--text);margin-bottom:12px;line-height:1.8;
 }
+.cal-who{
+  font-size:20px;font-weight:800;color:var(--m);
+  background:var(--gr-bg);border:2px solid var(--gr-bdr);border-radius:10px;
+  padding:10px 12px;margin-bottom:10px;text-align:center;line-height:1.5;
+  word-break:break-all;
+}
+.cal-who.empty{
+  font-size:16px;font-weight:700;color:var(--sub);
+  background:var(--sand);border-color:var(--bdr);
+}
 .cal-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px}
 .cal-period{font-size:18px;font-weight:700}
 .cal-days{font-size:14px;color:var(--sub)}
@@ -232,6 +242,7 @@ main{padding:16px 12px;max-width:560px;margin:0 auto}
   transition:transform .1s,border-color .1s,background .1s;
   overflow:hidden;touch-action:manipulation;
   width:100%;box-sizing:border-box;min-width:0;
+  position:relative; /* コメントの印を右上に置くため */
 }
 .day:active{transform:scale(.91)}
 .day.out{border-color:transparent;background:transparent;pointer-events:none}
@@ -323,9 +334,11 @@ table.agg tr.sum td{background:var(--sand);font-weight:700}
 .toast.ok{background:var(--gr)} .toast.err{background:#c62828}
 
 .hidden{display:none!important}
+/* コメントを付けた日の印。日付の数字に重ならないよう、ますの下辺に帯で出す。
+   控えの画像も同じ形にそろえている */
 .day.has-comment::after{
-  content:"💬";position:absolute;top:1px;right:1px;
-  font-size:9px;line-height:1;
+  content:"";position:absolute;left:7px;right:7px;bottom:4px;
+  height:5px;border-radius:3px;background:#f9a825;
 }
 .comment-modal{
   position:fixed;inset:0;background:rgba(0,0,0,.5);
@@ -440,6 +453,8 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         👆 日付をタップ → ○ → △ → × → 空白 の順で変わります<br>
         💬 日付を長押しすると、その日にコメントを付けられます
       </div>
+      <!-- 誰の分を入力しているのかが、カレンダーを見ながら分かるようにする -->
+      <div class="cal-who empty" id="calName">① にお名前を入力してください</div>
       <div class="cal-meta">
         <span class="cal-period" id="calRange">—</span>
         <span class="cal-days" id="calCount">—</span>
@@ -506,9 +521,12 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
           残さなくても送信できます。必要な方だけどうぞ。
         </p>
         <div class="btn-sm">
-          <button class="btn btn-gr" id="saveBeforeSendBtn" onclick="shareCurrent()">📤 自分に送る</button>
-          <button class="btn btn-ol" id="copyCurrentBtn" onclick="doCopy()">📋 コピー</button>
+          <button class="btn btn-gr" id="saveBeforeSendBtn" onclick="shareCurrent()">📷 カレンダーで残す</button>
+          <button class="btn btn-ol" id="copyCurrentBtn" onclick="doCopy()">📋 文字でコピー</button>
         </div>
+        <p style="font-size:14px;color:var(--sub);line-height:1.7;margin-top:8px">
+          「カレンダーで残す」を押すと、この画面のままの形で画像になります。
+        </p>
       </div>
 
       <p style="font-size:17px;font-weight:700;line-height:1.7;margin-bottom:6px;text-align:center">
@@ -1037,6 +1055,7 @@ function buildCal(){
   }
   updateCount();
   renderPeriodText(); // 対象期間の表示
+  renderCalName();    // カレンダーの上の氏名
   renderSentState();
 }
 
@@ -1106,6 +1125,15 @@ function buildText(){
 }
 function refreshPreview(){
   document.getElementById("preview").textContent=buildText();
+  renderCalName();
+}
+
+/* カレンダーの上に、いま入力している方の氏名を出す */
+function renderCalName(){
+  const el=document.getElementById("calName"); if(!el) return;
+  const n=(document.getElementById("empName").value||"").trim();
+  if(n){ el.textContent=n+" さん"; el.classList.remove("empty"); }
+  else  { el.textContent="① にお名前を入力してください"; el.classList.add("empty"); }
 }
 
 function markStep(n){
@@ -1426,8 +1454,175 @@ function keepCopyFallback(text){
   ta.select();document.execCommand("copy");
   document.body.removeChild(ta);
 }
+/* ===== 控えを、画面で見たままのカレンダーの形の画像にする =====
+   日付が縦に並ぶ文字の一覧より、カレンダーの形のほうが見返しやすいため。 */
+const CAL_FONT='"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif';
+function _f(c,size,bold){ c.font=(bold?"bold ":"")+size+"px "+CAL_FONT; }
+function _rr(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y);
+  c.arcTo(x+w,y,x+w,y+h,r);
+  c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r);
+  c.arcTo(x,y,x+w,y,r);
+  c.closePath();
+}
+// 長い文を折り返して描く。描いた行数を返す
+function _wrap(c,text,x,y,maxW,lh){
+  let line="",n=0;
+  for(const ch of [...text]){
+    const t=line+ch;
+    if(c.measureText(t).width>maxW && line){ c.fillText(line,x,y+n*lh); line=ch; n++; }
+    else line=t;
+  }
+  if(line){ c.fillText(line,x,y+n*lh); n++; }
+  return n;
+}
+
+function buildCalendarCanvas(){
+  const name=(document.getElementById("empName").value||"").trim();
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  const lead=rangeStart.getDay();
+  const rows=Math.ceil((lead+total)/7);
+
+  const W=720, PAD=24, GAP=8;
+  const cw=(W-PAD*2-GAP*6)/7, ch=82;
+
+  // コメントの一覧を先に作る
+  const cmts=[];
+  for(let i=0;i<total;i++){
+    const d=addDays(rangeStart,i),k=fmt(d);
+    if(commentState[k]) cmts.push(`${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}） ${commentState[k]}`);
+  }
+  const mes=document.createElement("canvas").getContext("2d");
+  _f(mes,16,false);
+  let cmtLines=0;
+  const cmtMaxW=W-PAD*2-24;
+  cmts.forEach(t=>{ cmtLines+=Math.max(1,Math.ceil(mes.measureText(t).width/cmtMaxW)); });
+  const cmtH = cmts.length ? (50+cmtLines*26) : 0;
+
+  const HEAD=92, NAME=74, PERIOD=40, DOWH=30;
+  const GRID=rows*ch+(rows-1)*GAP, CNT=78, FOOT=44;
+  const H = HEAD+NAME+PERIOD+DOWH+GRID+16+CNT+cmtH+FOOT;
+
+  const cv=document.createElement("canvas");
+  const S=2; cv.width=W*S; cv.height=H*S;
+  const c=cv.getContext("2d"); c.scale(S,S);
+  c.textBaseline="middle";
+
+  c.fillStyle="#ffffff"; c.fillRect(0,0,W,H);
+
+  // 見出しの帯
+  c.fillStyle="#2e7d32"; c.fillRect(0,0,W,HEAD);
+  c.textAlign="center"; c.fillStyle="#ffffff";
+  _f(c,30,true); c.fillText("シフト希望",W/2,38);
+  _f(c,16,false); c.fillText("おりーぶ庵株式会社",W/2,68);
+
+  let y=HEAD+14;
+
+  // 氏名
+  c.fillStyle="#e8f5e9"; _rr(c,PAD,y,W-PAD*2,46,10); c.fill();
+  c.strokeStyle="#66bb6a"; c.lineWidth=2; _rr(c,PAD,y,W-PAD*2,46,10); c.stroke();
+  c.fillStyle="#1b5e20"; _f(c,24,true);
+  c.fillText(name||"（お名前未入力）",W/2,y+24);
+  y+=60;
+
+  // 対象期間
+  c.textAlign="left"; c.fillStyle="#1a1a1a"; _f(c,21,true);
+  c.fillText(`${rangeStart.getMonth()+1}月${rangeStart.getDate()}日 〜 ${rangeEnd.getMonth()+1}月${rangeEnd.getDate()}日`,PAD,y+14);
+  c.textAlign="right"; c.fillStyle="#666"; _f(c,15,false);
+  c.fillText(`全${total}日間`,W-PAD,y+15);
+  y+=PERIOD;
+
+  // 曜日
+  c.textAlign="center"; _f(c,15,true);
+  for(let i=0;i<7;i++){
+    c.fillStyle = i===0?"#b71c1c" : i===6?"#0d47a1" : "#666";
+    c.fillText(DOW[i],PAD+i*(cw+GAP)+cw/2,y+14);
+  }
+  y+=DOWH;
+
+  // 日付のます
+  for(let i=0;i<total;i++){
+    const d=addDays(rangeStart,i),k=fmt(d);
+    const pos=lead+i, col=pos%7, row=Math.floor(pos/7);
+    const x=PAD+col*(cw+GAP), yy=y+row*(ch+GAP);
+    const s=state[k]||"";
+    let bg="#ffffff", bd="#ddd8cc", dc="#555", mc="#1a1a1a";
+    if(d.getDay()===0){ bg="#ffebee"; bd="#ffcdd2"; dc="#b71c1c"; }
+    else if(d.getDay()===6){ bg="#e3f2fd"; bd="#bbdefb"; dc="#0d47a1"; }
+    if(HOL[k]){ bg="#fce4ec"; bd="#f8bbd0"; dc="#b71c1c"; }
+    if(s==="○"){ bg="#c8e6c9"; bd="#4caf50"; mc="#1b5e20"; }
+    else if(s==="△"){ bg="#ffe0b2"; bd="#ff8f00"; mc="#bf360c"; }
+    else if(s==="×"){ bg="#ffcdd2"; bd="#e53935"; mc="#b71c1c"; }
+    c.fillStyle=bg; _rr(c,x,yy,cw,ch,9); c.fill();
+    c.strokeStyle=bd; c.lineWidth=2; _rr(c,x,yy,cw,ch,9); c.stroke();
+    c.fillStyle=dc; _f(c,16,true); c.fillText(String(d.getDate()),x+cw/2,yy+20);
+    if(s){ c.fillStyle=mc; _f(c,32,true); c.fillText(s,x+cw/2,yy+53); }
+    // コメントを付けた日は、ますの下辺に帯を出す（日付の数字に重ならないように）
+    if(commentState[k]){
+      c.fillStyle="#f9a825";
+      _rr(c,x+9,yy+ch-11,cw-18,5,2.5); c.fill();
+    }
+  }
+  y+=GRID+16;
+
+  // ○△×の数
+  c.fillStyle="#f7f6f2"; _rr(c,PAD,y,W-PAD*2,66,10); c.fill();
+  c.strokeStyle="#ddd8cc"; c.lineWidth=1.5; _rr(c,PAD,y,W-PAD*2,66,10); c.stroke();
+  let m=0,sc=0,bc=0,uc=0;
+  for(let i=0;i<total;i++){
+    const v=state[fmt(addDays(rangeStart,i))]||"";
+    if(v==="○")m++; else if(v==="△")sc++; else if(v==="×")bc++; else uc++;
+  }
+  const cells=[["○ 出勤可",m,"#1b5e20"],["△ 要相談",sc,"#bf360c"],["× 不可",bc,"#b71c1c"],["未入力",uc,"#666"]];
+  const qw=(W-PAD*2)/4;
+  c.textAlign="center";
+  cells.forEach((it,i)=>{
+    const cx=PAD+qw*i+qw/2;
+    c.fillStyle=it[2]; _f(c,26,true); c.fillText(String(it[1]),cx,y+26);
+    c.fillStyle="#666"; _f(c,14,false); c.fillText(it[0],cx,y+50);
+  });
+  y+=CNT;
+
+  // コメント（付けた人だけ）
+  if(cmts.length){
+    c.textAlign="left";
+    c.fillStyle="#f9a825"; _rr(c,PAD,y+14,18,5,2.5); c.fill();
+    c.fillStyle="#f57f17"; _f(c,17,true); c.fillText("コメントを付けた日",PAD+26,y+16);
+    y+=32;
+    c.fillStyle="#1a1a1a"; _f(c,16,false);
+    cmts.forEach(t=>{ y+=_wrap(c,t,PAD+8,y+10,cmtMaxW,26)*26; });
+    y+=14;
+  }
+
+  // いつ作った控えか
+  c.textAlign="center"; c.fillStyle="#666"; _f(c,14,false);
+  const n=new Date();
+  c.fillText(
+    `${n.getFullYear()}/${n.getMonth()+1}/${n.getDate()}（${DOW[n.getDay()]}）`
+    +`${("0"+n.getHours()).slice(-2)}:${("0"+n.getMinutes()).slice(-2)} 時点の控え`,
+    W/2, y+18);
+
+  return cv;
+}
+
+function canvasToBlob(cv){
+  return new Promise(res=>{
+    if(cv.toBlob) cv.toBlob(res,"image/png");
+    else res(null);
+  });
+}
+function downloadBlob(blob,fname){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=fname; a.style.display="none";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+
 /* ===== 送る前に、いま入力している内容を手元へ残す =====
-   送信ずみの控えではなく、画面にいま出ている内容をそのまま渡す。 */
+   送信ずみの控えではなく、画面にいま出ている内容をカレンダーの画像で渡す。 */
 async function shareCurrent(){
   const name=(document.getElementById("empName").value||"").trim();
   if(!name){
@@ -1435,18 +1630,38 @@ async function shareCurrent(){
     document.getElementById("empName").focus();
     return;
   }
-  const text=buildText();
-  const title=`シフト希望 ${name}`
-    +`（${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}）`;
-  if(navigator.share){
+  const period=`${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`;
+  const title=`シフト希望 ${name}（${period}）`;
+  const fname=`シフト希望_${name}_${period.replace(/\//g,"")}.png`;
+
+  let blob=null;
+  try{ blob=await canvasToBlob(buildCalendarCanvas()); }catch(e){ blob=null; }
+
+  if(blob){
+    // 画像のまま共有できる端末（iPhone・Androidのほとんど）
     try{
-      await navigator.share({title,text});
-      return;
+      const file=new File([blob],fname,{type:"image/png"});
+      if(navigator.canShare && navigator.canShare({files:[file]}) && navigator.share){
+        await navigator.share({files:[file],title});
+        return;
+      }
     }catch(e){
       if(e&&e.name==="AbortError")return; // 本人がキャンセルした場合
     }
+    // 共有に未対応のときは、端末に画像として保存する
+    try{
+      downloadBlob(blob,fname);
+      toast("カレンダーの画像を保存しました","ok");
+      return;
+    }catch(e){}
   }
-  // 共有に未対応の端末はメール作成に切り替える
+
+  // 画像が作れなかったときだけ、これまでどおり文字で渡す
+  const text=buildText();
+  if(navigator.share){
+    try{ await navigator.share({title,text}); return; }
+    catch(e){ if(e&&e.name==="AbortError")return; }
+  }
   const url="mailto:?subject="+encodeURIComponent(title)+"&body="+encodeURIComponent(text);
   if(url.length>1900){
     keepCopyFallback(text);
