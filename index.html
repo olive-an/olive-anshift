@@ -520,12 +520,11 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         <p style="font-size:15px;line-height:1.7;margin-bottom:12px">
           残さなくても送信できます。必要な方だけどうぞ。
         </p>
-        <div class="btn-sm">
-          <button class="btn btn-gr" id="saveBeforeSendBtn" onclick="shareCurrent()">📷 カレンダーで残す</button>
-          <button class="btn btn-ol" id="copyCurrentBtn" onclick="doCopy()">📋 文字でコピー</button>
-        </div>
+        <!-- 名前が長いので、横に並べず1つずつ置く -->
+        <button class="btn btn-gr" id="saveBeforeSendBtn" onclick="shareCurrent()">📷 カレンダー形式画像で保存</button>
+        <button class="btn btn-ol" id="copyCurrentBtn" onclick="doCopy()" style="margin-top:8px">📋 文字でコピー</button>
         <p style="font-size:14px;color:var(--sub);line-height:1.7;margin-top:8px">
-          「カレンダーで残す」を押すと、この画面のままの形で画像になります。
+          「カレンダー形式画像で保存」を押すと、この画面のままの形の画像になります。
         </p>
       </div>
 
