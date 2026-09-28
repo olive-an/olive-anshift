@@ -25,12 +25,20 @@ body{
 /* 見出し */
 .head{
   background:#fff;border:3px solid var(--gr);border-radius:16px;
-  padding:20px 18px;text-align:center;margin-bottom:18px;
+  padding:20px 18px;text-align:center;margin-bottom:14px;
 }
 .head .logo{display:block;height:64px;width:auto;margin:0 auto 12px}
 .head .ttl{font-size:28px;font-weight:800;color:var(--gr);line-height:1.4}
 .head .sub{font-size:18px;font-weight:700;margin-top:6px}
 .head .org{font-size:15px;color:var(--sub);margin-top:8px}
+
+/* 締切の帯 */
+.band{
+  background:#fff8e1;border:3px solid #ffca28;border-radius:14px;
+  padding:14px;text-align:center;margin-bottom:18px;
+}
+.band .t{font-size:24px;font-weight:800;color:#c62828}
+.band p{font-size:16px;margin-top:4px}
 
 /* 手順のカード */
 .step{
@@ -54,6 +62,8 @@ body{
   padding:12px 14px;margin-top:10px;font-size:16px;
 }
 .box b{color:var(--gr)}
+.box.warn{background:#fff8e1;border:1.5px solid #ffca28}
+.box.warn b{color:#e65100}
 .two{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .two>div{flex:1;min-width:220px;background:var(--sand);border-radius:10px;padding:12px 14px;font-size:16px}
 .two .t{font-weight:800;margin-bottom:4px}
@@ -65,6 +75,7 @@ body{
   padding:10px 18px;font-size:17px;font-weight:700;margin-top:4px;
 }
 .demo.ol{background:#fff;color:var(--gr);border:2px solid var(--gr)}
+.demo.ye{background:#fff9c4;color:#f57f17;border:2px solid #f9a825}
 
 /* ○△×の見本 */
 .marks{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -91,7 +102,7 @@ body{
   word-break:break-all;text-align:center;text-decoration:none;
 }
 
-/* 締切 */
+/* 締切の詳しい説明 */
 .deadline{
   background:#fff8e1;border:3px solid #ffca28;border-radius:14px;
   padding:18px;margin-bottom:14px;
@@ -113,7 +124,7 @@ body{
 @media print{
   body{background:#fff}
   .sheet{max-width:none;padding:0}
-  .step,.deadline,.foot,.head{break-inside:avoid}
+  .step,.deadline,.foot,.head,.band{break-inside:avoid}
 }
 </style>
 </head>
@@ -125,6 +136,11 @@ body{
     <div class="ttl">シフト希望フォーム<br>の使い方</div>
     <div class="sub">スマホで3ステップ。タップするだけです</div>
     <div class="org">おりーぶ庵株式会社</div>
+  </div>
+
+  <div class="band">
+    <div class="t">📅 シフト締め切りは 7日 まで</div>
+    <p>送ったあとでも、締切までは何度でも直せます</p>
   </div>
 
   <div class="step">
@@ -166,8 +182,13 @@ body{
       <div class="step-t">お名前を入れる</div>
     </div>
     <div class="step-b">
-      <p>①の欄に、フルネームで入力します。</p>
-      <div class="box">同じ端末を何人かで使う場合も、毎回ご自分の名前を入れてください。名前は残りません。</div>
+      <p>①の欄に、<b>フルネーム</b>で入力します。</p>
+      <div class="box">
+        名前は残りません。同じ端末を何人かで使う場合も、毎回ご自分の名前を入れてください。
+      </div>
+      <div class="box">
+        <b>対象期間</b>は、名前の下に出ています。事務所が決めた期間です。ご自分では変えられません。
+      </div>
     </div>
   </div>
 
@@ -187,13 +208,12 @@ body{
         <div class="mk b">× 出勤できない</div>
       </div>
       <div class="box">
-        <b>💬 その日に一言を添えたいとき</b><br>
-        日付を長押しすると、コメントを付けられます。<br>
-        例：午前のみ可／夕方以降は不可／通院のため休み
-      </div>
-      <div class="box">
         <b>まとめて入れたいとき</b><br>
         「○ 全日 出勤可」「× 全日 不可」を押すと、全部の日が一度に入ります。そのあと違う日だけ直せます。
+      </div>
+      <div class="box">
+        <b>いくつ入れたか数える必要はありません</b><br>
+        カレンダーの下に、○・△・×・未入力の数が出ています。未入力が 0 になれば全部入っています。
       </div>
     </div>
   </div>
@@ -201,6 +221,35 @@ body{
   <div class="step">
     <div class="step-h">
       <div class="no">5</div>
+      <div class="step-t">その日に一言を添える<br>（要らなければ飛ばしてください）</div>
+    </div>
+    <div class="step-b">
+      <p>入れ方は2通りあります。やりやすいほうでどうぞ。</p>
+      <div class="two">
+        <div>
+          <div class="t">日付を長押しする</div>
+          カレンダーの日付を、指で1秒ほど押したままにします。
+        </div>
+        <div>
+          <div class="t">ボタンから選ぶ</div>
+          <span class="demo ye" style="font-size:15px;padding:7px 13px">💬 コメント</span><br>
+          長押しが苦手な方はこちらへ。日付を選んでから書けます。
+        </div>
+      </div>
+      <div class="box">
+        書いた例です。<br>
+        午前のみ可／夕方以降は不可／通院のため休み／24日10:00〜利用者ガイド
+      </div>
+      <div class="box">
+        <b>コメントは事務所の表にも出ます</b><br>
+        シフトを組むときに見られるよう、印刷する表の右側に、そのまま載ります。
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-h">
+      <div class="no">6</div>
       <div class="step-t">控えを手元に残す<br>（しなくても送れます）</div>
     </div>
     <div class="step-b">
@@ -221,22 +270,32 @@ body{
 
   <div class="step">
     <div class="step-h">
-      <div class="no">6</div>
+      <div class="no">7</div>
       <div class="step-t">送信する</div>
     </div>
     <div class="step-b">
       <div class="demo">📨　送　信</div>
       <p>③の「送信」を押すと、確認の画面が出ます。内容を見て、もう一度「送信する」を押してください。</p>
+      <div class="box warn">
+        <b>⚠️ まだ ○日 入力していません と出たとき</b><br>
+        入れ忘れた日があります。そのまま送ると、その日は空欄で届きます。<br>
+        戻って入れ直すか、そのままでよければ送ってください。
+      </div>
       <div class="box"><b>✅ 送信完了！</b> と出れば終わりです。おつかれさまでした。</div>
+      <div class="box">
+        <b>送信すると、事務所に自動でお知らせが届きます</b><br>
+        こちらから連絡や返信をする必要はありません。
+      </div>
     </div>
   </div>
 
   <div class="deadline">
     <div class="t">📅 シフト締め切りは 7日 まで</div>
     <p>送信したあとでも、締切までは何度でも直せます。取り消しの手続きはいりません。</p>
-    <p>直すときは、②の「日付を選んでコメントを追加」の下にある<br>
+    <p>直すときは、②の「💬 日付を選んでコメントを追加」の下に出てくる<br>
       <span class="demo ol" style="font-size:16px;padding:8px 14px">✏️ この内容を読み込んで直す</span><br>
       を押すと、前に送った内容が戻ってきます。直して、もう一度送信してください。</p>
+    <p>このボタンは、前に送信したことのある端末にだけ出ます。出ていない場合は、はじめから入れ直して送ってください。</p>
     <p><b>いちばん最後に送ったものが有効です。</b></p>
   </div>
 
@@ -249,11 +308,19 @@ body{
       <div class="two">
         <div>
           <div class="t">画面が古いままのとき</div>
-          右上の 🔄 を押すと、最新の画面になります。入力はリセットされます。
+          右上の 🔄 を押すと、まっさらな最新の画面になります。入れかけの内容は消えます。
         </div>
         <div>
           <div class="t">最初からやり直したいとき</div>
           ②の「🗑 クリア」で、入れた○△×を全部消せます。
+        </div>
+        <div>
+          <div class="t">途中でやめてしまったとき</div>
+          入れかけの内容は残っています。同じ端末で開き直せば、続きから入力できます。
+        </div>
+        <div>
+          <div class="t">名前を間違えて送ったとき</div>
+          正しい名前で入れ直して送ってください。間違えた名前の分は別の人として残るので、事務所までお知らせください。
         </div>
       </div>
     </div>
