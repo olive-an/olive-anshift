@@ -334,6 +334,16 @@ table.agg tr.sum td{background:var(--sand);font-weight:700}
 .toast.ok{background:var(--gr)} .toast.err{background:#c62828}
 
 .hidden{display:none!important}
+/* 付けたコメントの一覧。カレンダーのすぐ下に出す */
+.cmt-list{display:none;margin-top:12px;background:#fff9c4;border:2px solid #f9a825;border-radius:10px;padding:12px 14px}
+.cmt-list.on{display:block}
+.cmt-list .t{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;color:#f57f17;margin-bottom:6px}
+.cmt-list .t::before{content:"";width:18px;height:5px;border-radius:3px;background:#f9a825;flex-shrink:0}
+.cmt-list ul{list-style:none;margin:0;padding:0}
+.cmt-list li{font-size:16px;line-height:1.8;padding:8px 0;border-top:1px solid #f2e39a;word-break:break-all}
+.cmt-list li:first-child{border-top:none}
+.cmt-list .d{font-weight:800;color:#e65100;margin-right:6px;white-space:nowrap}
+
 /* コメントを付けた日の印。日付の数字に重ならないよう、ますの下辺に帯で出す。
    控えの画像も同じ形にそろえている */
 .day.has-comment::after{
@@ -466,6 +476,8 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         <div class="cnt"><span class="cn" id="cnt-b" style="color:var(--b)">0</span><span class="cl">× 不可</span></div>
         <div class="cnt"><span class="cn" id="cnt-u" style="color:var(--sub)">0</span><span class="cl">未入力</span></div>
       </div>
+      <!-- 付けたコメントは、カレンダーのすぐ下でまとめて読めるようにする -->
+      <div class="cmt-list" id="commentList"></div>
       <div class="btn-sm" style="margin-top:12px">
         <button class="btn btn-ol" onclick="allMaru()">○ 全日 出勤可</button>
         <button class="btn btn-ol" onclick="allBatsu()"
@@ -475,7 +487,6 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
       <button class="btn btn-ol" onclick="openCommentModal(null)" style="margin-top:8px;font-size:15px;padding:13px">
         💬 日付を選んでコメントを追加
       </button>
-      <div id="commentList" style="margin-top:8px;font-size:14px;color:var(--text);line-height:1.9"></div>
 
       <!-- 前に送信した控えがあるときだけ出す。控えの中身は一番下のカードで見られる -->
       <div id="keepQuick" style="display:none;margin-top:14px;border-top:1px solid var(--bdr);padding-top:14px">
@@ -1055,6 +1066,7 @@ function buildCal(){
   updateCount();
   renderPeriodText(); // 対象期間の表示
   renderCalName();    // カレンダーの上の氏名
+  updateCommentList();// カレンダーの下のコメント一覧
   renderSentState();
 }
 
@@ -1099,11 +1111,13 @@ function allBatsu(){
   updateCount();refreshPreview();toast("全日を × にしました","ok");markStep(2);buzz(25);draftOn();saveDraft();
 }
 function clearAll(){
-  if(!confirm("入力をすべて消去しますか？"))return;
+  if(!confirm("入力をすべて消去しますか？\n（○△×とコメントの両方が消えます）"))return;
   state={};
+  commentState={};  // コメントも入力の一部。残すと、見えないまま送られてしまう
   const total=daysBetween(rangeStart,rangeEnd)+1;
   for(let i=0;i<total;i++)applyState(fmt(addDays(rangeStart,i)));
-  updateCount();refreshPreview();toast("クリアしました","ok");buzz(25);draftOn();saveDraft();
+  updateCount();refreshPreview();updateCommentList();
+  toast("クリアしました","ok");buzz(25);draftOn();saveDraft();
 }
 
 function buildText(){
@@ -1868,14 +1882,16 @@ function closeCommentModal(){
 function updateCommentList(){
   const el=document.getElementById("commentList");
   if(!el)return;
-  const entries=Object.entries(commentState);
-  if(entries.length===0){el.textContent="";return;}
-  el.innerHTML="<b style='color:var(--gr)'>💬 コメント一覧：</b><br>"+
-    entries.map(([k,v])=>{
-      const parts=k.split("-");
-      const mo=parseInt(parts[1]),da=parseInt(parts[2]);
-      return `${mo}/${da}：${v}`;
-    }).join("<br>");
+  // 日付の順にそろえる。キーは 2026-10-23 の形なので、文字のまま並べれば日付順になる
+  const keys=Object.keys(commentState).filter(k=>commentState[k]).sort();
+  if(keys.length===0){ el.className="cmt-list"; el.innerHTML=""; return; }
+  const rows=keys.map(k=>{
+    const d=parseYMD(k);
+    return `<li><span class="d">${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）</span>`
+      +`${xmlEsc(commentState[k])}</li>`;
+  }).join("");
+  el.className="cmt-list on";
+  el.innerHTML=`<div class="t">コメントを付けた日（${keys.length}件）</div><ul>${rows}</ul>`;
 }
 
 function applyAdminPeriod(){
