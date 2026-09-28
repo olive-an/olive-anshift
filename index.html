@@ -346,6 +346,14 @@ table.agg tr.sum td{background:var(--sand);font-weight:700}
 
 /* コメントを付けた日の印。日付の数字に重ならないよう、ますの下辺に帯で出す。
    控えの画像も同じ形にそろえている */
+.day.miss{
+  animation:missBlink 1s ease-in-out 2;
+  border-color:#e65100!important;
+}
+@keyframes missBlink{
+  0%,100%{box-shadow:0 0 0 0 rgba(230,81,0,0)}
+  50%    {box-shadow:0 0 0 5px rgba(230,81,0,.55)}
+}
 .day.has-comment::after{
   content:"";position:absolute;left:7px;right:7px;bottom:4px;
   height:5px;border-radius:3px;background:#f9a825;
@@ -537,11 +545,22 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         <p style="font-size:14px;color:var(--sub);line-height:1.7;margin-top:8px">
           「カレンダー形式画像で保存」を押すと、この画面のままの形の画像になります。
         </p>
+
+        <!-- 作った画像をその場に出す。ここから長押しで写真アプリに入れられる -->
+        <div id="calImgBox" style="display:none;margin-top:12px;background:#fff;border:2px solid var(--gr-bdr);border-radius:12px;padding:13px">
+          <div style="font-size:16px;font-weight:800;color:var(--m);margin-bottom:8px">📱 写真アプリに入れるには</div>
+          <div style="font-size:16px;line-height:1.9;margin-bottom:10px">
+            出てきた画面で <b>「画像を保存」</b> を選ぶと、写真に入ります。<br>
+            出てこなかったときは、下の画像を <b>長押し</b> して<br>
+            <b>「写真に追加」</b> を選んでください。
+          </div>
+          <img id="calImgPreview" alt="シフト希望の控え"
+            style="display:block;width:100%;height:auto;border:1.5px solid var(--bdr);border-radius:8px">
+        </div>
       </div>
 
-      <p style="font-size:17px;font-weight:700;line-height:1.7;margin-bottom:6px;text-align:center">
-        入力できたら、下の「送信」を押してください。
-      </p>
+      <!-- 何が残っているかを常に出す。誤って途中で送らないようにするため -->
+      <div id="sendGate" style="border-radius:12px;padding:14px;margin-bottom:10px;font-size:17px;line-height:1.9;text-align:center"></div>
 
       <button class="btn" id="sendBtn" onclick="doSend()" style="
         background:var(--gr);color:#fff;
@@ -1102,6 +1121,7 @@ function updateCount(){
   document.getElementById("cnt-s").textContent=s;
   document.getElementById("cnt-b").textContent=b;
   document.getElementById("cnt-u").textContent=u;
+  updateSendGate();  // 残っている日数が変わるので出し直す
 }
 function allMaru(){
   const total=daysBetween(rangeStart,rangeEnd)+1;
@@ -1142,6 +1162,7 @@ function buildText(){
 function refreshPreview(){
   document.getElementById("preview").textContent=buildText();
   renderCalName();
+  updateSendGate();
 }
 
 /* カレンダーの上に、いま入力している方の氏名を出す */
@@ -1164,13 +1185,74 @@ async function doCopy(){
   toast("コピーしました。LINEやメモに貼り付けられます","ok");markStep(3);
 }
 
-function doSend(){
+/* 送信してよい状態かを調べる。
+   名前が入っていて、未入力の日が1日も無いときだけ送れる */
+function sendGate(){
   const name=(document.getElementById("empName").value||"").trim();
-  if(!name){
-    toast("①のお名前を入力してください","err");
-    document.getElementById("empName").focus();
+  const total=daysBetween(rangeStart,rangeEnd)+1;
+  const miss=[];
+  for(let i=0;i<total;i++){
+    const d=addDays(rangeStart,i);
+    if(!state[fmt(d)]) miss.push(`${d.getMonth()+1}/${d.getDate()}`);
+  }
+  return { name, miss, ok: !!name && miss.length===0 };
+}
+
+/* 送信ボタンの上に、残っているものを出す */
+function updateSendGate(){
+  const box=document.getElementById("sendGate");
+  const btn=document.getElementById("sendBtn");
+  if(!box||!btn) return;
+  const g=sendGate();
+  if(g.ok){
+    box.style.background="var(--gr-bg)";
+    box.style.border="2px solid var(--gr-bdr)";
+    box.style.color="var(--m)";
+    box.innerHTML='<b style="font-size:18px">すべて入力できました</b><br>下の「送信」を押してください。';
+    btn.style.background="var(--gr)";
+    btn.style.opacity="1";
+    btn.style.boxShadow="0 6px 20px rgba(46,125,50,.35)";
+  }else{
+    const lines=[];
+    if(!g.name) lines.push('① <b>お名前</b> がまだです');
+    if(g.miss.length){
+      const head=xmlEsc(g.miss.slice(0,12).join("、"))
+        +(g.miss.length>12?` ほか${g.miss.length-12}日`:"");
+      lines.push(`② あと <b>${g.miss.length}日</b> 入力していません<br>`
+        +`<span style="font-size:15px">${head}</span>`);
+    }
+    box.style.background="#fff8e1";
+    box.style.border="2px solid #ffca28";
+    box.style.color="#e65100";
+    box.innerHTML='<b style="font-size:18px">まだ送信できません</b><br>'+lines.join("<br>");
+    btn.style.background="#9e9e9e";
+    btn.style.opacity="0.6";
+    btn.style.boxShadow="none";
+  }
+}
+
+function doSend(){
+  const g=sendGate();
+  if(!g.ok){
+    if(!g.name){
+      toast("①のお名前を入力してください","err");
+      const el=document.getElementById("empName");
+      el.focus();
+      el.scrollIntoView({behavior:"smooth",block:"center"});
+      buzz([60,80,60]);
+      return;
+    }
+    // 入れ忘れた日を光らせて、そこまで運ぶ
+    toast(`まだ ${g.miss.length}日 入力していません`,"err");
+    const cells=[...document.querySelectorAll(".day:not(.out)")]
+      .filter(c=>!state[c.dataset.k]);
+    cells.forEach(c=>c.classList.add("miss"));
+    setTimeout(()=>cells.forEach(c=>c.classList.remove("miss")),2400);
+    if(cells[0]) cells[0].scrollIntoView({behavior:"smooth",block:"center"});
+    buzz([60,80,60]);
     return;
   }
+  const name=g.name;
   const total=daysBetween(rangeStart,rangeEnd)+1;
   let m=0,s=0,b=0,u=0;
   const details=[];
@@ -1670,6 +1752,18 @@ function buildCalendarCanvas(){
   return cv;
 }
 
+/* 作った画像を画面に出す。
+   ウェブページから写真アプリへ直に書き込む方法は無いので、
+   長押しで「写真に追加」できるよう、実物をここに置いておく */
+function showCalImage(blob){
+  const box=document.getElementById("calImgBox");
+  const img=document.getElementById("calImgPreview");
+  if(!box||!img) return;
+  try{ if(img.src && img.src.indexOf("blob:")===0) URL.revokeObjectURL(img.src); }catch(e){}
+  img.src=URL.createObjectURL(blob);
+  box.style.display="block";
+}
+
 function canvasToBlob(cv){
   return new Promise(res=>{
     if(cv.toBlob) cv.toBlob(res,"image/png");
@@ -1699,6 +1793,8 @@ async function shareCurrent(){
   try{ blob=await canvasToBlob(buildCalendarCanvas()); }catch(e){ blob=null; }
 
   if(blob){
+    // 先に画面へ出しておく。共有の画面を閉じたあと、長押しで写真に入れられる
+    showCalImage(blob);
     // 画像のまま共有できる端末（iPhone・Androidのほとんど）
     try{
       const file=new File([blob],fnameShare,{type:"image/png"});
