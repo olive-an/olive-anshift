@@ -407,7 +407,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
     <h2>シフト希望</h2>
     <p>3ステップで完了します。全部タップするだけです！</p>
     <div class="sbar">
-      <div class="si on" id="s1"><span class="si-n">①</span>名前</div>
+      <div class="si on" id="s1"><span class="si-n">①</span>氏名</div>
       <div class="si" id="s2"><span class="si-n">②</span>日付</div>
       <div class="si" id="s3"><span class="si-n">③</span>送信</div>
     </div>
@@ -421,11 +421,11 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
   <div class="card">
     <div class="card-h">
       <span class="card-hn">①</span>
-      <div><div class="card-hl">お名前を入力</div><div class="card-hs">フルネームで入力してください</div></div>
+      <div><div class="card-hl">氏名入力してください</div><div class="card-hs">姓と名の両方を入れてください</div></div>
     </div>
     <div class="card-b">
       <div class="field">
-        <label class="lbl" for="empName">お名前<span class="req">（必須）</span></label>
+        <label class="lbl" for="empName">氏名<span class="req">（必須）</span></label>
         <input class="inp" type="text" id="empName" placeholder="例：岩久保　太郎"
           autocomplete="name" inputmode="text">
         <!-- この期間を送信済みかどうか -->
@@ -472,7 +472,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         💬 日付を長押しすると、その日にコメントを付けられます
       </div>
       <!-- 誰の分を入力しているのかが、カレンダーを見ながら分かるようにする -->
-      <div class="cal-who empty" id="calName">① にお名前を入力してください</div>
+      <div class="cal-who empty" id="calName">① に氏名を入力してください</div>
       <div class="cal-meta">
         <span class="cal-period" id="calRange">—</span>
         <span class="cal-days" id="calCount">—</span>
@@ -517,7 +517,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
       <div><div class="card-hl">送信する</div><div class="card-hs">ボタンをタップすると送信完了！と表示されます</div></div>
     </div>
     <div class="card-b">
-      <div class="preview" id="preview">名前と日付を入力してから送信ボタンを押してください。</div>
+      <div class="preview" id="preview">氏名と日付を入力してから送信ボタンを押してください。</div>
 
       <!-- 変更の締切（毎月7日） -->
       <div id="deadlineNote" style="background:#fff8e1;border:1.5px solid #ffca28;border-radius:10px;padding:14px 15px;margin-bottom:14px;font-size:16px;line-height:1.9;color:var(--text)">
@@ -603,7 +603,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
       <button class="btn btn-ol" style="font-size:16px;padding:14px" onclick="keepCopy()">📋 コピー</button>
       <p style="font-size:14px;color:var(--sub);line-height:1.8;margin-top:6px">
         送信したときに、この端末のブラウザへ自動で保存された控えです。<br>
-        ①に入れたお名前の控えだけが表示されます。ほかの方の控えは出ません。<br>
+        ①に入れた氏名の控えだけが表示されます。ほかの方の控えは出ません。<br>
         直すときのボタンは、②の「日付を選んでコメントを追加」の下にあります。<br>
         ブラウザのデータを消すと控えも消えます。確実に残したいときは、③の「📷 カレンダー形式画像で保存」か、上の「📋 コピー」で手元に残してください。
       </p>
@@ -1122,7 +1122,7 @@ function buildText(){
   const name=(document.getElementById("empName").value||"").trim();
   const total=daysBetween(rangeStart,rangeEnd)+1;
   const lines=[
-    `【シフト希望】${name||"（名前未入力）"}`,
+    `【シフト希望】${name||"（氏名未入力）"}`,
     `期間：${rangeStart.getMonth()+1}/${rangeStart.getDate()}〜${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}`,
     "――――――――――――――――"
   ];
@@ -1145,7 +1145,7 @@ function renderCalName(){
   const el=document.getElementById("calName"); if(!el) return;
   const n=(document.getElementById("empName").value||"").trim();
   if(n){ el.textContent=n+" さん"; el.classList.remove("empty"); }
-  else  { el.textContent="① にお名前を入力してください"; el.classList.add("empty"); }
+  else  { el.textContent="① に氏名を入力してください"; el.classList.add("empty"); }
 }
 
 function markStep(n){
@@ -1153,7 +1153,7 @@ function markStep(n){
 }
 
 async function doCopy(){
-  if(!(document.getElementById("empName").value||"").trim()){toast("お名前を入力してください","err");return}
+  if(!(document.getElementById("empName").value||"").trim()){toast("氏名を入力してください","err");return}
   const txt=buildText();
   try{await navigator.clipboard.writeText(txt);}
   catch(e){const t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}
@@ -1189,7 +1189,7 @@ function updateSendGate(){
     btn.style.boxShadow="0 6px 20px rgba(46,125,50,.35)";
   }else{
     const lines=[];
-    if(!g.name) lines.push('① <b>お名前</b> がまだです');
+    if(!g.name) lines.push('① <b>氏名</b> がまだです');
     if(g.miss.length){
       const head=xmlEsc(g.miss.slice(0,12).join("、"))
         +(g.miss.length>12?` ほか${g.miss.length-12}日`:"");
@@ -1210,7 +1210,7 @@ function doSend(){
   const g=sendGate();
   if(!g.ok){
     if(!g.name){
-      toast("①のお名前を入力してください","err");
+      toast("①の氏名を入力してください","err");
       const el=document.getElementById("empName");
       el.focus();
       el.scrollIntoView({behavior:"smooth",block:"center"});
@@ -1340,7 +1340,7 @@ function sendFailed(btn,msg){
 const KEEP_KEY="oliveShiftKeep";
 const KEEP_MAX=20; // 端末ごとの保存上限。何人かで使う端末でも各自の控えが残るようにする
 
-// 控えは「①お名前」に入れた方のものだけを表示する
+// 控えは「①氏名」に入れた方のものだけを表示する
 // 同じ端末を何人かで使っても、他の方の控えが見えないようにするため
 function keepOwnerKey(){
   const el=document.getElementById("empName");
@@ -1454,7 +1454,7 @@ function keepCurrent(){
 // この端末に残っている「その方の控え」だけを消す
 function keepClearOwn(){
   const key=keepOwnerKey();
-  if(!key){toast("お名前を入力してください","err");return}
+  if(!key){toast("氏名を入力してください","err");return}
   const nm=(document.getElementById("empName").value||"").trim();
   if(!confirm(`${nm}さんの控えを、この端末から消します。\nよろしいですか？\n（送信済みの内容が消えるわけではありません）`))return;
   try{
@@ -1616,7 +1616,7 @@ function buildCalendarCanvas(scale){
   c.fillStyle="#e8f5e9"; _rr(c,PAD,y,W-PAD*2,46,10); c.fill();
   c.strokeStyle="#66bb6a"; c.lineWidth=2; _rr(c,PAD,y,W-PAD*2,46,10); c.stroke();
   c.fillStyle="#1b5e20"; _f(c,24,true);
-  c.fillText(name||"（お名前未入力）",W/2,y+24);
+  c.fillText(name||"（氏名未入力）",W/2,y+24);
   y+=60;
 
   // 対象期間
@@ -1746,7 +1746,7 @@ function canvasToBlob(cv){
 async function shareCurrent(){
   const name=(document.getElementById("empName").value||"").trim();
   if(!name){
-    toast("①のお名前を入力してください","err");
+    toast("①の氏名を入力してください","err");
     document.getElementById("empName").focus();
     return;
   }
