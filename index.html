@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <!-- 画面の版番号。直したときは必ずここを新しくする。
      携帯が前の画面を覚えていても、これを見て自動で読み込み直す。 -->
-<meta name="app-ver" content="2026-09-29c">
+<meta name="app-ver" content="2026-09-29d">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -68,6 +68,8 @@ body{
   cursor:pointer;transition:.15s;
 }
 .hdr-admin:active{background:#c8e6c9}
+/* 絵文字ではなく文字を入れるボタン（更新）。丸の中に収まる大きさにする */
+.hdr-admin.txt{font-size:14px;font-weight:800;letter-spacing:-.5px}
 
 /* 画面右下の「トップに戻る」 */
 .topbtn{
@@ -396,9 +398,9 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
     <div class="hdr-sub">おりーぶ庵株式会社</div>
   </div>
   <div class="hdr-btns">
-    <button class="hdr-admin" id="reloadBtn" onclick="reloadPage()"
+    <button class="hdr-admin txt" id="reloadBtn" onclick="reloadPage()"
       title="最新にする（入力はリセットされます）"
-      aria-label="最新にする。入力はリセットされます">🔄</button>
+      aria-label="最新にする。入力はリセットされます">更新</button>
     <button class="hdr-admin" id="adminBtn" onclick="switchMode('admin')"
       title="管理者メニュー" aria-label="管理者メニュー">⚙️</button>
   </div>
@@ -3214,7 +3216,7 @@ async function writeToXlsx(input){
 
 
 
-/* ===== ページを最新にする（ヘッダーの🔄） =====
+/* ===== ページを最新にする（ヘッダーの「更新」） =====
    端末に古い画面が残っていても、確実に新しいものを読み直す。
    入力の途中は下書きに残してから読み直すので、消えない。 */
 function reloadPage(){
