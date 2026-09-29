@@ -542,12 +542,8 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
 
         <!-- 作った画像をその場に出す。ここから長押しで写真アプリに入れられる -->
         <div id="calImgBox" style="display:none;margin-top:12px;background:#fff;border:2px solid var(--gr-bdr);border-radius:12px;padding:13px">
-          <div style="font-size:16px;font-weight:800;color:var(--m);margin-bottom:8px">📱 写真アプリに入れるには</div>
-          <div style="font-size:16px;line-height:1.9;margin-bottom:10px">
-            出てきた画面で <b>「画像を保存」</b> を選ぶと、写真に入ります。<br>
-            出てこなかったときは、下の画像を <b>長押し</b> して<br>
-            <b>「写真に追加」</b> を選んでください。
-          </div>
+          <div style="font-size:16px;font-weight:800;color:var(--m);margin-bottom:8px" id="calImgTitle">📱 写真に入れるには</div>
+          <div style="font-size:16px;line-height:1.9;margin-bottom:10px" id="calImgHow"></div>
           <img id="calImgPreview" alt="シフト希望の控え"
             style="display:block;width:100%;height:auto;border:1.5px solid var(--bdr);border-radius:8px">
         </div>
@@ -1706,10 +1702,33 @@ function buildCalendarCanvas(scale){
 /* 作った画像を画面に出す。
    ウェブページから写真アプリへ直に書き込む方法は無いので、
    長押しで「写真に追加」できるよう、実物をここに置いておく */
+/* 写真アプリへの入れ方は機種で言葉が違う。
+   使っている端末を見て、その端末の言い方だけを出す */
+function calImgHowText(){
+  const ua=navigator.userAgent||"";
+  const isIOS  = /iPhone|iPad|iPod/.test(ua)
+              || (/Macintosh/.test(ua) && navigator.maxTouchPoints>1); // iPadOS
+  const isAndroid = /Android/.test(ua);
+  const longPress = '出てこないときは、下の画像を <b>長押し</b> して'
+                  + '<b>「画像を保存」</b>（または「写真に追加」）を選んでください。';
+  if(isIOS){
+    return '出てきた画面を下のほうへ動かして <b>「画像を保存」</b> を選ぶと、'
+         + '<b>写真アプリ</b> に入ります。<br>' + longPress;
+  }
+  if(isAndroid){
+    return '出てきた画面で <b>「フォト」</b> や <b>「ドライブに保存」</b> など、'
+         + '入れたい場所を選んでください。<br>' + longPress;
+  }
+  return 'パソコンの場合は、画像がダウンロードのフォルダに保存されます。<br>'
+       + '下の画像を右クリックして「名前を付けて画像を保存」でも残せます。';
+}
+
 function showCalImage(blob){
   const box=document.getElementById("calImgBox");
   const img=document.getElementById("calImgPreview");
   if(!box||!img) return;
+  const how=document.getElementById("calImgHow");
+  if(how) how.innerHTML=calImgHowText();
   try{ if(img.src && img.src.indexOf("blob:")===0) URL.revokeObjectURL(img.src); }catch(e){}
   img.src=URL.createObjectURL(blob);
   box.style.display="block";
