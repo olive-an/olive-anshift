@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <!-- 画面の版番号。直したときは必ずここを新しくする。
      携帯が前の画面を覚えていても、これを見て自動で読み込み直す。 -->
-<meta name="app-ver" content="2026-09-29f">
+<meta name="app-ver" content="2026-09-30a">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -917,7 +917,8 @@ async function checkNewVersion(){
   if(!m || m[1]===APP_VER) return;
   // 入力に手を付けていなければ、黙って新しくする
   const touched=(document.getElementById("empName")?.value||"").trim()!==""
-             || Object.keys(state||{}).length>0;
+             || Object.keys(state||{}).length>0
+             || Object.keys(commentState||{}).length>0;
   if(!touched && reloadAllowedOnce()){ location.reload(); return; }
   const bar=document.getElementById("updBar");
   if(bar) bar.style.display="block";
@@ -934,7 +935,7 @@ function reloadAllowedOnce(){
 }
 
 function doUpdateNow(){
-  saveDraft();          // 入力の途中を残してから読み込み直す
+  draftOn(); saveDraft();   // 入力の途中を必ず残してから読み込み直す
   location.reload();
 }
 
@@ -2102,6 +2103,7 @@ function saveComment(){
   applyState(_commentKey);
   refreshPreview();
   updateCommentList();
+  draftOn(); saveDraft();   // 読み込み直しても消えないように残す
   closeCommentModal();
   toast(text?"コメントを保存しました":"コメントを削除しました","ok");
 }
@@ -2111,6 +2113,7 @@ function deleteComment(){
   if(_commentKey) applyState(_commentKey);
   refreshPreview();
   updateCommentList();
+  draftOn(); saveDraft();   // 読み込み直しても消えないように残す
   closeCommentModal();
   toast("コメントを削除しました","ok");
 }
@@ -2495,13 +2498,29 @@ function extractMarks(block,resolver){
     const key=resolver[`${parseInt(m[1])}/${parseInt(m[2])}`];
     if(!key) continue; // 集計期間の外の日付は取り込まない
     res[key]=sym;
-    // 💬コメントを抽出
-    const rest=m[4]||"";
-    const cmtMatch=rest.match(/💬(.+)/);
-    if(cmtMatch) res[key+"__comment"]=cmtMatch[1].trim();
     if(re.lastIndex===m.index) re.lastIndex++; // 空マッチによる無限ループ防止
   }
+  extractComments(block,resolver,res);
   return res;
+}
+
+/* 💬コメントは、行の終わりまでを丸ごと取り込む。
+   ※ 以前は記号のうしろを「次の日付の手前まで」で切っていたため、
+     「10/24は10:00まで」「11/1は不可」のようにコメントの中に日付が
+     入っていると、そこで切れたり、まるごと消えたりしていた。 */
+function extractComments(block,resolver,res){
+  String(block).split(/[\r\n]+/).forEach(line=>{
+    const i=line.indexOf("💬");
+    if(i<0) return;
+    const cmt=line.slice(i+"💬".length).trim();
+    if(!cmt) return;
+    // 💬より前に出てくる日付のうち、いちばん後ろのものに付ける
+    const ds=line.slice(0,i).match(/\d{1,2}\/\d{1,2}/g);
+    if(!ds||!ds.length) return;
+    const p=ds[ds.length-1].split("/");
+    const key=resolver[parseInt(p[0])+"/"+parseInt(p[1])];
+    if(key) res[key+"__comment"]=cmt;
+  });
 }
 
 function parseAll(){
