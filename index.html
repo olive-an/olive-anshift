@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <!-- 画面の版番号。直したときは必ずここを新しくする。
      携帯が前の画面を覚えていても、これを見て自動で読み込み直す。 -->
-<meta name="app-ver" content="2026-09-29d">
+<meta name="app-ver" content="2026-09-29f">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -70,6 +70,7 @@ body{
 .hdr-admin:active{background:#c8e6c9}
 /* 絵文字ではなく文字を入れるボタン（更新）。丸の中に収まる大きさにする */
 .hdr-admin.txt{font-size:14px;font-weight:800;letter-spacing:-.5px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* 画面右下の「トップに戻る」 */
 .topbtn{
@@ -856,6 +857,21 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
 
 <div class="toast" id="toast"></div>
 
+<!-- 送信中は画面全体をふさぐ。二度押し・三度押しを防ぐため -->
+<div id="sendingOverlay" style="display:none;position:fixed;inset:0;z-index:70;
+  background:rgba(45,62,80,.55);align-items:center;justify-content:center;padding:24px">
+  <div style="text-align:center;max-width:320px;width:100%;background:#fff;border-radius:16px;
+    padding:30px 22px;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+    <div id="sendingSpin" style="width:64px;height:64px;margin:0 auto 18px;border-radius:50%;
+      border:6px solid #dbe7cf;border-top-color:var(--gr);animation:spin 1s linear infinite"></div>
+    <div style="font-size:21px;font-weight:800;color:var(--gr)">送信中です</div>
+    <div id="sendingMsg" style="font-size:16px;color:var(--sub);margin-top:8px;line-height:1.8">
+      そのままお待ちください</div>
+    <div style="font-size:15px;color:var(--sub);margin-top:14px">
+      画面は触らなくて大丈夫です</div>
+  </div>
+</div>
+
 <!-- 新しい画面が出たときのお知らせ。
      入力の途中は勝手に切り替えず、本人に選んでもらう -->
 <div id="updBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:60;
@@ -1329,7 +1345,35 @@ function stampLine(d){
   return `送信：${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）${ampm} ${h12}:${mm}:${ss}`;
 }
 
+/* 送信中はこれを立てて、二重送信を止める */
+let sending=false;
+let sendingTimers=[];
+
+function sendingOn(){
+  const ov=document.getElementById("sendingOverlay");
+  if(ov) ov.style.display="flex";
+  const msg=document.getElementById("sendingMsg");
+  // 何も変わらないと固まったように見えるので、言葉を変えていく
+  const steps=[
+    [3000,"事務所に届けています"],
+    [7000,"もう少しかかります。そのままお待ちください"],
+    [13000,"電波が弱いようです。まだ送っています"]
+  ];
+  sendingTimers=steps.map(([ms,t])=>setTimeout(()=>{ if(msg) msg.textContent=t; },ms));
+}
+function sendingOff(){
+  sendingTimers.forEach(clearTimeout); sendingTimers=[];
+  const ov=document.getElementById("sendingOverlay");
+  if(ov) ov.style.display="none";
+  const msg=document.getElementById("sendingMsg");
+  if(msg) msg.textContent="そのままお待ちください";
+  sending=false;
+}
+
 async function doSendConfirmed(){
+  if(sending) return;   // すでに送信中なら何もしない
+  sending=true;
+  sendingOn();
   closeConfirm();
   const name=(document.getElementById("empName").value||"").trim();
   const stamp=stampLine(new Date());
@@ -1343,6 +1387,7 @@ async function doSendConfirmed(){
 
   if(!(GAS_URL && GAS_URL!=="YOUR_GAS_URL")){
     keepSave(name,period,txt);
+    sendingOff();
     showSentDone(btn);
     return;
   }
@@ -1353,25 +1398,33 @@ async function doSendConfirmed(){
   try{ image=buildCalendarCanvas(1).toDataURL("image/png").split(",")[1]||""; }
   catch(e){ image=""; }
 
-  try{
-    await fetch(GAS_URL,{
-      method:"POST",
-      mode:"no-cors",
-      // no-cors では application/json は使えず、ブラウザに外されてしまう。
-      // text/plain なら必ず届く。GAS側は中身をそのまま読むので支障はない
-      headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({name,period,text:txt,image})
-    });
-  }catch(e){
-    sendFailed(btn,"通信ができませんでした。電波の良いところでもう一度お試しください。");
-    return;
-  }
-
   // no-cors では返事の中身が読めないため、本当に記録されたかを見に行く。
-  // これをしないと、届いていなくても「送信完了」と出てしまう
-  if(btn) btn.textContent="確認中...";
+  // これをしないと、届いていなくても「送信完了」と出てしまう。
+  // 送るのと確かめるのを同時に走らせる。送り終わるのを待ってから
+  // 確かめ始めると、そのぶん待ち時間が積み上がってしまうため。
+  let postErr=false;
+  const posting=fetch(GAS_URL,{
+    method:"POST",
+    mode:"no-cors",
+    // no-cors では application/json は使えず、ブラウザに外されてしまう。
+    // text/plain なら必ず届く。GAS側は中身をそのまま読むので支障はない
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({name,period,text:txt,image})
+  }).catch(()=>{ postErr=true; });
+
   const ok=await confirmArrived(name,stamp);
   keepSave(name,period,txt);
+
+  if(ok!==true){
+    // 届いた印が見つからないときだけ、送信そのものが失敗していないか確かめる
+    await posting;
+    if(postErr){
+      sendingOff();
+      sendFailed(btn,"通信ができませんでした。電波の良いところでもう一度お試しください。");
+      return;
+    }
+  }
+  sendingOff();
   if(ok===false){
     sendFailed(btn,"事務所に届いていません。もう一度「送信」を押してください。");
     return;
@@ -1384,11 +1437,21 @@ async function doSendConfirmed(){
    true=届いた / false=届いていない / null=確認そのものができなかった */
 async function confirmArrived(name,stamp){
   const key=normName(name);
-  for(let i=0;i<3;i++){
-    await new Promise(r=>setTimeout(r, i===0?1500:2500));
+  // はじめは短く、だんだん間隔をあける。
+  // 早く届いた人をすぐ「送信完了」にし、遅い人も取りこぼさないため。
+  // 見つかり次第すぐ終わる。見つからない場合はおよそ14秒であきらめる
+  const waits=[600,800,800,1000,1000,1200,1500,2000];
+  let netErr=0;
+  for(let i=0;i<waits.length;i++){
+    await new Promise(r=>setTimeout(r,waits[i]));
     let rows;
     try{ rows=await fetchGASData(); }
-    catch(e){ return null; }
+    catch(e){
+      // 1回の失敗であきらめない。続けて3回だめなら確認できなかったとする
+      if(++netErr>=3) return null;
+      continue;
+    }
+    netErr=0;
     const hit=rows.some(r=>
       normName(r.name)===key && String(r.text||"").indexOf(stamp)>=0
     );
