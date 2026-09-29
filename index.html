@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <!-- 画面の版番号。直したときは必ずここを新しくする。
      携帯が前の画面を覚えていても、これを見て自動で読み込み直す。 -->
-<meta name="app-ver" content="2026-09-29a">
+<meta name="app-ver" content="2026-09-29b">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -833,12 +833,12 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
   <div style="background:#fff;border-radius:20px;padding:24px 20px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)">
     <div style="text-align:center;margin-bottom:16px">
       <div style="font-size:36px;margin-bottom:8px">📋</div>
-      <div style="font-size:19px;font-weight:700;color:var(--gr);margin-bottom:6px">送信内容の確認</div>
-      <div style="font-size:15px;color:var(--text)">内容を確認してから送信してください</div>
+      <div style="font-size:19px;font-weight:700;color:var(--gr);margin-bottom:6px">提出内容の確認</div>
+      <div style="font-size:15px;color:var(--text)">内容を確認してから提出してください</div>
     </div>
     <!-- 確認内容。送るものと同じカレンダーの画像をそのまま出す -->
     <div style="background:var(--sand);border-radius:12px;padding:10px;margin-bottom:16px;max-height:52vh;overflow-y:auto">
-      <img id="confirmImg" alt="送信する内容"
+      <img id="confirmImg" alt="提出する内容"
         style="display:block;width:100%;height:auto;border-radius:8px;background:#fff">
     </div>
     <div style="display:flex;gap:10px">
@@ -846,7 +846,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         ✏️ 修正する
       </button>
       <button class="btn btn-gr" style="flex:1;font-size:14px;padding:13px" onclick="doSendConfirmed()">
-        📨 送信する
+        📨 提出する
       </button>
     </div>
   </div>
