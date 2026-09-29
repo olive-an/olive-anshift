@@ -2,6 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<!-- 画面の版番号。直したときは必ずここを新しくする。
+     携帯が前の画面を覚えていても、これを見て自動で読み込み直す。 -->
+<meta name="app-ver" content="2026-09-29a">
+<meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>シフト希望 | おりーぶ庵</title>
@@ -411,8 +415,10 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
       <div class="si" id="s2"><span class="si-n">②</span>日付</div>
       <div class="si" id="s3"><span class="si-n">③</span>送信</div>
     </div>
-    <!-- はじめての人向けの案内。別ページで開く -->
-    <a href="guide.html" style="display:block;margin-top:12px;background:#fff;border:2px solid var(--gr);border-radius:10px;padding:12px;text-align:center;font-size:16px;font-weight:700;color:var(--gr);text-decoration:none">
+    <!-- はじめての人向けの案内。別ページで開く
+         リンクには版番号を付ける（読み込み時にJSで付ける）。
+         使い方ページも古いまま出ないようにするため。 -->
+    <a href="guide.html" id="guideLink" style="display:block;margin-top:12px;background:#fff;border:2px solid var(--gr);border-radius:10px;padding:12px;text-align:center;font-size:16px;font-weight:700;color:var(--gr);text-decoration:none">
       📖 使い方
     </a>
   </div>
@@ -848,12 +854,72 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
 
 <div class="toast" id="toast"></div>
 
+<!-- 新しい画面が出たときのお知らせ。
+     入力の途中は勝手に切り替えず、本人に選んでもらう -->
+<div id="updBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:60;
+  background:#2e3e50;color:#fff;padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+  font-size:17px;line-height:1.7;box-shadow:0 -3px 14px rgba(0,0,0,.28)">
+  🆕 <b>新しい画面があります</b><br>
+  <span style="font-size:15px">今の入力はそのまま残ります。</span>
+  <div style="display:flex;gap:10px;margin-top:10px">
+    <button onclick="doUpdateNow()" style="flex:2;background:#8cc63f;color:#1d2b3a;border:0;
+      border-radius:10px;padding:13px;font-size:17px;font-weight:800">画面を新しくする</button>
+    <button onclick="document.getElementById('updBar').style.display='none'" style="flex:1;
+      background:transparent;color:#fff;border:2px solid rgba(255,255,255,.55);
+      border-radius:10px;padding:13px;font-size:16px;font-weight:700">あとで</button>
+  </div>
+</div>
+
 <!-- 画面右下の「トップに戻る」 -->
 <button class="topbtn" id="topBtn" onclick="goTop()"
   title="いちばん上に戻る" aria-label="いちばん上に戻る">⬆<span class="topbtn-t">トップ</span></button>
 
 <script>
 const ADMIN_PW="5103";
+
+/* ===== 画面を新しく保つ =====
+   携帯のブラウザは前に見た画面を覚えていることがあり、直したところが
+   出てこない。公開中のページの先頭だけを読み直して、版番号が違えば
+   新しくする。入力の途中なら、勝手に切り替えずお知らせだけ出す。 */
+const APP_VER=(document.querySelector('meta[name="app-ver"]')||{}).content||"";
+let verCheckedAt=0;
+
+async function checkNewVersion(){
+  if(!APP_VER) return;
+  if(Date.now()-verCheckedAt < 60000) return;   // 1分に1回まで
+  verCheckedAt=Date.now();
+  let head;
+  try{
+    // 先頭2KBだけで足りる。範囲指定が効かない場合は全部返るが動きは同じ
+    const r=await fetch("./?v="+Date.now(),{cache:"no-store",headers:{Range:"bytes=0-2047"}});
+    if(!r.ok) return;
+    head=await r.text();
+  }catch(e){ return; }            // 電波が悪いときは何もしない
+  const m=head.match(/name="app-ver"\s+content="([^"]+)"/);
+  if(!m || m[1]===APP_VER) return;
+  // 入力に手を付けていなければ、黙って新しくする
+  const touched=(document.getElementById("empName")?.value||"").trim()!==""
+             || Object.keys(state||{}).length>0;
+  if(!touched && reloadAllowedOnce()){ location.reload(); return; }
+  const bar=document.getElementById("updBar");
+  if(bar) bar.style.display="block";
+}
+
+/* 万一うまく比べられなくても、読み込み直しが繰り返されないようにする。
+   自動の読み込み直しは、1回開くごとに1度きり。 */
+function reloadAllowedOnce(){
+  try{
+    if(sessionStorage.getItem("oliveVerReloaded")) return false;
+    sessionStorage.setItem("oliveVerReloaded","1");
+  }catch(e){}
+  return true;
+}
+
+function doUpdateNow(){
+  saveDraft();          // 入力の途中を残してから読み込み直す
+  location.reload();
+}
+
 // ★ GASのURLをここに設定（マニュアルのSTEP3で取得）
 const GAS_URL="https://script.google.com/macros/s/AKfycbxSi_PQ3iCB-5tOJjxhL2-42dvxP5cFJWAnyZ1VOXdz-cZmFutu7AIcQL--ZWKFI8Y/exec";
 const DOW=["日","月","火","水","木","金","土"];
@@ -904,6 +970,14 @@ function init(){
   buildCal();refreshPreview();renderPeriodNow();
   forgetSavedNames();  // 端末に残っている名前は使わない（開いたとき空にする）
   restoreDraft();    // 入力の途中があれば戻す
+  // 使い方ページも古いまま出ないよう、リンクに版番号を付ける
+  const gl=document.getElementById("guideLink");
+  if(gl && APP_VER) gl.href="guide.html?v="+encodeURIComponent(APP_VER);
+  // 新しい画面が出ていないか調べる（開いたときと、他のアプリから戻ったとき）
+  setTimeout(checkNewVersion,2500);
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden) checkNewVersion();
+  });
   renderKeepCard();  // 前に送信した控えがあれば表示
   renderSentState(); // この期間を送信済みかどうか
   // ※ 期間の反映はapplyAdminPeriod()ボタンで行う
