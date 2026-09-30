@@ -4,10 +4,15 @@
 <meta charset="UTF-8">
 <!-- 画面の版番号。直したときは必ずここを新しくする。
      携帯が前の画面を覚えていても、これを見て自動で読み込み直す。 -->
-<meta name="app-ver" content="2026-09-30a">
+<meta name="app-ver" content="2026-09-30b">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="シフト希望">
+<meta name="theme-color" content="#2e7d32">
+<!-- ホーム画面に「アプリとして追加」できるようにする設定 -->
+<link rel="manifest" href="manifest.json">
 <title>シフト希望 | おりーぶ庵</title>
 <!-- タブやホーム画面に出るアイコン（カレンダー）。外部ファイルを増やさないよう、画像はこの中に埋め込んでいる -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg stroke='%232e3e50' stroke-width='3.4' stroke-linecap='round' fill='none'%3E%3Cpath d='M14 5v9'/%3E%3Cpath d='M23 5v9'/%3E%3Cpath d='M32 5v9'/%3E%3Cpath d='M41 5v9'/%3E%3Cpath d='M50 5v9'/%3E%3C/g%3E%3Crect x='5' y='9.5' width='54' height='48' rx='6' fill='%23ffffff'/%3E%3Cpath d='M5 15.5a6 6 0 0 1 6-6h42a6 6 0 0 1 6 6v5.5H5z' fill='%23f4614f'/%3E%3Cg fill='%23d3dfe8'%3E%3Crect x='10' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='18.8' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='27.6' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='36.4' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='45.2' y='24' width='7.6' height='5.6' rx='1'/%3E%3Crect x='10' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='18.8' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='36.4' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='10' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='18.8' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='27.6' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='36.4' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='45.2' y='38' width='7.6' height='5.6' rx='1'/%3E%3Crect x='10' y='45' width='7.6' height='5.6' rx='1'/%3E%3Crect x='18.8' y='45' width='7.6' height='5.6' rx='1'/%3E%3Crect x='36.4' y='45' width='7.6' height='5.6' rx='1'/%3E%3Crect x='45.2' y='45' width='7.6' height='5.6' rx='1'/%3E%3C/g%3E%3Cg fill='%23f5c33c'%3E%3Crect x='27.6' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='45.2' y='31' width='7.6' height='5.6' rx='1'/%3E%3Crect x='27.6' y='45' width='7.6' height='5.6' rx='1'/%3E%3C/g%3E%3Cg stroke='%232e3e50' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round' fill='none'%3E%3Cpath d='M29.4 33.5l1.7 1.8 2.9-3.1'/%3E%3Cpath d='M47 33.5l1.7 1.8 2.9-3.1'/%3E%3Cpath d='M29.4 47.5l1.7 1.8 2.9-3.1'/%3E%3C/g%3E%3Crect x='5' y='9.5' width='54' height='48' rx='6' fill='none' stroke='%232e3e50' stroke-width='3.4'/%3E%3C/svg%3E">
@@ -424,6 +429,20 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
     <a href="guide.html" id="guideLink" style="display:block;margin-top:12px;background:#fff;border:2px solid var(--gr);border-radius:10px;padding:12px;text-align:center;font-size:16px;font-weight:700;color:var(--gr);text-decoration:none">
       📖 使い方
     </a>
+  </div>
+
+  <!-- ホーム画面に置くとすぐ開ける、という案内。
+       すでに入れている人には出さない -->
+  <div class="card" id="installCard" style="display:none">
+    <div class="card-b" style="padding-top:16px">
+      <div style="font-size:18px;font-weight:800;color:var(--gr);margin-bottom:8px">
+        📲 ホーム画面に置くと、次から早く開けます</div>
+      <div id="installHow" style="font-size:16px;line-height:1.9;color:var(--text)"></div>
+      <button class="btn btn-gr" id="installBtn" onclick="doInstall()"
+        style="display:none;margin-top:14px;font-size:17px">📲 ホーム画面に追加する</button>
+      <div style="font-size:14px;color:var(--sub);margin-top:10px;line-height:1.7">
+        入れても入れなくても、使い方は同じです。毎回このページを探さなくてよくなるだけです。</div>
+    </div>
   </div>
 
   <!-- STEP1 -->
@@ -934,6 +953,65 @@ function reloadAllowedOnce(){
   return true;
 }
 
+/* ===== ホーム画面に「アプリとして追加」できるようにする =====
+   sw.js は中身をためこまない作りにしてあるので、
+   直したところがすぐ出なくなる心配はない。 */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{ /* 使えない端末では何もしない */ });
+  });
+}
+
+/* Androidで「アプリを追加」の合図が来たら、案内のボタンを出す。
+   iPhoneはこの合図が来ないので、手順を文章で案内する（下の installHow）。 */
+let _installEvent=null;
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();
+  _installEvent=e;
+  const b=document.getElementById("installBtn");
+  if(b) b.style.display="block";
+});
+async function doInstall(){
+  if(!_installEvent) return;
+  _installEvent.prompt();
+  try{ await _installEvent.userChoice; }catch(e){}
+  _installEvent=null;
+  const b=document.getElementById("installBtn");
+  if(b) b.style.display="none";
+}
+
+/* すでにホーム画面から開いているかどうか */
+function isStandalone(){
+  return window.matchMedia("(display-mode: standalone)").matches
+      || window.navigator.standalone===true;
+}
+
+/* 端末ごとに、ホーム画面への入れ方を出し分ける */
+function installHowText(){
+  const ua=navigator.userAgent||"";
+  const isIOS = /iPhone|iPad|iPod/.test(ua)
+             || (/Macintosh/.test(ua) && navigator.maxTouchPoints>1);
+  if(isIOS){
+    return '画面の下の <b>共有ボタン</b>（四角に上向きの矢印）を押して、'
+         + '少し下へ動かし <b>「ホーム画面に追加」</b> を選んでください。';
+  }
+  if(/Android/.test(ua)){
+    return '右上の <b>点3つ</b> を押して <b>「アプリをインストール」</b>'
+         + '（または「ホーム画面に追加」）を選んでください。';
+  }
+  return 'アドレス欄の右にある <b>インストール</b> の印を押すと、'
+       + 'パソコンのアプリとして開けるようになります。';
+}
+
+function renderInstallCard(){
+  const card=document.getElementById("installCard");
+  if(!card) return;
+  if(isStandalone()){ card.style.display="none"; return; }  // もう入れている人には出さない
+  const how=document.getElementById("installHow");
+  if(how) how.innerHTML=installHowText();
+  card.style.display="block";
+}
+
 function doUpdateNow(){
   draftOn(); saveDraft();   // 入力の途中を必ず残してから読み込み直す
   location.reload();
@@ -989,6 +1067,7 @@ function init(){
   buildCal();refreshPreview();renderPeriodNow();
   forgetSavedNames();  // 端末に残っている名前は使わない（開いたとき空にする）
   restoreDraft();    // 入力の途中があれば戻す
+  renderInstallCard();   // ホーム画面への入れ方の案内
   // 使い方ページも古いまま出ないよう、リンクに版番号を付ける
   const gl=document.getElementById("guideLink");
   if(gl && APP_VER) gl.href="guide.html?v="+encodeURIComponent(APP_VER);
