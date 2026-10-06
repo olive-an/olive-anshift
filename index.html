@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <!-- 画面の版番号。直したときは必ずここを新しくする。
      携帯が前の画面を覚えていても、これを見て自動で読み込み直す。 -->
-<meta name="app-ver" content="2026-09-30b">
+<meta name="app-ver" content="2026-10-06a">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2610,25 +2610,38 @@ function parseAll(){
   if(e<s){toast("期間が不正です","err");return}
   const blocks=raw.split(/\n\s*\n+/).map(x=>x.trim()).filter(Boolean);
   const resolver=buildDateResolver(s,e);
-  const byName={};
-  const stamps={};   // 氏名 → 採用した提出の送信日時
-  const counts={};   // 氏名 → 届いている提出の数
+  // 旧字体・空白のちがいを無視した氏名でまとめる。
+  // 「淺野　和子」「浅野和子」「淺野和子」は、すべて同じ方として1行にする。
+  const byKey={};
+  const stampByKey={};  // まとめ用の氏名 → 採用した提出の送信日時
+  const countByKey={};  // まとめ用の氏名 → 届いている提出の数
+  const dispByKey={};   // まとめ用の氏名 → 画面に出す氏名（新字体にそろえたもの）
   blocks.forEach(b=>{
-    const name=extractName(b);
+    const raw=extractName(b);
+    const key=normName(raw);
     const marks=extractMarks(b,resolver);
     const nonComment=Object.fromEntries(Object.entries(marks).filter(([k])=>!k.endsWith('__comment')));
     if(Object.keys(nonComment).length===0) return;
-    counts[name]=(counts[name]||0)+1;
+    countByKey[key]=(countByKey[key]||0)+1;
     const t=parseStampFromText(b);
     // 同じ人が出し直している場合は、送信日時が新しい方だけを採用する。
     // 日時が分からない古い提出は、後に出てきた方を採用する（従来どおり）。
-    if(byName[name]){
-      const prev=stamps[name];
+    if(byKey[key]){
+      const prev=stampByKey[key];
       if(prev && t && t.getTime() < prev.getTime()) return;
     }
     // 前の提出は残さず入れ替える。○を空欄に直した場合も正しく反映させるため。
-    byName[name]=marks;
-    stamps[name]=t;
+    byKey[key]=marks;
+    stampByKey[key]=t;
+    dispByKey[key]=dispName(raw);   // 採用した提出の書き方に、新字体をあてる
+  });
+  // ここから先は、画面に出す氏名で扱う
+  const byName={}, stamps={}, counts={};
+  Object.keys(byKey).forEach(k=>{
+    const nm=dispByKey[k];
+    byName[nm]=byKey[k];
+    stamps[nm]=stampByKey[k];
+    counts[nm]=countByKey[k];
   });
   window._aggCounts=counts;
   window._aggStamps=stamps;   // 氏名 → 採用した提出の送信日時
@@ -2850,6 +2863,15 @@ const KANJI_VARIANTS = {
 function normName(v){
   // Array.from で1文字ずつ分ける（「𠮷」のような4バイト文字を壊さないため）
   return Array.from(String(v==null?"":v).normalize("NFC").replace(/[\s　]/g,""))
+    .map(ch=>KANJI_VARIANTS[ch]||ch).join("");
+}
+
+/* 画面やExcelに出すときの氏名。
+   旧字体だけを新字体にそろえ、姓名の間の空白はそのまま残す。
+   例：淺野　和子 → 浅野　和子 ／ 廣田侑紀 → 広田侑紀
+   同じ方が「淺野」「浅野」と書き分けても、集計では必ず新字体で出す。 */
+function dispName(v){
+  return Array.from(String(v==null?"":v).normalize("NFC"))
     .map(ch=>KANJI_VARIANTS[ch]||ch).join("");
 }
 
