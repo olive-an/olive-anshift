@@ -23,6 +23,7 @@
 
 - `従業員名簿（おりーぶ庵）`
 - `おりーぶ庵.退職者`
+- `従業員ぼのぼの`（ヘルパーステーションぼのぼの。氏名・性別・生年月日・住所のみ）
 
 ### 2. GASを付ける
 
@@ -59,6 +60,7 @@ const GAS_URL = "YOUR_ROSTER_GAS_URL";
 
 const ACTIVE_SHEET = "従業員名簿（おりーぶ庵）";
 const LEFT_SHEET = "おりーぶ庵.退職者";
+const BONO_SHEET = "従業員ぼのぼの";
 
 // アプリに渡す項目。左がアプリ側の名前、右が見出しの候補（改行や空白は無視して照合）
 const ACTIVE_COLS = {
@@ -73,6 +75,12 @@ const LEFT_COLS = {
   no: ["No.", "列1"], name: ["社員氏名"], sex: ["性別"], birth: ["生年月日"],
   role: ["役職"], type: ["常勤・非常勤"], zip: ["郵便番号"], addr: ["住所1", "住所0", "住所"],
   tel: ["電話番号"], mobile: ["携帯電話"], joined: ["入社年月日"], left: ["退社年月日"]
+};
+
+// ぼのぼのシートは項目が少ない（見出し行は3行目。右側の別の表は見出しがないので読まれない）
+const BONO_COLS = {
+  no: ["No."], name: ["社員氏名"], sex: ["性別"], birth: ["生年月日"],
+  zip: ["郵便番号"], addr: ["住所1", "住所0", "住所"]
 };
 
 function doGet(e) {
@@ -96,7 +104,8 @@ function doGet(e) {
   return out({
     ok: true,
     active: readSheet_(ss, ACTIVE_SHEET, ACTIVE_COLS),
-    left: readSheet_(ss, LEFT_SHEET, LEFT_COLS)
+    left: readSheet_(ss, LEFT_SHEET, LEFT_COLS),
+    bono: readSheet_(ss, BONO_SHEET, BONO_COLS)
   });
 }
 
@@ -155,3 +164,4 @@ function readSheet_(ss, sheetName, cols) {
 - 年齢と在籍期間は、アプリが生年月日・入社年月日から毎回計算します（シートの数式は使っていません）。
 - 見出しと中身がずれている列があります。「履歴書・資格証提出」「個人LINEで聞き取り」には資格名が、「ダブルワーク有無」には〇が入っています。アプリは見出しの名前のまま表示します。見出しを直す場合は、シートとGASの `ACTIVE_COLS` の両方をそろえてください。
 - 退職者シートの「年齢」「在籍期間」は数式で、アプリでは使いません。
+- ぼのぼのシートの右側（J列から右）にある別の表は、退職者らしき一覧で、見出しがないため読み込みません。ぼのぼのシートの更新日は2021年1月25日のままです。最新に直してから使ってください。

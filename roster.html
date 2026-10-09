@@ -121,6 +121,7 @@ dl{margin:14px 0 0}
     <div class="tabs">
       <button class="tab on" data-tab="active" type="button"></button>
       <button class="tab" data-tab="left" type="button"></button>
+      <button class="tab" data-tab="bono" type="button"></button>
     </div>
   </header>
   <div class="demo-bar hidden" id="demoBar">サンプルデータ（架空の人物）を表示しています</div>
@@ -151,7 +152,7 @@ const store = {
   del(k){ try{ sessionStorage.removeItem(k); }catch(e){} }
 };
 
-let DATA = { active: [], left: [] };
+let DATA = { active: [], left: [], bono: [] };
 let tab = "active";
 let demo = false;
 
@@ -210,7 +211,7 @@ async function openRoster(pass, silent){
       throw new Error("名簿用GASのURLが未設定です。設定するまでは「サンプルデータで試す」だけ使えます。");
     const res = await fetchRoster(pass);
     if (!res || !res.ok) throw new Error((res && res.error) || "合言葉が違います。");
-    DATA = { active: res.active || [], left: res.left || [] };
+    DATA = { active: res.active || [], left: res.left || [], bono: res.bono || [] };
     demo = false;
     store.set(PASS_KEY, pass);
     showApp();
@@ -232,7 +233,7 @@ function showLogin(){
   $("app").classList.add("hidden"); $("login").classList.remove("hidden");
   $("pass").value = ""; closeSheet();
 }
-function logout(){ store.del(PASS_KEY); DATA = { active: [], left: [] }; demo = false; showLogin(); }
+function logout(){ store.del(PASS_KEY); DATA = { active: [], left: [], bono: [] }; demo = false; showLogin(); }
 
 /* ---------- 一覧 ---------- */
 function uniq(list, key){
@@ -258,9 +259,9 @@ function fold(s){
 function visible(){
   const q = fold($("q").value);
   const site = $("fSite").value, type = $("fType").value;
-  const src = tab === "active" ? DATA.active : DATA.left;
+  const src = DATA[tab] || [];
   return src.filter((p) => {
-    if (type && (p.type || "").trim() !== type) return false;
+    if (tab !== "bono" && type && (p.type || "").trim() !== type) return false;
     if (tab === "active" && site && (p.site || "").trim() !== site) return false;
     if (!q) return true;
     return fold([p.name, p.kana, p.role, p.site, p.resume, p.line].join("")).includes(q);
@@ -276,8 +277,10 @@ function render(){
   const tabs = document.querySelectorAll(".tab");
   tabs[0].textContent = "在籍 " + DATA.active.length + "名";
   tabs[1].textContent = "退職者 " + DATA.left.length + "名";
+  tabs[2].textContent = "ぼのぼの " + DATA.bono.length + "名";
   tabs.forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
   $("fSite").classList.toggle("hidden", tab !== "active");
+  $("fType").classList.toggle("hidden", tab === "bono");
 
   const rows = visible();
   $("count").textContent = rows.length + "名を表示";
@@ -363,6 +366,9 @@ function sampleData(){
       { no:"003", name:"佐藤　次郎", kana:"サトウ　ジロウ", sex:"男性", birth:ymd(1995,8,30), role:"夜勤", group:"", type:"非常勤", site:"酉島", zip:"554-0001", addr:"大阪市此花区○○7-8-9", mobile:"090-0000-0003", tel:"", mail:"", joined:ymd(y-1,4,15), kenpo:"2018/3/1→2025/6/19喪失", resume:"", line:"ほかなし", dw:"" },
       { no:"004", name:"高橋　美咲", kana:"タカハシ　ミサキ", sex:"女性", birth:ymd(1990,1,15), role:"準夜勤", group:"", type:"非常勤", site:"西九条", zip:"554-0002", addr:"大阪市此花区○○1-1-1", mobile:"090-0000-0004", tel:"", mail:"sample4@example.com", joined:ymd(y,1,6), kenpo:"", resume:"ヘルパー２級", line:"", dw:"" }
     ],
+    bono: [
+      { no:"1", name:"中村　一郎", sex:"男性", birth:ymd(1980,3,3), zip:"530-0001", addr:"大阪市北区○○2-2-2" }
+    ],
     left: [
       { no:"101", name:"伊藤　健", kana:"", sex:"男性", birth:ymd(1975,7,23), role:"日中支援員", type:"非常勤", zip:"769-0206", addr:"香川県○○町1-1", mobile:"090-0000-0101", tel:"", joined:ymd(2016,4,1), left:ymd(y-1,3,31) }
     ]
@@ -379,7 +385,7 @@ $("reloadBtn").addEventListener("click", async () => {
   try{
     const res = await fetchRoster(store.get(PASS_KEY) || "");
     if (!res || !res.ok) throw new Error((res && res.error) || "合言葉が違います。");
-    DATA = { active: res.active || [], left: res.left || [] }; fillFilters(); render();
+    DATA = { active: res.active || [], left: res.left || [], bono: res.bono || [] }; fillFilters(); render();
   }catch(e){ alert(e.message); }
   finally{ b.disabled = false; b.textContent = "更新"; }
 });
