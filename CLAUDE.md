@@ -91,6 +91,7 @@
 ## その他
 
 - `index.html` はシフト希望フォームの本番。AI-OS開発では変更しない。
-- `ai-os.html` はNetlify `olive-ai-os` へGitHub Actionsで自動デプロイされる
-  （https://olive-ai-os.netlify.app/ai-os.html）。
+- `ai-os.html` は別リポジトリ `olive-an/olive-ai-os` にあり、GitHub Pages で公開される
+  （https://olive-an.github.io/olive-ai-os/ai-os.html）。
+  Netlifyは2026-10-09に連携解除。netlify.app のURLは使わない。
 - 利用者・職員の実個人情報を、公開されるファイル（ai-os.html等）やサンプルに埋め込まない。
