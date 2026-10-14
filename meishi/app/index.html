@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Olive 名刺</title>
+<style>
+:root{--blue:#1a73e8;--ink:#2b2f36;--sub:#6b7280;--line:#e5e7eb;--bg:#fff}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+#app{max-width:720px;margin:0 auto;min-height:100vh;padding-bottom:84px}
+header{position:sticky;top:0;background:#fff;padding:12px 16px 8px;border-bottom:1px solid var(--line);z-index:5}
+header h1{font-size:18px;margin:0 0 8px}
+.search{width:100%;box-sizing:border-box;font-size:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#f7f8fa}
+select{font-size:14px;padding:6px;border:1px solid var(--line);border-radius:8px;margin-top:8px;background:#fff}
+.card{display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+.thumb{width:84px;height:52px;border-radius:6px;background:linear-gradient(135deg,#e8f0fe,#fff);border:1px solid var(--line);flex:none;font-size:10px;color:var(--sub);display:flex;align-items:center;justify-content:center;text-align:center;padding:2px}
+.name{font-weight:700;font-size:17px}.co{font-size:14px}.meta{font-size:12px;color:var(--sub);margin-top:2px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:flex-end;padding:6px 0 calc(6px + env(safe-area-inset-bottom));z-index:9}
+nav button{flex:1;background:none;border:0;font-size:12px;color:var(--sub);padding:8px 0}
+nav button.on{color:var(--blue);font-weight:700}
+nav .cam{flex:none;width:64px;height:64px;margin-top:-26px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;box-shadow:0 4px 12px rgba(26,115,232,.4)}
+.sec{padding:16px}.btn{display:block;width:100%;box-sizing:border-box;padding:16px;font-size:17px;border:0;border-radius:12px;background:var(--blue);color:#fff;text-align:center;text-decoration:none;margin:8px 0}
+.btn.ghost{background:#e8f0fe;color:var(--blue)}
+.row{display:flex;gap:8px}.row .btn{flex:1}
+label{display:block;font-size:12px;color:var(--sub);margin-top:12px}
+input.f,textarea.f{width:100%;box-sizing:border-box;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:10px}
+.back{background:none;border:0;color:var(--blue);font-size:16px;padding:8px 0}
+.note{background:#fff8e1;border-radius:10px;padding:10px 12px;font-size:13px;margin:12px 0}
+#prev{max-width:100%;border-radius:8px;margin-top:8px}
+.hist{font-size:14px;padding:8px 0;border-bottom:1px solid var(--line)}
+</style></head><body><div id="app"></div>
+<nav id="nav"></nav>
+<script>
+// 第1段階: モックデータ。まだ保存・OCRはしていません。
+var CARDS=[
+{id:'c1',name:'山田 太郎',kana:'ヤマダ タロウ',co:'株式会社サンプル商事',dept:'営業部',title:'課長',tel:'06-1234-5678',mob:'090-1111-2222',mail:'yamada@example.com',addr:'大阪市北区梅田1-1-1',by:'岩久保',date:'2026-10-01',tags:['取引先'],memo:'展示会で交換',hist:[{d:'2026-10-01',by:'岩久保',place:'梅田'}],fav:true},
+{id:'c2',name:'佐藤 花子',kana:'サトウ ハナコ',co:'ケアサポート合同会社',dept:'',title:'代表',tel:'06-2222-3333',mob:'',mail:'sato@example.jp',addr:'大阪市西区九条3-1-1',by:'田中',date:'2026-09-20',tags:['行政'],memo:'',hist:[{d:'2026-09-20',by:'田中',place:'研修会'},{d:'2026-05-10',by:'岩久保',place:'セミナー'}],fav:false}
+];
+var state={tab:'list',q:'',sort:'date',open:null,photo:null};
+var TABS=[['list','名刺一覧'],['hist','履歴'],['cam','撮影'],['search','検索'],['set','設定']];
+// ひらがな→カタカナ、全角英数→半角、小文字化
+function norm(s){return String(s||'').replace(/[ぁ-ゖ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)+96)}).replace(/[Ａ-Ｚａ-ｚ０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-65248)}).toLowerCase().replace(/\s/g,'')}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function hit(c){var q=norm(state.q);if(!q)return true;return norm([c.name,c.kana,c.co,c.title,c.tel,c.mob,c.mail,c.by,c.date,c.tags.join(''),c.memo].join(' ')).indexOf(q)>=0}
+function sorted(a){var k={kana:'kana',co:'co',date:'date'}[state.sort]||'date';return a.slice().sort(function(x,y){return k=='date'?(y.date>x.date?1:-1):String(x[k]).localeCompare(y[k],'ja')})}
+function card(c){return '<div class="card" onclick="openCard(\''+c.id+'\')"><div class="thumb">名刺画像</div><div><div class="name">'+esc(c.name)+(c.fav?' ★':'')+'</div><div class="co">'+esc(c.co)+' '+esc(c.title)+'</div><div class="meta">交換者 '+esc(c.by)+' / '+esc(c.date)+'</div></div></div>'}
+function listView(){
+ var items=sorted(CARDS.filter(hit));
+ return '<header><h1>名刺一覧</h1><input class="search" placeholder="氏名・会社名・電話など" value="'+esc(state.q)+'" oninput="state.q=this.value;renderKeep(this)"><select onchange="state.sort=this.value;render()">'+
+ [['date','交換日順'],['kana','五十音順'],['co','会社名順']].map(function(o){return '<option value="'+o[0]+'"'+(state.sort==o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></header>'+
+ (items.map(card).join('')||'<div class="sec">該当する名刺がありません</div>')}
+function detail(c){
+ return '<div class="sec"><button class="back" onclick="state.open=null;render()">← 戻る</button>'+
+ '<div class="thumb" style="width:100%;height:160px;font-size:14px">名刺画像 (表/裏の切り替えは後の段階)</div>'+
+ '<h2 style="margin:12px 0 0">'+esc(c.name)+'</h2><div>'+esc(c.co)+' '+esc(c.dept)+' '+esc(c.title)+'</div>'+
+ '<div class="row"><a class="btn" href="tel:'+esc(c.mob||c.tel)+'">電話</a><a class="btn" href="mailto:'+esc(c.mail)+'">メール</a></div>'+
+ '<div class="row"><a class="btn ghost" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(c.addr)+'">地図</a><a class="btn ghost" href="#" onclick="alert(\'編集は第2段階以降で実装します\');return false">編集</a></div>'+
+ '<label>住所</label><div>'+esc(c.addr)+'</div><label>交換者 / 交換日</label><div>'+esc(c.by)+' / '+esc(c.date)+'</div>'+
+ '<label>交換履歴</label>'+c.hist.map(function(h){return '<div class="hist">'+esc(h.d)+' '+esc(h.by)+' '+esc(h.place)+'</div>'}).join('')+
+ '<label>メモ</label><div>'+esc(c.memo)+'</div></div>'}
+function camView(){
+ return '<div class="sec"><h2>名刺を撮影</h2><div class="note">この段階では写真の選択と圧縮だけを確認します。文字の自動読み取りは次の段階です。</div>'+
+ '<label class="btn" style="cursor:pointer">カメラで撮影<input type="file" accept="image/*" capture="environment" hidden onchange="pick(this)"></label>'+
+ '<div id="info" class="meta"></div><img id="prev"'+(state.photo?' src="'+state.photo+'"':'')+'>'+
+ '<label>氏名</label><input class="f"><label>会社名</label><input class="f"><label>交換者</label><input class="f" value="ログイン中の利用者"><label>交換日</label><input class="f" type="date" value="'+new Date().toISOString().slice(0,10)+'">'+
+ '<button class="btn" onclick="alert(\'保存は第3段階で実装します\')">保存 (未実装)</button></div>'}
+function pick(inp){var f=inp.files[0];if(!f)return;var img=new Image();img.onload=function(){var s=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;c.getContext('2d').drawImage(img,0,0,c.width,c.height);state.photo=c.toDataURL('image/jpeg',0.8);document.getElementById('prev').src=state.photo;document.getElementById('info').textContent='圧縮後 '+c.width+'x'+c.height+' 約'+Math.round(state.photo.length*0.75/1024)+'KB (元 '+Math.round(f.size/1024)+'KB)'};img.src=URL.createObjectURL(f)}
+function histView(){var rows=[];CARDS.forEach(function(c){c.hist.forEach(function(h){rows.push({d:h.d,c:c,h:h})})});rows.sort(function(a,b){return b.d>a.d?1:-1});
+ return '<header><h1>交換履歴</h1></header>'+rows.map(function(r){return '<div class="card" onclick="openCard(\''+r.c.id+'\')"><div><div class="name">'+esc(r.c.name)+'</div><div class="meta">'+esc(r.d)+' / 交換者 '+esc(r.h.by)+' / '+esc(r.h.place)+'</div></div></div>'}).join('')}
+function setView(){return '<header><h1>設定</h1></header><div class="sec"><div class="note">第1段階の見た目確認用です。利用者管理・使用量・バックアップは後の段階で実装します。</div></div>'}
+function openCard(id){state.open=id;render()}
+function render(){
+ var a=document.getElementById('app'),c=CARDS.filter(function(x){return x.id==state.open})[0];
+ a.innerHTML=c?detail(c):state.tab=='cam'?camView():state.tab=='hist'?histView():state.tab=='set'?setView():listView();
+ document.getElementById('nav').innerHTML=TABS.map(function(t){return '<button class="'+(t[0]=='cam'?'cam ':'')+(state.tab==t[0]?'on':'')+'" onclick="state.tab=\''+(t[0]=='search'?'list':t[0])+'\';state.open=null;render();'+(t[0]=='search'?'document.querySelector(\'.search\').focus()':'')+'">'+t[1]+'</button>'}).join('')}
+function renderKeep(el){var p=el.selectionStart;render();var n=document.querySelector('.search');n.focus();n.setSelectionRange(p,p)}
+render();
+</script></body></html>

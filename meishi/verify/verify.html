@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja"><head><base target="_top"><meta charset="utf-8">
+<style>
+body{font-family:sans-serif;margin:16px;color:#333;line-height:1.6}
+button{font-size:16px;padding:12px 16px;margin:6px 0;border:0;border-radius:8px;background:#1a73e8;color:#fff}
+.box{border:1px solid #ddd;border-radius:8px;padding:12px;margin:12px 0}
+pre{white-space:pre-wrap;background:#f5f5f5;padding:8px;border-radius:6px}
+</style></head><body>
+<h2>名刺アプリ 検証ページ</h2>
+<p>各ボタンを押して、表示された結果を管理者に送ってください。</p>
+
+<div class="box"><b>検証A ログイン情報</b><br>
+<button onclick="runA()">確認する</button><pre id="a"></pre></div>
+
+<div class="box"><b>検証D ドライブ使用量</b><br>
+<button onclick="runD()">確認する</button><pre id="d"></pre></div>
+
+<div class="box"><b>検証B カメラ起動 (標準カメラ)</b><br>
+<input type="file" accept="image/*" capture="environment" id="cam">
+<pre id="b"></pre><img id="prev" style="max-width:100%"></div>
+
+<div class="box"><b>検証B2 カメラ直接起動 (getUserMedia)</b><br>
+<button onclick="runB2()">確認する</button><pre id="b2"></pre></div>
+
+<div class="box"><b>検証E 非公開保存と読み戻し (上の写真を使用)</b><br>
+<button onclick="runE()">保存する</button><pre id="e"></pre><img id="back" style="max-width:100%"></div>
+
+<div class="box"><b>検証C OCR (Tesseract.js)</b><br>
+上で選んだ名刺写真を読み取ります。初回は言語データの取得に時間がかかります。<br>
+<button onclick="runC()">読み取る</button><pre id="c"></pre></div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+var imgData = null;
+function $(id){return document.getElementById(id);}
+function fail(id){return function(e){$(id).textContent='失敗: '+(e&&e.message||e);};}
+function runA(){google.script.run.withSuccessHandler(function(r){$('a').textContent=JSON.stringify(r,null,1);}).withFailureHandler(fail('a')).whoAmI();}
+function runD(){google.script.run.withSuccessHandler(function(r){$('d').textContent=JSON.stringify(r,null,1);}).withFailureHandler(fail('d')).driveInfo();}
+$('cam').addEventListener('change',function(ev){
+  var f=ev.target.files[0]; if(!f)return;
+  var img=new Image(); img.onload=function(){
+    var s=Math.min(1,1600/Math.max(img.width,img.height));
+    var c=document.createElement('canvas'); c.width=img.width*s; c.height=img.height*s;
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    imgData=c.toDataURL('image/jpeg',0.8);
+    $('prev').src=imgData;
+    $('b').textContent='成功: '+c.width+'x'+c.height+' / 約'+Math.round(imgData.length*0.75/1024)+'KB';
+  }; img.src=URL.createObjectURL(f);
+});
+function runB2(){
+  if(!navigator.mediaDevices){$('b2').textContent='使えません: mediaDevices なし';return;}
+  navigator.mediaDevices.getUserMedia({video:true}).then(function(s){s.getTracks().forEach(function(t){t.stop();});$('b2').textContent='使えます';})
+  .catch(function(e){$('b2').textContent='使えません: '+e.name;});
+}
+function runE(){
+  if(!imgData){$('e').textContent='先に写真を選んでください';return;}
+  $('e').textContent='保存中...';
+  google.script.run.withSuccessHandler(function(r){
+    $('back').src=r.readBack; delete r.readBack; $('e').textContent=JSON.stringify(r,null,1);
+  }).withFailureHandler(fail('e')).saveAndReadBack(imgData.split(',')[1]);
+}
+async function runC(){
+  if(!imgData){$('c').textContent='先に写真を選んでください';return;}
+  $('c').textContent='読み取り中...';
+  var t0=Date.now();
+  try{
+    var w=await Tesseract.createWorker('jpn+eng');
+    var r=await w.recognize(imgData);
+    await w.terminate();
+    $('c').textContent='成功 ('+Math.round((Date.now()-t0)/1000)+'秒)\n'+r.data.text;
+  }catch(e){$('c').textContent='失敗: '+(e&&e.message||e);}
+}
+</script></body></html>
