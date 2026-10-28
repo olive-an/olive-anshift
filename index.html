@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <!-- 画面の版番号。直したときは必ずここを新しくする。
      携帯が前の画面を覚えていても、これを見て自動で読み込み直す。 -->
-<meta name="app-ver" content="2026-10-06a">
+<meta name="app-ver" content="2026-10-28a">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -465,7 +465,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         <input type="hidden" id="dateStart"><input type="hidden" id="dateEnd">
         <!-- 締切は最初に目に入るよう、対象期間のすぐ下にも出す -->
         <div style="margin-top:10px;background:#fff8e1;border:1.5px solid #ffca28;border-radius:10px;padding:11px 13px;text-align:center">
-          <b style="color:#c62828;font-size:17px">📅 シフト締め切りは 7日 まで</b>
+          <b style="color:#c62828;font-size:17px">📅 シフト締め切りは <span class="dl-day">—</span> まで</b>
         </div>
         <p style="font-size:14px;color:var(--sub);margin-top:8px;line-height:1.6">
           ※ 対象期間は管理者が設定します。
@@ -532,7 +532,7 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
         </button>
         <p style="font-size:15px;color:var(--text);line-height:1.8;margin:2px 0 0">
           上のカレンダーに前回の内容が入ります。直したら、もう一度送信してください。<br>
-          新しく送った方が有効になります。（締め切りは 7日 まで）
+          新しく送った方が有効になります。（締め切りは <span class="dl-day">—</span> まで）
         </p>
       </div>
     </div>
@@ -547,9 +547,9 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
     <div class="card-b">
       <div class="preview" id="preview">氏名と日付を入力してから送信ボタンを押してください。</div>
 
-      <!-- 変更の締切（毎月7日） -->
+      <!-- 変更の締切。日にちは DEADLINE_DAY で決めている -->
       <div id="deadlineNote" style="background:#fff8e1;border:1.5px solid #ffca28;border-radius:10px;padding:14px 15px;margin-bottom:14px;font-size:16px;line-height:1.9;color:var(--text)">
-        <b style="color:#e65100;font-size:18px">📅 シフト締め切りは 7日 まで</b><br>
+        <b style="color:#e65100;font-size:18px">📅 シフト締め切りは <span class="dl-day">—</span> まで</b><br>
         送信したあとでも、締切までは何度でも直せます。<br>
         直すときは、②の「日付を選んでコメントを追加」の下にある「✏️ この内容を読み込んで直す」を押してください。<br>
         いちばん最後に送ったものが有効です。
@@ -914,6 +914,14 @@ footer{text-align:center;padding:20px;color:var(--sub);font-size:13px;border-top
 <script>
 const ADMIN_PW="5103";
 
+/* ===== シフトの締め切り日 =====
+   変えるときは、この1行だけを直す。画面の3か所に自動で反映する。
+   ※ 使い方ページ（guide.html）にも同じ値があるので、そちらも合わせる。 */
+const DEADLINE_DAY="5日";
+function renderDeadline(){
+  document.querySelectorAll(".dl-day").forEach(el=>{ el.textContent=DEADLINE_DAY; });
+}
+
 /* ===== 画面を新しく保つ =====
    携帯のブラウザは前に見た画面を覚えていることがあり、直したところが
    出てこない。公開中のページの先頭だけを読み直して、版番号が違えば
@@ -1067,6 +1075,7 @@ function init(){
   buildCal();refreshPreview();renderPeriodNow();
   forgetSavedNames();  // 端末に残っている名前は使わない（開いたとき空にする）
   restoreDraft();    // 入力の途中があれば戻す
+  renderDeadline();      // 締め切り日を画面に反映する
   renderInstallCard();   // ホーム画面への入れ方の案内
   // 使い方ページも古いまま出ないよう、リンクに版番号を付ける
   const gl=document.getElementById("guideLink");

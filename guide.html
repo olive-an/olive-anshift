@@ -139,7 +139,7 @@ body{
   </div>
 
   <div class="band">
-    <div class="t">📅 シフト締め切りは 7日 まで</div>
+    <div class="t">📅 シフト締め切りは <span class="dl-day">—</span> まで</div>
     <p>送ったあとでも、締切までは何度でも直せます</p>
   </div>
 
@@ -318,7 +318,7 @@ body{
   </div>
 
   <div class="deadline">
-    <div class="t">📅 シフト締め切りは 7日 まで</div>
+    <div class="t">📅 シフト締め切りは <span class="dl-day">—</span> まで</div>
     <p>送信したあとでも、締切までは何度でも直せます。取り消しの手続きはいりません。</p>
     <p>直すときは、②の「💬 日付を選んでコメントを追加」の下に出てくる<br>
       <span class="demo ol" style="font-size:16px;padding:8px 14px">✏️ この内容を読み込んで直す</span><br>
@@ -362,5 +362,9 @@ body{
   </div>
 
 </div>
+<script>
+/* シフトの締め切り日。index.html の DEADLINE_DAY と同じ値にすること */
+document.querySelectorAll(".dl-day").forEach(function(el){ el.textContent="5日"; });
+</script>
 </body>
 </html>
