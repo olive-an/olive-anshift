@@ -139,7 +139,7 @@ body{
   </div>
 
   <div class="band">
-    <div class="t">📅 シフト締め切りは 7日 まで</div>
+    <div class="t">📅 シフト締め切りは <span class="dl-day">—</span> まで</div>
     <p>送ったあとでも、締切までは何度でも直せます</p>
   </div>
 
@@ -318,13 +318,14 @@ body{
   </div>
 
   <div class="deadline">
-    <div class="t">📅 シフト締め切りは 7日 まで</div>
+    <div class="t">📅 シフト締め切りは <span class="dl-day">—</span> まで</div>
     <p>送信したあとでも、締切までは何度でも直せます。取り消しの手続きはいりません。</p>
     <p>直すときは、②の「💬 日付を選んでコメントを追加」の下に出てくる<br>
       <span class="demo ol" style="font-size:16px;padding:8px 14px">✏️ この内容を読み込んで直す</span><br>
       を押すと、前に送った内容が戻ってきます。直して、もう一度送信してください。</p>
     <p>このボタンは、前に送信したことのある端末にだけ出ます。出ていない場合は、はじめから入れ直して送ってください。</p>
     <p><b>いちばん最後に送ったものが有効です。</b></p>
+    <div class="dl-after" style="margin-top:14px;background:#fff;border:2px solid #ef9a9a;border-radius:10px;padding:13px 15px;text-align:left"></div>
   </div>
 
   <div class="step">
@@ -362,5 +363,16 @@ body{
   </div>
 
 </div>
+<script>
+/* シフトの締め切り日と、そのあとのお願いの文章。
+   index.html の DEADLINE_DAY ／ DEADLINE_AFTER と同じ値にすること */
+var DL_DAY="5日";
+var DL_AFTER=
+   '<b style="color:#c62828">'+DL_DAY+'を過ぎてからの変更は、なるべくお控えください。</b><br>'
+  +'どうしても変更が出たときは、できるだけ早く<br>'
+  +'<b style="color:#c62828;font-size:19px">【必ず直接 岩久保まで】</b>ご連絡ください。';
+document.querySelectorAll(".dl-day").forEach(function(el){ el.textContent=DL_DAY; });
+document.querySelectorAll(".dl-after").forEach(function(el){ el.innerHTML=DL_AFTER; });
+</script>
 </body>
 </html>
