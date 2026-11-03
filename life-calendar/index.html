@@ -209,7 +209,7 @@ textarea { resize: vertical; line-height: 1.5; }
 .vr .vd b { font-weight: 700; }
 .vr .vd.sun, .vr .vd.hol { color: var(--sun); } .vr .vd.sat { color: var(--sat); }
 .vr .vd small { font-size: 10.5px; color: var(--sun); line-height: 1.2; white-space: normal; }
-.vr .vev { flex-wrap: wrap; gap: 3px 8px; }
+.vin { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; min-width: 0; }
 .ic { display: inline-flex; align-items: baseline; gap: 6px; padding: 1px 7px; border-left: 4px solid; border-radius: 3px; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 .ic b { font-weight: 700; }
 .ic .tm { font-variant-numeric: tabular-nums; font-size: 13px; }
@@ -314,11 +314,11 @@ tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); }
   .sheet.l-grid { height: 194mm; }
   .sheet.l-list { height: 281mm; }
   .sheet.l-list .banner { font-size: 12pt; }
-  .sheet.l-list .banner.foot { font-size: 11pt; max-height: 34mm; }
+  .sheet.l-list .banner.foot { font-size: calc(11pt * var(--fsf, 1)); max-height: 34mm; }
   .sheet-head { padding: 0 0 1mm; }
   .sheet-head .ttl { font-size: 17pt; } .sheet-head .nm { font-size: 18pt; } .sheet-head .en { font-size: 8pt; }
   .banner { margin: 0; padding: .8mm 2mm; font-size: 14pt; }
-  .banner.foot { margin: 1.5mm 0 0; padding: 2mm; font-size: 14pt; max-height: 26mm; overflow: hidden; }
+  .banner.foot { margin: 1.5mm 0 0; padding: 2mm; font-size: calc(14pt * var(--fsf, 1)); max-height: 26mm; overflow: hidden; }
   .grid { flex: 1; margin: 1.5mm 0 0; grid-template-rows: auto repeat(var(--rows, 5), minmax(0, 1fr)); min-height: 0; }
   .wd { font-size: 8pt; padding: 0; }
   .cell { min-height: 0; padding: .5mm 1mm; gap: .3mm; }
@@ -327,12 +327,8 @@ tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); }
   .chip { font-size: 8pt; line-height: 1.2; padding: 0 1mm .1mm; border-left-width: 1.2mm; break-inside: avoid; }
   .chip .tm, .chip .sn { font-size: 7.5pt; } .chip .sb { font-size: 6.5pt; }
   .band { font-size: 8pt; line-height: 1.25; }
-  .cell.dense .chip { display: flex; flex-wrap: wrap; column-gap: 1mm; font-size: 6.5pt; }
-  .cell.dense .chip .t, .cell.dense .chip .sn { display: inline; }
-  .cell.dense .chip .tm, .cell.dense .chip .sn { font-size: 6pt; }
-  .cell.dense .band { font-size: 6.8pt; }
-  .cell.denser .chip { font-size: 6pt; } .cell.denser .chip .tm, .cell.denser .chip .sn { font-size: 5.5pt; }
-  .cell.denser .band { font-size: 6.2pt; }
+  .cell .bot { zoom: var(--fs, 1); }
+  .vin { zoom: var(--fs, 1); }
   .vwrap { flex: 1; margin: 1.5mm 0 0; display: flex; flex-direction: column; min-height: 0; }
   .vbody { flex: 1; display: grid; grid-template-rows: repeat(var(--days, 31), minmax(0, 1fr)); min-height: 0; }
   .vr { min-height: 0; overflow: hidden; cursor: auto; } .vr:hover { background: var(--surface); }
@@ -340,10 +336,22 @@ tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); }
   .vr > div { padding: 0 1.5mm; }
   .vhead > div { font-size: 8pt; padding: 0; }
   .vr .vd { font-size: 9pt; gap: 3px; } .vr .vd small { font-size: 6pt; }
-  .vr .vev { gap: 0 2mm; }
+  .vin { gap: 0 2mm; }
   .ic { font-size: 8pt; line-height: 1.15; padding: 0 1.5mm; border-left-width: 1.2mm; gap: 1.5mm; }
   .ic .tm { font-size: 7.5pt; } .ic .sb, .ic .lk { font-size: 6.5pt; }
-  .vr.dense .ic { font-size: 7pt; } .vr.dense .ic .tm { font-size: 6.5pt; }
+}
+/* A4印刷プレビュー: 印刷用の規則を .a4 の中にも同じ内容で適用する(起動時にJSが複製)。紙の大きさ・余白はここで決める */
+.a4wrap { width: 100%; overflow: hidden; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); }
+.a4 { background: #fff; color: #000; font-size: 9pt; box-sizing: border-box; padding: 7mm; transform-origin: 0 0; box-shadow: 0 1px 8px rgba(0, 0, 0, .28); }
+.a4.l-grid { width: 297mm; height: 210mm; }
+.a4.l-list { width: 210mm; height: 297mm; }
+.a4.measure { position: fixed; left: -30000px; top: 0; visibility: hidden; transform: none; box-shadow: none; }
+.a4 .noprint { display: none !important; }
+.fz-note { font-size: 13px; color: var(--muted); }
+@media print {
+  .a4wrap { height: auto !important; overflow: visible; background: none; border: 0; border-radius: 0; break-after: page; page-break-after: always; }
+  .a4wrap:last-child { break-after: auto; page-break-after: auto; }
+  .a4 { transform: none !important; width: auto !important; height: auto !important; padding: 0 !important; box-shadow: none !important; background: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
@@ -373,6 +381,9 @@ var KINDS = {
 };
 var STORE_KEY = 'olive-lifecal-proto-v2';
 var DATA_VER = 2;
+/* セルごとの文字の大きさ(手で指定)。「自動」は指定なし */
+var FZ = [['', '自動'], ['0.8', '小'], ['1', '標準'], ['1.3', '大'], ['1.6', '特大']];
+var FZ_LABEL = { '0.8': '小', '1': '標準', '1.3': '大', '1.6': '特大' };
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -470,7 +481,7 @@ function baseState() {
       { id: 'f3', name: 'ことり就労センター(就労A型)', closedWeekdays: [0, 6], closedOnHoliday: true,
         closedDates: [{ from: '2026-12-29', to: '2027-01-03', label: '年末年始休業' }] }
     ],
-    residents: [], rules: [], events: [], notes: {}
+    residents: [], rules: [], events: [], notes: {}, fontOv: {}
   };
 }
 function newResident(homeId, name) {
@@ -525,7 +536,7 @@ var st;
 function load() {
   try {
     var raw = localStorage.getItem(STORE_KEY);
-    if (raw) { var o = JSON.parse(raw); if (o && o.version === DATA_VER) return o; }
+    if (raw) { var o = JSON.parse(raw); if (o && o.version === DATA_VER) { o.fontOv = o.fontOv || {}; return o; } }
   } catch (e) { /* 保存できない環境では毎回サンプルから始まる */ }
   return fresh();
 }
@@ -618,7 +629,7 @@ var ui = {
   showLegal: true,
   modal: null,
   bulk: null, bulkY: shiftMonth(bm0.y, bm0.m, 1).y, bulkM: shiftMonth(bm0.y, bm0.m, 1).m, bulkHomes: null, bulkDry: false,
-  pLayout: 'grid', pSel: null,
+  pLayout: 'grid', pSel: null, a4: !isNarrow,
   roster: null, rosterText: '', rosterReplace: true, confirmDelRes: null, editRes: null, editErr: '',
   confirmReset: false, confirmDel: null,
   toast: ''
@@ -727,14 +738,20 @@ function inlineChipHtml(e) {
 function legalChipHtml(l) { return '<div class="chip legal"><span class="t">' + esc(l.label) + '</span></div>'; }
 function legalInlineHtml(l) { return '<span class="ic legal"><b>' + esc(l.label) + '</b></span>'; }
 
+function paper(sec, layout) {
+  return ui.a4 ? '<div class="a4wrap"><div class="a4 l-' + layout + '">' + sec + '</div></div>' : sec;
+}
+function a4Toggle() {
+  return '<label class="chk"><input type="checkbox" data-bind="a4"' + (ui.a4 ? ' checked' : '') + '>A4の印刷プレビュー(印刷と同じ見た目で表示。「臨時」「重複」の印は出ません)</label>';
+}
 function sheetHtml(res, y, m, layout, opts) {
   opts = opts || {};
   var home = homeOf(res.homeId), days = dim(y, m), first = wdOf(y, m, 1);
   var rows = Math.ceil((first + days) / 7);
   var hol = holidays(y);
   var top = getNote(res, 'top', y, m).v, foot = getNote(res, 'foot', y, m).v;
-  var act = function (date) { return opts.stat ? '' : ' role="button" tabindex="0" data-action="day" data-date="' + date + '"'; };
-  var h = '<section class="sheet l-' + layout + '" style="--rows:' + rows + ';--days:' + days + '" aria-label="' + esc(ymLabel(y, m) + ' ' + res.name + 'さんの月間予定') + '">';
+  var act = function (date) { return ' data-date="' + date + '"' + (opts.stat ? '' : ' role="button" tabindex="0" data-action="day"'); };
+  var h = '<section class="sheet l-' + layout + '" data-res="' + res.id + '" data-y="' + y + '" data-m="' + m + '" data-layout="' + layout + '" style="--rows:' + rows + ';--days:' + days + '" aria-label="' + esc(ymLabel(y, m) + ' ' + res.name + 'さんの月間予定') + '">';
   h += '<div class="sheet-head"><div class="ttl">' + y + '年' + m + '月</div><div class="nm">' + esc(res.name) + '</div>'
     + '<div class="en">' + EN_MONTH[m - 1] + '<br>' + reiwa(y) + '<br><span class="muted">' + esc(home.name) + '</span></div></div>';
   h += '<div class="banner top" data-role="note-top">' + esc(top) + '</div>';
@@ -745,9 +762,9 @@ function sheetHtml(res, y, m, layout, opts) {
       var evs = eventsOn(res.id, date), lg = legalOn(res, date);
       var items = evs.map(inlineChipHtml).concat(lg.map(legalInlineHtml));
       var ovm = overlapsOn(res.id, date).length ? '<span class="ov noprint">重複</span>' : '';
-      h += '<div class="vr ' + (wd === 0 ? 'sun' : wd === 6 ? 'sat' : '') + (items.length >= 4 ? ' dense' : '') + '"' + act(date) + '>'
+      h += '<div class="vr ' + (wd === 0 ? 'sun' : wd === 6 ? 'sat' : '') + '"' + act(date) + '>'
         + '<div class="vd ' + (hol[date] ? 'hol' : wd === 0 ? 'sun' : wd === 6 ? 'sat' : '') + '"><b>' + m + '/' + d + '</b>(' + WD[wd] + ')' + (hol[date] ? '<small>' + esc(hol[date]) + '</small>' : '') + ovm + '</div>'
-        + '<div class="vev">' + (items.length ? items.join('') : '<span class="none">予定なし</span>') + '</div></div>';
+        + '<div class="vev"><div class="vin">' + (items.length ? items.join('') : '<span class="none">予定なし</span>') + '</div></div></div>';
     }
     h += '</div></div>';
   } else {
@@ -759,10 +776,9 @@ function sheetHtml(res, y, m, layout, opts) {
       var dt = ymd(y, m, dd), w2 = c % 7;
       var ev2 = eventsOn(res.id, dt), lg2 = legalOn(res, dt);
       var n = ev2.length + lg2.length;
-      var cc = 'cell' + (w2 === 0 ? ' sun' : w2 === 6 ? ' sat' : '') + (hol[dt] ? ' hol' : '')
-        + (n >= 4 || (rows === 6 && n >= 3) ? ' dense' : '') + (n >= 5 || (rows === 6 && n >= 4) ? ' denser' : '');
+      var cc = 'cell' + (w2 === 0 ? ' sun' : w2 === 6 ? ' sat' : '') + (hol[dt] ? ' hol' : '');
       h += '<div class="' + cc + '"' + act(dt) + ' aria-label="' + esc(jpDate(dt) + (hol[dt] ? ' ' + hol[dt] : '') + ' 予定' + n + '件') + '">'
-        + '<div class="dn"><span class="num">' + dd + '</span>' + (hol[dt] ? '<span class="hn">' + esc(hol[dt]) + '</span>' : '') + (overlapsOn(res.id, dt).length ? '<span class="ov noprint">重複</span>' : '') + '</div>'
+        + '<div class="dn"><span class="num">' + dd + '</span>' + (hol[dt] ? '<span class="hn">' + esc(hol[dt]) + '</span>' : '') + (overlapsOn(res.id, dt).length ? '<span class="ov noprint">重複</span>' : '') + (st.fontOv[res.id + '|' + dt] ? '<span class="tag noprint">文字' + FZ_LABEL[st.fontOv[res.id + '|' + dt]] + '</span>' : '') + '</div>'
         + '<div class="bot">' + ev2.filter(function (e) { return !KINDS[e.kind].band; }).map(chipHtml).join('') + lg2.map(legalChipHtml).join('')
         + ev2.filter(function (e) { return KINDS[e.kind].band; }).map(chipHtml).join('') + '</div></div>';
     }
@@ -805,6 +821,7 @@ function calendarTab() {
     + '</div>'
     + '<div class="row" style="margin-top:8px">'
     + '<label class="chk"><input type="checkbox" data-bind="legal"' + (ui.showLegal ? ' checked' : '') + '>モニタリング・計画更新期限も表示(法定記録。生活予定とは別管理)</label>'
+    + a4Toggle()
     + '<span style="flex:1"></span>'
     + '<button class="btn primary" data-action="gen-one">この月を自動配置</button>'
     + (IS_TOP ? '<button class="btn" data-action="print">この1枚を印刷</button>' : '<button class="btn" data-action="tab" data-tab="print">印刷へ</button>')
@@ -832,7 +849,8 @@ function calendarTab() {
     + '<label class="f span-all"><span>黄色の連絡帯(下)' + (fn.inherited && fn.v ? ' ※前月の文面を引き継いでいます' : '') + '</span><textarea id="note-foot" maxlength="200" rows="3" placeholder="例: 朝の出発時間 8:00　夜の帰宅時間 18:00　時間を守ってください!">' + esc(fn.v) + '</textarea></label>'
     + '</div><div class="counter" id="note-count">連絡帯 ' + fn.v.length + ' / 200文字(印刷で切れない長さにしています)</div></div>';
   h += legendHtml();
-  h += '<div class="sheets">' + sheetHtml(res, ui.y, ui.m, ui.view) + '</div>';
+  h += '<div class="note info noprint" id="fit-note"></div>';
+  h += '<div class="sheets">' + paper(sheetHtml(res, ui.y, ui.m, ui.view), ui.view) + '</div>';
   return h;
 }
 
@@ -849,13 +867,15 @@ function printTab() {
     + '<div class="pick" style="margin-top:8px">' + homeRes.map(function (r) {
         return '<label class="chk"><input type="checkbox" data-bind="p-res" data-id="' + r.id + '"' + (sel.indexOf(r.id) >= 0 ? ' checked' : '') + '>' + esc(r.name) + '</label>';
       }).join('') + '</div>'
+    + '<div class="row" style="margin-top:8px">' + a4Toggle() + '</div>'
     + '<div class="row" style="margin-top:8px"><button class="btn small" data-action="p-all">全員を選ぶ</button><button class="btn small" data-action="p-none">全員を外す</button><span style="flex:1"></span>'
     + (IS_TOP ? '<button class="btn primary" data-action="print"' + (sel.length ? '' : ' disabled') + '>' + sel.length + '枚を印刷する</button>' : '<span class="small muted">このプレビュー画面では印刷できません。公開したページ(またはファイル)をパソコンのブラウザで開くと、「印刷する」ボタンが出ます。</span>')
     + '</div></div>';
   var evCount = sel.reduce(function (a, id) { return a + monthEvents(id, ui.y, ui.m).length; }, 0);
   if (!evCount && sel.length) h += '<div class="note noprint">' + ymLabel(ui.y, ui.m) + 'の予定がまだありません。「一括生成」で自動配置してから印刷してください。</div>';
   h += '<div class="small muted noprint">用紙は ' + (ui.pLayout === 'grid' ? 'A4横' : 'A4縦') + ' 1人1枚です。印刷の設定では「余白: 標準」「倍率: 100%」「背景のグラフィック: オン」にすると、色の帯まで印刷されます。</div>';
-  h += '<div class="sheets">' + sel.map(function (id) { return sheetHtml(resOf(id), ui.y, ui.m, ui.pLayout, { stat: true }); }).join('') + '</div>';
+  h += '<div class="note info noprint" id="fit-note"></div>';
+  h += '<div class="sheets">' + sel.map(function (id) { return paper(sheetHtml(resOf(id), ui.y, ui.m, ui.pLayout, { stat: true }), ui.pLayout); }).join('') + '</div>';
   return h;
 }
 
@@ -886,6 +906,14 @@ function dayModal(date) {
       return '<li>' + (o.same ? '同じ予定が二重に入っています: ' + esc(evText(o.a)) : '時間が重なっています: ' + esc(evText(o.a)) + ' と ' + esc(evText(o.b))) + '</li>';
     }).join('') + '</ul><div class="small">どちらかを変更・取消してください。自動では直しません。</div></div>';
   }
+  var fkey = res.id + '|' + date, fcur = st.fontOv[fkey] || '', finfo = fitInfo[fkey];
+  h += '<div><b class="small">この日の文字の大きさ(印刷)</b><div class="row" style="margin-top:4px"><div class="seg" role="group" aria-label="文字の大きさ">'
+    + FZ.map(function (o) { return '<button data-action="fs-set" data-v="' + o[0] + '" aria-pressed="' + (fcur === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>'
+    + '<div class="fz-note">' + (finfo
+      ? (finfo.capped ? 'この大きさでは入りきらないため、' + Math.round(finfo.eff * 100) + '%に抑えています(A4 1枚に必ず収めます)。'
+        : fcur ? '指定の大きさ(' + Math.round(finfo.eff * 100) + '%)で入っています。'
+        : finfo.eff < 0.99 ? '文字が多いため、入りきるよう自動で ' + Math.round(finfo.eff * 100) + '% に縮めています。' : '標準の大きさで入っています。')
+      : '') + (finfo && finfo.eff < 0.5 ? ' 文字が小さくなりすぎています。予定を減らすか、まとめてください。' : '') + '</div></div>';
   var ed = ui.modal.edit;
   if (ed === 'new') h += evForm(ui.modal.form, ui.modal.err, true);
   else if (!ed) h += '<div><button class="btn" data-action="ev-add">この日に予定を追加</button></div>';
@@ -1090,6 +1118,8 @@ function render() {
   document.getElementById('app').innerHTML = h;
   var lay = ui.tab === 'print' ? ui.pLayout : ui.view;
   document.getElementById('page-style').textContent = '@page { size: A4 ' + (lay === 'list' ? 'portrait' : 'landscape') + '; margin: 7mm; }';
+  applyFit(document.getElementById('app'));
+  fitPreview();
   renderModal();
 }
 function renderModal() {
@@ -1196,6 +1226,11 @@ document.addEventListener('click', function (ev) {
     case 'print': window.print(); break;
     case 'day': ui.modal = { type: 'day', date: t.getAttribute('data-date'), edit: null }; renderModal(); break;
     case 'close': ui.modal = null; renderModal(); break;
+    case 'fs-set': {
+      var fk = res.id + '|' + ui.modal.date, fv = t.getAttribute('data-v');
+      if (fv) st.fontOv[fk] = fv; else delete st.fontOv[fk];
+      save(); reopenDay(ui.modal.date); break;
+    }
     case 'ev-add': ui.modal.edit = 'new'; ui.modal.err = ''; ui.modal.form = { kind: 'other', title: '', place: '', start: '', end: '', staff: false, staffNote: '' }; renderModal(); break;
     case 'ev-edit': {
       var e1 = st.events.filter(function (x) { return x.id === t.getAttribute('data-id'); })[0];
@@ -1331,7 +1366,7 @@ document.addEventListener('click', function (ev) {
     case 'roster-apply': {
       if (!ui.roster || !ui.roster.rows.length) break;
       var rows = ui.roster.rows;
-      if (ui.rosterReplace) { st.residents = []; st.rules = []; st.events = []; st.notes = {}; }
+      if (ui.rosterReplace) { st.residents = []; st.rules = []; st.events = []; st.notes = {}; st.fontOv = {}; }
       st.sample = false;
       var added = 0;
       rows.forEach(function (x) {
@@ -1385,7 +1420,7 @@ document.addEventListener('click', function (ev) {
       try {
         var o = JSON.parse(document.getElementById('restore-text').value);
         if (!o || o.version !== DATA_VER || !o.residents || !o.rules || !o.homes) throw new Error('形式が違います');
-        st = o; save(); ui.residentId = null; ui.roster = null; render(); toast('バックアップから戻しました。');
+        o.fontOv = o.fontOv || {}; st = o; save(); ui.residentId = null; ui.roster = null; render(); toast('バックアップから戻しました。');
       } catch (e3) { er3.textContent = 'バックアップの文字を読み取れませんでした。コピーした内容をそのまま貼り付けてください。'; }
       break;
     }
@@ -1410,6 +1445,7 @@ document.addEventListener('change', function (ev) {
     case 'home': ui.homeId = t.value; ui.residentId = null; ui.pSel = null; render(); break;
     case 'res': ui.residentId = t.value; render(); break;
     case 'legal': ui.showLegal = t.checked; render(); break;
+    case 'a4': ui.a4 = t.checked; render(); break;
     case 'fac-wd': {
       var f = facOf(t.getAttribute('data-fid')), w = +t.getAttribute('data-wd');
       f.closedWeekdays = f.closedWeekdays.filter(function (x) { return x !== w; });
@@ -1443,8 +1479,10 @@ document.addEventListener('input', function (ev) {
   setNote(res, field, ui.y, ui.m, v);
   var el = document.querySelector('[data-role="note-' + field + '"]');
   if (el) el.textContent = v;
-  if (field === 'foot') document.getElementById('note-count').textContent = '連絡帯 ' + v.length + ' / 200文字(印刷で切れない長さにしています)';
+  if (field === 'foot') document.getElementById('note-count').textContent = '連絡帯 ' + v.length + ' / 200文字(長いときは自動で文字を小さくして1枚に収めます)';
+  clearTimeout(fitTimer); fitTimer = setTimeout(function () { applyFit(document.getElementById('app')); }, 200);
 });
+var fitTimer;
 
 function runBulk() {
   var sel = ui.bulkHomes || st.homes.map(function (x) { return x.id; });
@@ -1467,10 +1505,105 @@ function runBulk() {
 }
 
 /* ============================================================
+   A4 1枚に必ず収める(自動調整)
+   各日のマス(縦表は1行)の中身が入りきらないとき、文字を縮める。
+   手で「大」などを指定した日も、入りきらないときは縮めて、文字が切れないようにする。
+   ============================================================ */
+var fitInfo = {};
+function buildA4Css() {
+  var out = [];
+  [].forEach.call(document.styleSheets, function (ss) {
+    var rules; try { rules = ss.cssRules; } catch (e) { return; }
+    [].forEach.call(rules, function (r) {
+      if (r.type !== 4 || !/print/.test(r.media.mediaText)) return;
+      [].forEach.call(r.cssRules, function (rr) {
+        if (rr.type !== 1) return;
+        var sels = rr.selectorText.split(',').map(function (x) { return x.trim(); }).map(function (x) {
+          if (/^(html|body)\b/.test(x) || x === '.noprint' || x === '.wrap' || x === '.sheets' || x.indexOf('.a4') === 0) return null;
+          if (x.indexOf(':root') === 0) return '.a4';
+          return '.a4 ' + x;
+        }).filter(Boolean);
+        if (sels.length) out.push(sels.join(',') + '{' + rr.style.cssText + '}');
+      });
+    });
+  });
+  var el = document.createElement('style'); el.textContent = out.join('\n'); document.head.appendChild(el);
+}
+function overflows(el) { return el.scrollHeight > el.clientHeight + 0.5; }
+function fitScale(box, inner, upper) {
+  var lo = 0.35;
+  inner.style.zoom = upper;
+  if (!overflows(box)) return upper;
+  inner.style.zoom = lo;
+  if (overflows(box)) return lo;
+  var hi = upper;
+  for (var i = 0; i < 7; i++) { var mid = (lo + hi) / 2; inner.style.zoom = mid; if (overflows(box)) hi = mid; else lo = mid; }
+  return lo;
+}
+function applyFit(root) {
+  var sum = { sheets: 0, shrunk: 0, capped: 0, tiny: 0, layout: 'grid' };
+  [].forEach.call(root.querySelectorAll('.sheet[data-res]'), function (sec) {
+    var res = resOf(sec.getAttribute('data-res')); if (!res) return;
+    var y = +sec.getAttribute('data-y'), m = +sec.getAttribute('data-m'), layout = sec.getAttribute('data-layout');
+    sum.sheets++; sum.layout = layout;
+    var box = document.createElement('div');
+    box.className = 'a4 measure l-' + layout;
+    box.innerHTML = sheetHtml(res, y, m, layout, { stat: true });
+    document.body.appendChild(box);
+    // 下の黄色い帯: 入りきるまで文字を縮める
+    var foot = box.querySelector('.banner.foot'), liveFoot = sec.querySelector('.banner.foot');
+    var fsf = 1;
+    if (foot && foot.textContent) {
+      var lo = 0.4;
+      foot.style.setProperty('--fsf', 1);
+      if (overflows(foot)) {
+        foot.style.setProperty('--fsf', lo);
+        if (!overflows(foot)) { var hi = 1; for (var i = 0; i < 7; i++) { var mid = (lo + hi) / 2; foot.style.setProperty('--fsf', mid); if (overflows(foot)) hi = mid; else lo = mid; } fsf = lo; } else fsf = lo;
+      }
+    }
+    if (liveFoot) liveFoot.style.setProperty('--fsf', fsf);
+    // 各日のマス / 縦表の各行
+    [].forEach.call(box.querySelectorAll(layout === 'list' ? '.vr' : '.cell:not(.out)'), function (c) {
+      var date = c.getAttribute('data-date');
+      var inner = c.querySelector(layout === 'list' ? '.vin' : '.bot');
+      if (!inner) return;
+      var manual = parseFloat(st.fontOv[res.id + '|' + date]) || 0;
+      var eff = fitScale(c, inner, manual || 1);
+      var info = { eff: eff, manual: manual, capped: !!manual && eff < manual - 0.01 };
+      fitInfo[res.id + '|' + date] = info;
+      if (info.capped) sum.capped++; else if (!manual && eff < 0.99) sum.shrunk++;
+      if (eff < 0.5) sum.tiny++;
+      var live = sec.querySelector((layout === 'list' ? '.vr' : '.cell') + '[data-date="' + date + '"]');
+      if (live) live.style.setProperty('--fs', eff);
+    });
+    document.body.removeChild(box);
+  });
+  var note = document.getElementById('fit-note');
+  if (note) {
+    note.className = 'note noprint' + (sum.tiny ? '' : ' info');
+    note.textContent = sum.sheets + '枚(A4' + (sum.layout === 'list' ? '縦' : '横') + ' 1人1枚)。どの利用者も必ず1ページに収まります。'
+      + (sum.shrunk ? ' 文字が多い日 ' + sum.shrunk + '日は、入りきるよう自動で小さくしています。' : '')
+      + (sum.capped ? ' 大きさを指定した日のうち ' + sum.capped + '日は、入りきらないため抑えています。' : '')
+      + (sum.tiny ? ' 文字が小さくなりすぎている日が ' + sum.tiny + '日あります。予定を減らすか、まとめてください。' : '');
+  }
+}
+function fitPreview() {
+  [].forEach.call(document.querySelectorAll('.a4wrap'), function (w) {
+    var a = w.firstElementChild; if (!a) return;
+    var sc = Math.min(1.25, w.clientWidth / a.offsetWidth);
+    a.style.transform = 'scale(' + sc + ')';
+    w.style.height = Math.ceil(a.offsetHeight * sc) + 'px';
+  });
+}
+window.addEventListener('resize', fitPreview);
+
+/* ============================================================
    起動
    ============================================================ */
 st = load();
+buildA4Css();
 render();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { applyFit(document.getElementById('app')); fitPreview(); });
 
 })();
 </script>
