@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
 <style>
 /* 配置: 上に操作帯。中央に、現行のExcel様式と同じ形の月間表
-   (赤い注意帯 / 日付ごとの朝食・夕食 / 緑の帰宅帯・桃色の実家泊帯 / 黄色の連絡帯)。
+   (赤い注意帯 / 日ごとの予定 / 緑の帰宅帯・桃色の実家泊帯 / 黄色の連絡帯)。
    同じ内容を「縦(一覧)」でも表示・印刷できる。色は意味を持つものだけに使う。 */
 :root {
   --bg: #eef1ec;
@@ -169,10 +169,6 @@ textarea { resize: vertical; line-height: 1.5; }
 .dn .hn { font-size: 10.5px; color: var(--sun); line-height: 1.2; }
 .cell.sun .num, .cell.hol .num { color: var(--sun); } .cell.sat .num { color: var(--sat); }
 .cell .bot { margin-top: auto; display: grid; gap: 1px; min-width: 0; }
-.meals { display: grid; gap: 0; font-size: 12px; font-weight: 700; line-height: 1.3; }
-.meal { display: flex; gap: .8em; }
-.meal .mv.no { font-weight: 400; color: var(--muted); }
-.meal .mv.yes { text-decoration: underline; text-underline-offset: 2px; }
 .chip { border-left: 4px solid; border-radius: 3px; padding: 1px 4px 2px; font-size: 12px; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
 .chip .t { font-weight: 700; display: block; }
 .chip .tm { font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -192,9 +188,17 @@ textarea { resize: vertical; line-height: 1.5; }
 .chip.legal, .ic.legal { background: transparent; color: var(--legal-fg); border: 1.5px dashed var(--legal-line); }
 .chip.legal .t::before, .ic.legal b::before { content: "法定 "; font-weight: 700; font-size: 10.5px; }
 .counter { font-size: 12px; color: var(--muted); text-align: right; }
+.tag { font-size: 10px; font-weight: 700; border: 1px solid currentColor; border-radius: 3px; padding: 0 3px; margin-left: 4px; vertical-align: 1px; white-space: nowrap; }
+.ov { font-size: 10.5px; font-weight: 700; color: var(--danger); border: 1px solid var(--danger); border-radius: 3px; padding: 0 3px; line-height: 1.3; }
+.ev-row.cancelled .chip, .ev-row.cancelled .band { text-decoration: line-through; opacity: .6; }
+.ev-row.cancelled { background: var(--surface-2); }
+.hist { margin: 0; padding-left: 1.2em; font-size: 12.5px; color: var(--muted); }
+.orig { font-size: 13px; color: var(--muted); }
+.warnbox { padding: 8px 10px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-fg); border: 1px solid var(--warn-line); font-size: 14px; }
+.addbox { border: 1px dashed var(--line-strong); border-radius: 8px; padding: 10px; display: grid; gap: 10px; }
 
 /* ===== 縦(一覧)表 ===== */
-.vhead, .vr { display: grid; grid-template-columns: 8.2em 3.8em 3.8em minmax(0, 1fr); }
+.vhead, .vr { display: grid; grid-template-columns: 8.2em minmax(0, 1fr); }
 .vwrap { margin: 6px 12px 0; border-top: 1px solid var(--fg); border-left: 1px solid var(--fg); }
 .vhead > div { text-align: center; font-size: 13px; padding: 3px 4px; background: var(--surface-2); border-right: 1px solid var(--fg); border-bottom: 1px solid var(--fg); }
 .vr { cursor: pointer; background: var(--surface); }
@@ -205,9 +209,6 @@ textarea { resize: vertical; line-height: 1.5; }
 .vr .vd b { font-weight: 700; }
 .vr .vd.sun, .vr .vd.hol { color: var(--sun); } .vr .vd.sat { color: var(--sat); }
 .vr .vd small { font-size: 10.5px; color: var(--sun); line-height: 1.2; white-space: normal; }
-.vr .vm { justify-content: center; font-size: 14px; font-weight: 700; }
-.vr .vm.no { font-weight: 400; color: var(--muted); }
-.vr .vm.yes { text-decoration: underline; text-underline-offset: 3px; }
 .vr .vev { flex-wrap: wrap; gap: 3px 8px; }
 .ic { display: inline-flex; align-items: baseline; gap: 6px; padding: 1px 7px; border-left: 4px solid; border-radius: 3px; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 .ic b { font-weight: 700; }
@@ -250,6 +251,8 @@ tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); }
 .names { display: flex; flex-wrap: wrap; gap: 6px; }
 .nm-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 2px 10px; border: 1px solid var(--line-strong); border-radius: 99px; background: var(--surface-2); font-size: 14px; }
 .nm-chip button { border: 0; background: none; color: var(--danger); font-weight: 700; min-height: 30px; padding: 0 8px; }
+.nm-chip button.ed { color: var(--accent); }
+.nm-chip.editing { border-color: var(--accent); background: var(--accent-soft); }
 .pick { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 
 /* ダイアログ */
@@ -274,17 +277,16 @@ tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); }
   .banner, .banner.foot { font-size: 15px; }
   .cell { min-height: 78px; padding: 2px; }
   .dn .num { font-size: 14px; }
-  .dn .hn, .meals { display: none; }
+  .dn .hn, .cell .tag { display: none; }
   .chip { font-size: 10.5px; padding: 1px 2px 1px 3px; border-left-width: 3px; }
   .chip .tm, .chip .sn { display: none; }
   .chip .sb { margin-left: 2px; padding: 0 2px; font-size: 9.5px; }
   .band { font-size: 10px; padding: 0 2px; }
   .month-nav .ym { font-size: 18px; min-width: 6.5em; }
   .tab { padding: 10px 9px; font-size: 14px; }
-  .vhead, .vr { grid-template-columns: 6.6em 3em 3em minmax(0, 1fr); }
+  .vhead, .vr { grid-template-columns: 6.6em minmax(0, 1fr); }
   .vr > div { padding: 4px 5px; }
   .vr .vd { font-size: 14px; }
-  .vr .vm { font-size: 13px; }
 }
 
 /* ===== 印刷: 利用者1名につきA4 1枚(カレンダーは横、縦表は縦) ===== */
@@ -322,23 +324,22 @@ tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); }
   .cell { min-height: 0; padding: .5mm 1mm; gap: .3mm; }
   .cell:hover { background: var(--surface); }
   .dn { min-height: 0; } .dn .num { font-size: 12pt; } .dn .hn { font-size: 6pt; }
-  .meals { font-size: 7.5pt; line-height: 1.2; }
-  .chip { font-size: 7pt; line-height: 1.15; padding: 0 1mm .1mm; border-left-width: 1.2mm; break-inside: avoid; }
-  .chip .tm, .chip .sn { font-size: 6.5pt; } .chip .sb { font-size: 6pt; }
-  .band { font-size: 7.5pt; line-height: 1.2; }
+  .chip { font-size: 8pt; line-height: 1.2; padding: 0 1mm .1mm; border-left-width: 1.2mm; break-inside: avoid; }
+  .chip .tm, .chip .sn { font-size: 7.5pt; } .chip .sb { font-size: 6.5pt; }
+  .band { font-size: 8pt; line-height: 1.25; }
   .cell.dense .chip { display: flex; flex-wrap: wrap; column-gap: 1mm; font-size: 6.5pt; }
   .cell.dense .chip .t, .cell.dense .chip .sn { display: inline; }
   .cell.dense .chip .tm, .cell.dense .chip .sn { font-size: 6pt; }
-  .cell.dense .meals, .cell.dense .band { font-size: 6.8pt; }
+  .cell.dense .band { font-size: 6.8pt; }
   .cell.denser .chip { font-size: 6pt; } .cell.denser .chip .tm, .cell.denser .chip .sn { font-size: 5.5pt; }
-  .cell.denser .meals, .cell.denser .band { font-size: 6.2pt; }
+  .cell.denser .band { font-size: 6.2pt; }
   .vwrap { flex: 1; margin: 1.5mm 0 0; display: flex; flex-direction: column; min-height: 0; }
   .vbody { flex: 1; display: grid; grid-template-rows: repeat(var(--days, 31), minmax(0, 1fr)); min-height: 0; }
   .vr { min-height: 0; overflow: hidden; cursor: auto; } .vr:hover { background: var(--surface); }
   .vr.sun, .vr.sun:hover { background: var(--sun-tint); } .vr.sat, .vr.sat:hover { background: var(--sat-tint); }
   .vr > div { padding: 0 1.5mm; }
   .vhead > div { font-size: 8pt; padding: 0; }
-  .vr .vd { font-size: 9pt; gap: 3px; } .vr .vd small { font-size: 6pt; } .vr .vm { font-size: 8.5pt; }
+  .vr .vd { font-size: 9pt; gap: 3px; } .vr .vd small { font-size: 6pt; }
   .vr .vev { gap: 0 2mm; }
   .ic { font-size: 8pt; line-height: 1.15; padding: 0 1.5mm; border-left-width: 1.2mm; gap: 1.5mm; }
   .ic .tm { font-size: 7.5pt; } .ic .sb, .ic .lk { font-size: 6.5pt; }
@@ -370,7 +371,6 @@ var KINDS = {
   back:  { label: '帰宅(緑の帯)', band: true },
   stay:  { label: '外泊・実家泊(桃色の帯)', band: true }
 };
-var MEAL_MODES = { none: '毎日なし', attend: '通所のある日だけあり', all: '毎日あり' };
 var STORE_KEY = 'olive-lifecal-proto-v2';
 var DATA_VER = 2;
 
@@ -470,11 +470,11 @@ function baseState() {
       { id: 'f3', name: 'ことり就労センター(就労A型)', closedWeekdays: [0, 6], closedOnHoliday: true,
         closedDates: [{ from: '2026-12-29', to: '2027-01-03', label: '年末年始休業' }] }
     ],
-    residents: [], rules: [], events: [], notes: {}, mealOv: {}
+    residents: [], rules: [], events: [], notes: {}
   };
 }
 function newResident(homeId, name) {
-  return { id: rid(), homeId: homeId, name: name, meals: { b: 'none', d: 'attend' }, legal: [] };
+  return { id: rid(), homeId: homeId, name: name, legal: [] };
 }
 function seed() {
   var st0 = baseState();
@@ -599,7 +599,7 @@ function applyPlan(events, res, y, m) {
     }
   });
   existing.forEach(function (e) {
-    if (e.origin === 'rule' && !keys[e.key]) { e.stale = true; c.stale++; }
+    if (e.origin === 'rule' && !keys[e.key] && !e.cancelled) { e.stale = true; c.stale++; }
   });
   return c;
 }
@@ -619,7 +619,7 @@ var ui = {
   modal: null,
   bulk: null, bulkY: shiftMonth(bm0.y, bm0.m, 1).y, bulkM: shiftMonth(bm0.y, bm0.m, 1).m, bulkHomes: null, bulkDry: false,
   pLayout: 'grid', pSel: null,
-  roster: null, rosterText: '', rosterReplace: true, confirmDelRes: null,
+  roster: null, rosterText: '', rosterReplace: true, confirmDelRes: null, editRes: null, editErr: '',
   confirmReset: false, confirmDel: null,
   toast: ''
 };
@@ -635,12 +635,37 @@ function curRes() {
   return r;
 }
 function bandOrder(e) { return KINDS[e.kind] && KINDS[e.kind].band ? 1 : 0; }
-function eventsOn(resId, date) {
+function eventsOnAll(resId, date) {
   return st.events.filter(function (e) { return e.residentId === resId && e.date === date; })
     .sort(function (a, b) {
       return (bandOrder(a) - bandOrder(b)) || (a.start || '00:00').localeCompare(b.start || '00:00');
     });
 }
+function eventsOn(resId, date) { return eventsOnAll(resId, date).filter(function (e) { return !e.cancelled; }); }
+function toMin(t) { var p = t.split(':'); return +p[0] * 60 + +p[1]; }
+/* 同じ日の予定で、時間が重なっているもの(帯は除く)。重複を見つけて知らせるだけで、勝手には直さない */
+function overlapsOn(resId, date) {
+  var evs = eventsOn(resId, date).filter(function (e) { return e.start && !KINDS[e.kind].band; }), out = [];
+  for (var i = 0; i < evs.length; i++) for (var j = i + 1; j < evs.length; j++) {
+    var a = evs[i], b = evs[j];
+    var as = toMin(a.start), ae = a.end ? toMin(a.end) : as + 1, bs = toMin(b.start), be = b.end ? toMin(b.end) : bs + 1;
+    if (as < be && bs < ae) out.push({ a: a, b: b, same: a.title === b.title && a.start === b.start });
+  }
+  return out;
+}
+function fmtAt(iso) { var d = new Date(iso); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function snapshot(e) { return { kind: e.kind, title: e.title, place: e.place, start: e.start, end: e.end, staff: !!e.staff, staffNote: e.staffNote }; }
+function evText(e) { return e.title + (e.start ? ' ' + fmtTime(e.start, e.end) : ''); }
+function diffText(a, b) {
+  var d = [];
+  if (a.title !== b.title) d.push('予定名 ' + a.title + ' → ' + b.title);
+  if (a.kind !== b.kind) d.push('種類 ' + KINDS[a.kind].label + ' → ' + KINDS[b.kind].label);
+  if (a.start !== b.start || a.end !== b.end) d.push('時間 ' + (fmtTime(a.start, a.end) || 'なし') + ' → ' + (fmtTime(b.start, b.end) || 'なし'));
+  if (a.place !== b.place) d.push('場所 ' + (a.place || 'なし') + ' → ' + (b.place || 'なし'));
+  if (!!a.staff !== !!b.staff || a.staffNote !== b.staffNote) d.push('職員対応 ' + (a.staff ? '要' + (a.staffNote ? '(' + a.staffNote + ')' : '') : 'なし') + ' → ' + (b.staff ? '要' + (b.staffNote ? '(' + b.staffNote + ')' : '') : 'なし'));
+  return d.join('、');
+}
+function logEv(e, what) { (e.history = e.history || []).push({ at: new Date().toISOString(), what: what }); }
 function legalOn(res, date) {
   return ui.showLegal ? res.legal.filter(function (l) { return l.date === date; }) : [];
 }
@@ -655,26 +680,6 @@ function ruleSummary(r) {
     ? r.nth.slice().sort(function (a, b) { return (a === -1 ? 9 : a) - (b === -1 ? 9 : b); }).map(function (n) { return n === -1 ? '最終' : '第' + n; }).join('・') + ' ' + (every ? '毎日' : days + '曜日')
     : (every ? '毎日' : '毎週 ' + days + '曜日');
   return when + (r.start ? '　' + fmtTime(r.start, r.end) : '');
-}
-
-/* ---- 食事(あり/なし) ----
-   利用者ごとの設定(毎日なし / 通所のある日だけあり / 毎日あり)から自動で決める。
-   日ごとの手直し(mealOv)があればそれを優先する。 */
-function mealsOf(res, date, evs) {
-  var ov = st.mealOv[res.id + '|' + date] || {};
-  var hasDay = evs.some(function (e) { return e.kind === 'day'; });
-  var hasStay = evs.some(function (e) { return e.kind === 'stay'; });
-  var auto = function (mode, isDinner) {
-    if (mode === 'all') return true;
-    if (mode === 'attend') return hasDay && !(isDinner && hasStay);
-    return false;
-  };
-  var meals = res.meals || { b: 'none', d: 'attend' };
-  return {
-    b: ov.b === 'yes' ? true : ov.b === 'no' ? false : auto(meals.b, false),
-    d: ov.d === 'yes' ? true : ov.d === 'no' ? false : auto(meals.d, true),
-    auto: { b: auto(meals.b, false), d: auto(meals.d, true) }
-  };
 }
 
 /* ---- 注意帯(赤)・連絡帯(黄): 前月の文面を引き継ぐ(Excelの前月コピーと同じ) ---- */
@@ -697,9 +702,12 @@ function setNote(res, field, y, m, value) {
 /* ============================================================
    描画: 月間表
    ============================================================ */
+function tagHtml(e) {
+  return e.origin === 'manual' ? '<span class="tag noprint">臨時</span>' : e.edited ? '<span class="tag noprint">変更</span>' : '';
+}
 function chipHtml(e) {
   var stale = e.stale ? ' stale' : '';
-  var lk = e.locked ? '<span class="lk" title="確定済み">[確定]</span>' : '';
+  var lk = (e.locked && !e.edited && e.origin !== 'manual' ? '<span class="lk noprint" title="確定済み">[確定]</span>' : '') + tagHtml(e);
   if (KINDS[e.kind].band) return '<div class="band k-' + e.kind + stale + '">' + esc(e.title) + lk + '</div>';
   var sb = e.staff ? '<span class="sb">職員</span>' : '';
   var tm = fmtTime(e.start, e.end);
@@ -709,7 +717,7 @@ function chipHtml(e) {
 }
 function inlineChipHtml(e) {
   var stale = e.stale ? ' stale' : '';
-  var lk = e.locked ? '<span class="lk">[確定]</span>' : '';
+  var lk = (e.locked && !e.edited && e.origin !== 'manual' ? '<span class="lk noprint">[確定]</span>' : '') + tagHtml(e);
   if (KINDS[e.kind].band) return '<span class="ic band k-' + e.kind + stale + '"><b>' + esc(e.title) + '</b>' + lk + '</span>';
   var tm = fmtTime(e.start, e.end);
   return '<span class="ic k-' + e.kind + stale + '"><b>' + esc(e.title) + '</b>' + (tm ? '<span class="tm">' + esc(tm) + '</span>' : '')
@@ -718,10 +726,6 @@ function inlineChipHtml(e) {
 }
 function legalChipHtml(l) { return '<div class="chip legal"><span class="t">' + esc(l.label) + '</span></div>'; }
 function legalInlineHtml(l) { return '<span class="ic legal"><b>' + esc(l.label) + '</b></span>'; }
-function mealHtml(mm) {
-  var v = function (on) { return '<span class="mv ' + (on ? 'yes' : 'no') + '">' + (on ? 'あり' : 'なし') + '</span>'; };
-  return '<div class="meals"><div class="meal"><span>朝食</span>' + v(mm.b) + '</div><div class="meal"><span>夕食</span>' + v(mm.d) + '</div></div>';
-}
 
 function sheetHtml(res, y, m, layout, opts) {
   opts = opts || {};
@@ -735,15 +739,14 @@ function sheetHtml(res, y, m, layout, opts) {
     + '<div class="en">' + EN_MONTH[m - 1] + '<br>' + reiwa(y) + '<br><span class="muted">' + esc(home.name) + '</span></div></div>';
   h += '<div class="banner top" data-role="note-top">' + esc(top) + '</div>';
   if (layout === 'list') {
-    h += '<div class="vwrap"><div class="vhead"><div>日付</div><div>朝食</div><div>夕食</div><div>予定・行き先</div></div><div class="vbody">';
+    h += '<div class="vwrap"><div class="vhead"><div>日付</div><div>予定・行き先</div></div><div class="vbody">';
     for (var d = 1; d <= days; d++) {
       var date = ymd(y, m, d), wd = wdOf(y, m, d);
-      var evs = eventsOn(res.id, date), lg = legalOn(res, date), mm = mealsOf(res, date, evs);
+      var evs = eventsOn(res.id, date), lg = legalOn(res, date);
       var items = evs.map(inlineChipHtml).concat(lg.map(legalInlineHtml));
+      var ovm = overlapsOn(res.id, date).length ? '<span class="ov noprint">重複</span>' : '';
       h += '<div class="vr ' + (wd === 0 ? 'sun' : wd === 6 ? 'sat' : '') + (items.length >= 4 ? ' dense' : '') + '"' + act(date) + '>'
-        + '<div class="vd ' + (hol[date] ? 'hol' : wd === 0 ? 'sun' : wd === 6 ? 'sat' : '') + '"><b>' + m + '/' + d + '</b>(' + WD[wd] + ')' + (hol[date] ? '<small>' + esc(hol[date]) + '</small>' : '') + '</div>'
-        + '<div class="vm ' + (mm.b ? 'yes' : 'no') + '">' + (mm.b ? 'あり' : 'なし') + '</div>'
-        + '<div class="vm ' + (mm.d ? 'yes' : 'no') + '">' + (mm.d ? 'あり' : 'なし') + '</div>'
+        + '<div class="vd ' + (hol[date] ? 'hol' : wd === 0 ? 'sun' : wd === 6 ? 'sat' : '') + '"><b>' + m + '/' + d + '</b>(' + WD[wd] + ')' + (hol[date] ? '<small>' + esc(hol[date]) + '</small>' : '') + ovm + '</div>'
         + '<div class="vev">' + (items.length ? items.join('') : '<span class="none">予定なし</span>') + '</div></div>';
     }
     h += '</div></div>';
@@ -754,14 +757,14 @@ function sheetHtml(res, y, m, layout, opts) {
       var dd = c - first + 1;
       if (dd < 1 || dd > days) { h += '<div class="cell out" aria-hidden="true"></div>'; continue; }
       var dt = ymd(y, m, dd), w2 = c % 7;
-      var ev2 = eventsOn(res.id, dt), lg2 = legalOn(res, dt), m2 = mealsOf(res, dt, ev2);
+      var ev2 = eventsOn(res.id, dt), lg2 = legalOn(res, dt);
       var n = ev2.length + lg2.length;
       var cc = 'cell' + (w2 === 0 ? ' sun' : w2 === 6 ? ' sat' : '') + (hol[dt] ? ' hol' : '')
         + (n >= 4 || (rows === 6 && n >= 3) ? ' dense' : '') + (n >= 5 || (rows === 6 && n >= 4) ? ' denser' : '');
       h += '<div class="' + cc + '"' + act(dt) + ' aria-label="' + esc(jpDate(dt) + (hol[dt] ? ' ' + hol[dt] : '') + ' 予定' + n + '件') + '">'
-        + '<div class="dn"><span class="num">' + dd + '</span>' + (hol[dt] ? '<span class="hn">' + esc(hol[dt]) + '</span>' : '') + '</div>'
+        + '<div class="dn"><span class="num">' + dd + '</span>' + (hol[dt] ? '<span class="hn">' + esc(hol[dt]) + '</span>' : '') + (overlapsOn(res.id, dt).length ? '<span class="ov noprint">重複</span>' : '') + '</div>'
         + '<div class="bot">' + ev2.filter(function (e) { return !KINDS[e.kind].band; }).map(chipHtml).join('') + lg2.map(legalChipHtml).join('')
-        + mealHtml(m2) + ev2.filter(function (e) { return KINDS[e.kind].band; }).map(chipHtml).join('') + '</div></div>';
+        + ev2.filter(function (e) { return KINDS[e.kind].band; }).map(chipHtml).join('') + '</div></div>';
     }
     h += '</div>';
   }
@@ -808,12 +811,19 @@ function calendarTab() {
     + '</div></div>';
   if (!res) return h + '<div class="card">このホームには利用者がいません。「名簿」で追加してください。</div>';
 
-  var evs = monthEvents(res.id, ui.y, ui.m);
+  var allEv = monthEvents(res.id, ui.y, ui.m);
+  var evs = allEv.filter(function (e) { return !e.cancelled; });
   var stale = evs.filter(function (e) { return e.stale; }).length;
-  var lockedN = evs.filter(function (e) { return e.locked; }).length;
+  var addedN = evs.filter(function (e) { return e.origin === 'manual'; }).length;
+  var editedN = evs.filter(function (e) { return e.edited; }).length;
+  var cancelledN = allEv.length - evs.length;
+  var ovDays = 0;
+  for (var od = 1; od <= dim(ui.y, ui.m); od++) if (overlapsOn(res.id, ymd(ui.y, ui.m, od)).length) ovDays++;
   if (!holidayOk(ui.y)) h += '<div class="note noprint">祝日の自動計算は' + HOL_MIN + '〜' + HOL_MAX + '年に対応しています。この年は祝日を反映できません。</div>';
   if (!evs.length) h += '<div class="note info noprint">' + ymLabel(ui.y, ui.m) + 'の予定はまだありません。「この月を自動配置」を押すと、固定予定から予定を並べます。</div>';
-  else h += '<div class="small muted noprint">' + ymLabel(ui.y, ui.m) + 'の予定 ' + evs.length + '件(確定済み ' + lockedN + '件)。日付を押すと詳細と食事の手直しができます。</div>';
+  else h += '<div class="small muted noprint">' + ymLabel(ui.y, ui.m) + 'の予定 ' + evs.length + '件。突発的な追加・変更・取消は、日付を押して行います。'
+    + (addedN || editedN || cancelledN ? '(臨時の追加 ' + addedN + '件・変更 ' + editedN + '件・取消 ' + cancelledN + '件)' : '') + '</div>';
+  if (ovDays) h += '<div class="note noprint">時間が重なっている予定が ' + ovDays + '日あります(日付の横の「重複」)。日付を押して確認してください。</div>';
   if (stale) h += '<div class="note noprint">固定予定や休業日の変更で、今の規則に合わなくなった予定が ' + stale + '件あります(赤い点線の枠)。自動では消していません。日付を開いて確認してください。</div>';
 
   var tn = getNote(res, 'top', ui.y, ui.m), fn = getNote(res, 'foot', ui.y, ui.m);
@@ -849,29 +859,62 @@ function printTab() {
   return h;
 }
 
+function evForm(f, err, isNew) {
+  return '<div class="addbox"><b>' + (isNew ? 'この日に予定を追加' : '予定を変更') + '</b>'
+    + '<div class="form-grid">'
+    + '<label class="f span-all"><span>予定の名前</span><input type="text" id="ef-title" maxlength="30" value="' + esc(f.title) + '" placeholder="例: 通院 / 実家泊 / 帰省"></label>'
+    + '<label class="f"><span>種類</span><select id="ef-kind">' + Object.keys(KINDS).map(function (k) { return '<option value="' + k + '"' + (f.kind === k ? ' selected' : '') + '>' + KINDS[k].label + '</option>'; }).join('') + '</select></label>'
+    + '<label class="f"><span>場所・行き先(任意)</span><input type="text" id="ef-place" maxlength="30" value="' + esc(f.place) + '"></label>'
+    + '<label class="f"><span>開始時刻(空欄なら時刻なし)</span><input type="time" id="ef-start" value="' + esc(f.start) + '"></label>'
+    + '<label class="f"><span>終了時刻</span><input type="time" id="ef-end" value="' + esc(f.end) + '"></label>'
+    + '<div class="span-all"><label class="chk"><input type="checkbox" id="ef-staff"' + (f.staff ? ' checked' : '') + '>職員の対応が必要</label></div>'
+    + '<label class="f span-all"><span>担当者名・条件(任意)</span><input type="text" id="ef-staffnote" maxlength="20" value="' + esc(f.staffNote) + '"></label>'
+    + '</div>' + (err ? '<div class="err" role="alert">' + esc(err) + '</div>' : '')
+    + '<div class="row"><button class="btn primary" data-action="ev-save">' + (isNew ? '追加する' : '変更を保存') + '</button><button class="btn" data-action="ev-form-cancel">やめる</button></div>'
+    + (isNew ? '<div class="small muted">追加した予定は、「自動配置」をやり直しても消えません。</div>' : '<div class="small muted">元の予定は記録に残り、あとで元に戻せます。</div>') + '</div>';
+}
+
 function dayModal(date) {
   var res = curRes(), p = date.split('-').map(Number), hol = holidays(p[0]);
-  var evs = eventsOn(res.id, date), lg = legalOn(res, date), mm = mealsOf(res, date, evs);
-  var ov = st.mealOv[res.id + '|' + date] || {};
+  var all = eventsOnAll(res.id, date), lg = legalOn(res, date);
   var skipped = plan(res, p[0], p[1]).skipped.filter(function (s) { return s.date === date; });
-  var opt = function (cur, auto) {
-    return '<option value=""' + (!cur ? ' selected' : '') + '>自動(' + (auto ? 'あり' : 'なし') + ')</option>'
-      + '<option value="yes"' + (cur === 'yes' ? ' selected' : '') + '>あり</option><option value="no"' + (cur === 'no' ? ' selected' : '') + '>なし</option>';
-  };
+  var ovs = overlapsOn(res.id, date);
   var h = '<div class="dlg-head"><div><h2>' + esc(jpDate(date)) + (hol[date] ? ' <span style="color:var(--sun)">' + esc(hol[date]) + '</span>' : '') + '</h2>'
     + '<div class="muted small">' + esc(res.name) + '</div></div><button class="btn small" data-action="close">閉じる</button></div>';
-  h += '<div><b class="small">食事</b><div class="form-grid" style="margin-top:4px">'
-    + '<label class="f"><span>朝食</span><select data-bind="meal-ov" data-date="' + date + '" data-m="b">' + opt(ov.b, mm.auto.b) + '</select></label>'
-    + '<label class="f"><span>夕食</span><select data-bind="meal-ov" data-date="' + date + '" data-m="d">' + opt(ov.d, mm.auto.d) + '</select></label></div></div>';
-  if (!evs.length && !lg.length) h += '<div class="muted">この日の予定はありません。</div>';
-  evs.forEach(function (e) {
+  if (ovs.length) {
+    h += '<div class="warnbox" role="alert"><b>確認してください</b><ul class="skip-list" style="color:inherit">' + ovs.map(function (o) {
+      return '<li>' + (o.same ? '同じ予定が二重に入っています: ' + esc(evText(o.a)) : '時間が重なっています: ' + esc(evText(o.a)) + ' と ' + esc(evText(o.b))) + '</li>';
+    }).join('') + '</ul><div class="small">どちらかを変更・取消してください。自動では直しません。</div></div>';
+  }
+  var ed = ui.modal.edit;
+  if (ed === 'new') h += evForm(ui.modal.form, ui.modal.err, true);
+  else if (!ed) h += '<div><button class="btn" data-action="ev-add">この日に予定を追加</button></div>';
+  if (!all.length && !lg.length) h += '<div class="muted">この日の予定はありません。</div>';
+  all.forEach(function (e) {
     var rule = st.rules.filter(function (r) { return r.id === e.ruleId; })[0];
-    h += '<div class="ev-row">' + chipHtml(e)
-      + '<div class="small muted">' + KINDS[e.kind].label + ' / 元になった固定予定: ' + (rule ? esc(ruleSummary(rule)) : '(削除されています)') + '</div>'
-      + (e.stale ? '<div class="err">今の固定予定・休業日には合わない予定です。確認して、不要なら取り除いてください。</div>' : '')
-      + '<div class="ev-acts"><button class="btn small" data-action="toggle-lock" data-id="' + e.id + '">' + (e.locked ? '確定を解除' : '確定にする') + '</button>'
-      + (e.stale && !e.locked ? '<button class="btn small danger" data-action="remove-stale" data-id="' + e.id + '">取り除く</button>' : '')
-      + '<span class="small muted">' + (e.locked ? '確定済み。再生成しても変更されません。' : '未確定。再生成のとき固定予定の変更が反映されます。') + '</span></div></div>';
+    var src = e.origin === 'manual' ? '臨時で追加した予定' : '元になった固定予定: ' + (rule ? esc(ruleSummary(rule)) : '(削除されています)');
+    h += '<div class="ev-row' + (e.cancelled ? ' cancelled' : '') + '">' + chipHtml(e)
+      + '<div class="small muted">' + KINDS[e.kind].label + ' / ' + src + (e.cancelled ? ' / <b>取り消し済み(月間表には出ません)</b>' : '') + '</div>'
+      + (e.edited && e.orig ? '<div class="orig">元の予定: ' + esc(evText(e.orig)) + '</div>' : '')
+      + (e.stale ? '<div class="err">今の固定予定・休業日には合わない予定です。確認して、不要なら取り消してください。</div>' : '');
+    if (ed === e.id) h += evForm(ui.modal.form, ui.modal.err, false);
+    else {
+      h += '<div class="ev-acts">';
+      if (e.cancelled) h += '<button class="btn small" data-action="ev-restore" data-id="' + e.id + '">取り消しを戻す</button>';
+      else {
+        h += '<button class="btn small" data-action="ev-edit" data-id="' + e.id + '">変更</button>'
+          + '<button class="btn small danger" data-action="ev-cancel" data-id="' + e.id + '">取消</button>';
+        if (e.edited) h += '<button class="btn small" data-action="ev-revert" data-id="' + e.id + '">元の内容に戻す</button>';
+        else if (e.origin === 'rule') h += '<button class="btn small" data-action="toggle-lock" data-id="' + e.id + '">' + (e.locked ? '確定を解除' : '確定にする') + '</button>';
+        if (e.stale && !e.locked) h += '<button class="btn small danger" data-action="remove-stale" data-id="' + e.id + '">取り除く</button>';
+      }
+      h += '</div><div class="small muted">' + (e.cancelled || e.edited || e.origin === 'manual' ? '手で直した予定です。自動配置をやり直しても動きません。'
+        : e.locked ? '確定済み。自動配置をやり直しても変更されません。' : '未確定。自動配置のとき固定予定の変更が反映されます。') + '</div>';
+    }
+    if (e.history && e.history.length) {
+      h += '<ul class="hist">' + e.history.slice(-5).map(function (x) { return '<li>' + esc(fmtAt(x.at)) + ' ' + esc(x.what) + '</li>'; }).join('') + '</ul>';
+    }
+    h += '</div>';
   });
   lg.forEach(function (l) {
     h += '<div class="ev-row">' + legalChipHtml(l) + '<div class="small muted">法定記録の予定です。計画書や記録の作成状況は、モニタリング管理側で別に管理します。</div></div>';
@@ -889,14 +932,6 @@ function rulesTab() {
     + '<button class="btn primary" style="align-self:end" data-action="rule-new">固定予定を追加</button></div></div>';
   if (!res) return h;
   var rs = st.rules.filter(function (r) { return r.residentId === res.id; });
-  var meals = res.meals || { b: 'none', d: 'attend' };
-  var modeSel = function (id, cur) {
-    return '<select data-bind="meal-mode" data-m="' + id + '">' + Object.keys(MEAL_MODES).map(function (k) { return '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + MEAL_MODES[k] + '</option>'; }).join('') + '</select>';
-  };
-  h += '<div class="card"><h2>' + esc(res.name) + ' の食事の基本設定</h2><div class="form-grid">'
-    + '<label class="f"><span>朝食</span>' + modeSel('b', meals.b) + '</label><label class="f"><span>夕食</span>' + modeSel('d', meals.d) + '</label></div>'
-    + '<p class="muted small" style="margin:8px 0 0">月間表の「朝食 あり/なし」「夕食 あり/なし」に使います。実家泊の日の夕食は自動でなしになります。日ごとの手直しは、カレンダーの日付を押して行います。</p></div>';
-
   h += '<div class="card"><h2>' + esc(res.name) + ' の固定予定(' + rs.length + '件)</h2>';
   h += '<p class="muted small" style="margin:0 0 10px">登録した曜日・時間・繰り返しが、月ごとの予定になります。変更は、次の「自動配置」から反映されます(確定済みの予定は動きません)。数日だけの予定(実家泊など)は、適用開始日と終了日を入れて登録します。</p>';
   if (!rs.length) h += '<div class="muted">まだ固定予定がありません。</div>';
@@ -917,7 +952,7 @@ function rulesTab() {
   h += '<div class="card"><h2>他の利用者の固定予定をコピーする</h2><div class="row">'
     + '<label class="f grow"><span>コピー元</span><select id="copy-from">' + others.map(function (r) { return '<option value="' + r.id + '">' + esc(homeOf(r.homeId).name.replace('ホーム', '')) + ' / ' + esc(r.name) + '</option>'; }).join('') + '</select></label>'
     + '<button class="btn" style="align-self:end" data-action="rules-copy"' + (others.length ? '' : ' disabled') + '>' + esc(res.name) + ' にコピー</button></div>'
-    + '<p class="muted small" style="margin:8px 0 0">固定予定と食事の基本設定をコピーします。いまの固定予定は消さず、後ろに追加します。</p></div>';
+    + '<p class="muted small" style="margin:8px 0 0">固定予定をコピーします。いまの固定予定は消さず、後ろに追加します。</p></div>';
   return h;
 }
 
@@ -1012,13 +1047,22 @@ function rosterTab() {
   h += '</div>';
 
   h += '<div class="card"><h2>いまの名簿(' + st.residents.length + '名)</h2>';
+  var er = ui.editRes ? resOf(ui.editRes) : null;
+  if (er) {
+    h += '<div class="addbox" style="margin-bottom:12px"><b>名簿の編集</b><div class="form-grid">'
+      + '<label class="f"><span>氏名</span><input type="text" id="edit-name" maxlength="20" value="' + esc(er.name) + '"></label>'
+      + '<label class="f"><span>ホーム</span><select id="edit-home">' + st.homes.map(function (x) { return '<option value="' + x.id + '"' + (x.id === er.homeId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select></label></div>'
+      + (ui.editErr ? '<div class="err" role="alert">' + esc(ui.editErr) + '</div>' : '')
+      + '<div class="row"><button class="btn primary" data-action="res-edit-save">保存</button><button class="btn" data-action="res-edit-cancel">やめる</button></div>'
+      + '<div class="small muted">固定予定・予定・文面は、そのまま引き継がれます。</div></div>';
+  }
   st.homes.forEach(function (home) {
     var rs = residentsOf(home.id);
     h += '<div style="margin-bottom:10px"><div class="small muted"><b>' + esc(home.name) + '(' + rs.length + '名)</b></div><div class="names">'
       + (rs.length ? rs.map(function (r) {
-          return '<span class="nm-chip">' + esc(r.name)
+          return '<span class="nm-chip' + (ui.editRes === r.id ? ' editing' : '') + '">' + esc(r.name)
             + (ui.confirmDelRes === r.id ? '<button data-action="res-del-yes" data-id="' + r.id + '">本当に削除</button><button style="color:var(--fg)" data-action="res-del-no">やめる</button>'
-                                         : '<button data-action="res-del" data-id="' + r.id + '" aria-label="' + esc(r.name) + 'を削除">削除</button>') + '</span>';
+                                         : '<button class="ed" data-action="res-edit" data-id="' + r.id + '" aria-label="' + esc(r.name) + 'を編集">編集</button><button data-action="res-del" data-id="' + r.id + '" aria-label="' + esc(r.name) + 'を削除">削除</button>') + '</span>';
         }).join('') : '<span class="muted small">いません</span>') + '</div></div>';
   });
   h += '<div class="row"><label class="f grow"><span>1人だけ追加: ホーム</span><select id="add-home">' + st.homes.map(function (x) { return '<option value="' + x.id + '">' + esc(x.name) + '</option>'; }).join('') + '</select></label>'
@@ -1128,7 +1172,7 @@ function changeResident(delta) {
   if (i >= list.length) i = 0;
   ui.residentId = list[i].id;
 }
-function reopenDay(date) { render(); ui.modal = { type: 'day', date: date }; renderModal(); }
+function reopenDay(date) { render(); ui.modal = { type: 'day', date: date, edit: null }; renderModal(); }
 
 document.addEventListener('click', function (ev) {
   var t = ev.target.closest('[data-action]');
@@ -1137,7 +1181,7 @@ document.addEventListener('click', function (ev) {
   if (a === 'scrim') { if (ev.target !== t) return; ui.modal = null; renderModal(); return; }
   var res = curRes();
   switch (a) {
-    case 'tab': ui.tab = t.getAttribute('data-tab'); ui.confirmDel = null; ui.confirmDelRes = null; render(); window.scrollTo(0, 0); break;
+    case 'tab': ui.tab = t.getAttribute('data-tab'); ui.confirmDel = null; ui.confirmDelRes = null; ui.editRes = null; render(); window.scrollTo(0, 0); break;
     case 'm-prev': case 'm-next': { var s = shiftMonth(ui.y, ui.m, a === 'm-prev' ? -1 : 1); ui.y = s.y; ui.m = s.m; render(); break; }
     case 'm-next-real': { var nm = nextMonthOfToday(); ui.y = nm.y; ui.m = nm.m; render(); break; }
     case 'b-prev': case 'b-next': { var s2 = shiftMonth(ui.bulkY, ui.bulkM, a === 'b-prev' ? -1 : 1); ui.bulkY = s2.y; ui.bulkM = s2.m; render(); break; }
@@ -1150,8 +1194,59 @@ document.addEventListener('click', function (ev) {
     case 'p-all': ui.pSel = null; render(); break;
     case 'p-none': ui.pSel = []; render(); break;
     case 'print': window.print(); break;
-    case 'day': ui.modal = { type: 'day', date: t.getAttribute('data-date') }; renderModal(); break;
+    case 'day': ui.modal = { type: 'day', date: t.getAttribute('data-date'), edit: null }; renderModal(); break;
     case 'close': ui.modal = null; renderModal(); break;
+    case 'ev-add': ui.modal.edit = 'new'; ui.modal.err = ''; ui.modal.form = { kind: 'other', title: '', place: '', start: '', end: '', staff: false, staffNote: '' }; renderModal(); break;
+    case 'ev-edit': {
+      var e1 = st.events.filter(function (x) { return x.id === t.getAttribute('data-id'); })[0];
+      if (e1) { ui.modal.edit = e1.id; ui.modal.err = ''; ui.modal.form = snapshot(e1); renderModal(); }
+      break;
+    }
+    case 'ev-form-cancel': ui.modal.edit = null; ui.modal.err = ''; renderModal(); break;
+    case 'ev-save': {
+      var g = function (id) { return document.getElementById(id); };
+      var f = { kind: g('ef-kind').value, title: g('ef-title').value.trim(), place: g('ef-place').value.trim(), start: g('ef-start').value, end: g('ef-end').value, staff: g('ef-staff').checked, staffNote: g('ef-staffnote').value.trim() };
+      var er0 = !f.title ? '予定の名前を入れてください。' : (f.end && !f.start) ? '終了時刻を入れる場合は、開始時刻も入れてください。' : (f.start && f.end && f.end <= f.start) ? '終了時刻は開始時刻より後にしてください。' : '';
+      if (er0) { ui.modal.form = f; ui.modal.err = er0; renderModal(); break; }
+      var dte = ui.modal.date;
+      if (ui.modal.edit === 'new') {
+        var nid = rid();
+        var ne = { id: nid, key: 'm|' + nid, residentId: res.id, date: dte, ruleId: '', origin: 'manual', locked: true, stale: false, cancelled: false, fp: '' };
+        for (var k in f) ne[k] = f[k];
+        logEv(ne, '臨時で追加: ' + evText(f)); st.events.push(ne);
+      } else {
+        var ex = st.events.filter(function (x) { return x.id === ui.modal.edit; })[0];
+        if (ex) {
+          var before = snapshot(ex), dtx = diffText(before, f);
+          if (dtx) {
+            if (ex.origin === 'rule' && !ex.orig) ex.orig = before;
+            for (var k2 in f) ex[k2] = f[k2];
+            if (ex.origin === 'rule') { ex.edited = true; ex.locked = true; }
+            logEv(ex, '変更: ' + dtx);
+          }
+        }
+      }
+      save(); render(); ui.modal = { type: 'day', date: dte, edit: null }; renderModal(); break;
+    }
+    case 'ev-cancel': {
+      var e2 = st.events.filter(function (x) { return x.id === t.getAttribute('data-id'); })[0];
+      if (e2) { e2.cancelled = true; e2.locked = true; e2.stale = false; logEv(e2, '取消'); save(); var d3 = ui.modal.date; render(); ui.modal = { type: 'day', date: d3, edit: null }; renderModal(); }
+      break;
+    }
+    case 'ev-restore': {
+      var e3 = st.events.filter(function (x) { return x.id === t.getAttribute('data-id'); })[0];
+      if (e3) { e3.cancelled = false; if (e3.origin === 'rule' && !e3.edited) e3.locked = false; logEv(e3, '取消を戻した'); save(); var d4 = ui.modal.date; render(); ui.modal = { type: 'day', date: d4, edit: null }; renderModal(); }
+      break;
+    }
+    case 'ev-revert': {
+      var e4 = st.events.filter(function (x) { return x.id === t.getAttribute('data-id'); })[0];
+      if (e4 && e4.orig) {
+        var cur4 = snapshot(e4); for (var k4 in e4.orig) e4[k4] = e4.orig[k4];
+        logEv(e4, '元の内容に戻した: ' + diffText(cur4, e4.orig)); e4.edited = false; e4.orig = null; e4.locked = false;
+        save(); var d5 = ui.modal.date; render(); ui.modal = { type: 'day', date: d5, edit: null }; renderModal();
+      }
+      break;
+    }
     case 'toggle-lock': {
       var e = st.events.filter(function (x) { return x.id === t.getAttribute('data-id'); })[0];
       if (e) { e.locked = !e.locked; save(); reopenDay(ui.modal.date); }
@@ -1212,8 +1307,7 @@ document.addEventListener('click', function (ev) {
       st.rules.filter(function (x) { return x.residentId === from.id; }).forEach(function (x) {
         var cp = JSON.parse(JSON.stringify(x)); cp.id = rid(); cp.residentId = res.id; st.rules.push(cp); n++;
       });
-      res.meals = JSON.parse(JSON.stringify(from.meals || { b: 'none', d: 'attend' }));
-      save(); render(); toast(n + '件の固定予定と食事の設定をコピーしました。'); break;
+      save(); render(); toast(n + '件の固定予定をコピーしました。'); break;
     }
     case 'closed-add': {
       var fid = t.getAttribute('data-fid'), f = facOf(fid);
@@ -1237,7 +1331,7 @@ document.addEventListener('click', function (ev) {
     case 'roster-apply': {
       if (!ui.roster || !ui.roster.rows.length) break;
       var rows = ui.roster.rows;
-      if (ui.rosterReplace) { st.residents = []; st.rules = []; st.events = []; st.notes = {}; st.mealOv = {}; }
+      if (ui.rosterReplace) { st.residents = []; st.rules = []; st.events = []; st.notes = {}; }
       st.sample = false;
       var added = 0;
       rows.forEach(function (x) {
@@ -1257,6 +1351,16 @@ document.addEventListener('click', function (ev) {
       if (st.residents.some(function (r) { return r.homeId === hid && r.name === nmv; })) { er2.textContent = '同じホームに同じ氏名がすでにいます。'; break; }
       st.residents.push(newResident(hid, nmv)); st.sample = false; save(); render(); toast('追加しました。'); break;
     }
+    case 'res-edit': ui.editRes = t.getAttribute('data-id'); ui.editErr = ''; ui.confirmDelRes = null; render(); { var bx = document.getElementById('edit-name'); if (bx) { bx.focus(); bx.scrollIntoView({ block: 'center' }); } } break;
+    case 'res-edit-cancel': ui.editRes = null; ui.editErr = ''; render(); break;
+    case 'res-edit-save': {
+      var er1 = resOf(ui.editRes);
+      var nn = document.getElementById('edit-name').value.trim().replace(/[\s　]+/g, ' '), nh = document.getElementById('edit-home').value;
+      if (!er1) { ui.editRes = null; render(); break; }
+      if (!nn) { ui.editErr = '氏名を入れてください。'; render(); break; }
+      if (st.residents.some(function (r) { return r.id !== er1.id && r.homeId === nh && r.name === nn; })) { ui.editErr = '同じホームに同じ氏名がすでにいます。'; render(); break; }
+      er1.name = nn; er1.homeId = nh; ui.editRes = null; ui.editErr = ''; save(); render(); toast('名簿を更新しました。'); break;
+    }
     case 'res-del': ui.confirmDelRes = t.getAttribute('data-id'); render(); break;
     case 'res-del-no': ui.confirmDelRes = null; render(); break;
     case 'res-del-yes': {
@@ -1264,7 +1368,7 @@ document.addEventListener('click', function (ev) {
       st.residents = st.residents.filter(function (r) { return r.id !== did; });
       st.rules = st.rules.filter(function (r) { return r.residentId !== did; });
       st.events = st.events.filter(function (r) { return r.residentId !== did; });
-      ui.confirmDelRes = null; ui.residentId = null; save(); render(); toast('削除しました。'); break;
+      ui.confirmDelRes = null; if (ui.editRes === did) ui.editRes = null; ui.residentId = null; save(); render(); toast('削除しました。'); break;
     }
     case 'backup-copy': {
       var json = JSON.stringify(st);
@@ -1328,17 +1432,6 @@ document.addEventListener('change', function (ev) {
       cur = cur.filter(function (x) { return x !== id; });
       if (t.checked) cur.push(id);
       ui.pSel = homeRes.filter(function (x) { return cur.indexOf(x) >= 0; }); render(); break;
-    }
-    case 'meal-mode': {
-      var res = curRes(); res.meals = res.meals || { b: 'none', d: 'attend' };
-      res.meals[t.getAttribute('data-m')] = t.value; save(); toast('食事の基本設定を保存しました。'); break;
-    }
-    case 'meal-ov': {
-      var res2 = curRes(), date = t.getAttribute('data-date'), key = res2.id + '|' + date, mk = t.getAttribute('data-m');
-      var o = st.mealOv[key] || {};
-      if (t.value) o[mk] = t.value; else delete o[mk];
-      if (o.b || o.d) st.mealOv[key] = o; else delete st.mealOv[key];
-      save(); reopenDay(date); break;
     }
     case 'roster-replace': ui.rosterReplace = t.checked; break;
   }
