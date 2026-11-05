@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>従業員名簿 | おりーぶ庵</title>
 <!--
-  従業員名簿アプリ（閲覧専用）
+  従業員名簿アプリ（名簿は閲覧のみ。資格書のPDFだけ保存できる）
 
   このファイルには名簿のデータを一切入れない。
   このリポジトリは公開されているため、データは Google スプレッドシート側に置き、
@@ -92,6 +92,34 @@ dl{margin:14px 0 0}
 .row dd{margin:0;white-space:pre-wrap;word-break:break-word}
 .row dd a{color:var(--green-d);font-weight:700}
 .row dd small{color:var(--sub)}
+
+/* 資格書 */
+.q-head{margin:20px 0 6px;font-size:15px;font-weight:700;color:var(--green-d)}
+.q-item{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.q-title{font-weight:700}
+.q-dates{color:var(--sub);font-size:13px;margin-top:2px}
+.q-badge{display:inline-block;margin-left:6px;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700}
+.q-badge.ng{background:var(--warn-l);color:var(--warn)}
+.q-badge.soon{background:#fff3e0;color:#b45309}
+.q-acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.q-btn{background:#fff;color:var(--green-d);border:1.5px solid var(--green);border-radius:8px;padding:7px 12px;font-size:14px;font-weight:700}
+.q-btn.pri{background:var(--green);color:#fff}
+.q-btn:disabled{opacity:.6}
+.q-none{color:var(--sub);font-size:14px;padding:4px 0 10px}
+.q-form{border:1.5px dashed var(--green);border-radius:10px;padding:12px;margin-top:10px}
+.q-form summary{cursor:pointer;font-weight:700;color:var(--green-d)}
+.q-form label{display:block;font-size:13px;font-weight:700;margin:10px 0 4px}
+.q-form input{width:100%;padding:10px;font-size:16px;border:1.5px solid var(--line);border-radius:8px;background:#fff}
+.q-msg{margin-top:8px;font-size:14px;min-height:20px}
+.q-msg.err{color:var(--warn)} .q-msg.ok{color:var(--green-d)}
+.q-note{margin-top:6px;font-size:12px;color:var(--sub)}
+#pdfBg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:30;display:flex;align-items:center;justify-content:center;padding:0}
+#pdfBox{background:#fff;width:100%;height:100%;max-width:900px;display:flex;flex-direction:column}
+@media(min-width:700px){#pdfBg{padding:20px}#pdfBox{border-radius:12px;overflow:hidden}}
+.pdf-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.pdf-bar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdf-bar a{color:var(--green-d);font-weight:700;font-size:14px;white-space:nowrap}
+#pdfFrame{flex:1;width:100%;border:0}
 </style>
 </head>
 <body>
@@ -133,6 +161,11 @@ dl{margin:14px 0 0}
   <div id="list"></div>
 </section>
 
+<div id="pdfBg" class="hidden"><div id="pdfBox">
+  <div class="pdf-bar"><b id="pdfTitle"></b><a id="pdfOpen" target="_blank" rel="noopener">Googleドライブで開く</a><button class="x" id="pdfClose" type="button" aria-label="閉じる">×</button></div>
+  <iframe id="pdfFrame" title="資格書のプレビュー"></iframe>
+</div></div>
+
 <div id="sheetBg" class="hidden"><div id="sheet" role="dialog" aria-modal="true"></div></div>
 
 <script>
@@ -151,7 +184,7 @@ const store = {
   del(k){ try{ sessionStorage.removeItem(k); }catch(e){} }
 };
 
-let DATA = { active: [], left: [] };
+let DATA = { active: [], left: [], quals: [] };
 let tab = "active";
 let demo = false;
 
@@ -185,7 +218,11 @@ function wareki(s){
 function showMaybeDate(s){ return parseDate(s) ? wareki(s) : (s || ""); }
 
 /* ---------- GAS から受け取る（JSONP） ---------- */
-function fetchRoster(pass){
+function pickData(res){
+  return { active: res.active || [], left: res.left || [], quals: res.quals || [] };
+}
+// GAS へ問い合わせる（JSONP）。params の action と pass はここで付ける
+function fetchGas(params){
   return new Promise((resolve, reject) => {
     const cb = "rosterCb_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
     const script = document.createElement("script");
@@ -197,10 +234,12 @@ function fetchRoster(pass){
     const timer = setTimeout(() => finish(reject, new Error("時間内に届きませんでした。通信を確認してもう一度お試しください。")), TIMEOUT_MS);
     window[cb] = (res) => finish(resolve, res);
     script.onerror = () => finish(reject, new Error("名簿を受け取れませんでした。GASのURLと公開設定を確認してください。"));
-    script.src = GAS_URL + "?action=roster&callback=" + cb + "&pass=" + encodeURIComponent(pass) + "&_=" + Date.now();
+    const qs = Object.keys(params).map((k) => k + "=" + encodeURIComponent(params[k])).join("&");
+    script.src = GAS_URL + "?" + qs + "&callback=" + cb + "&_=" + Date.now();
     document.head.appendChild(script);
   });
 }
+function fetchRoster(pass){ return fetchGas({ action: "roster", pass: pass }); }
 
 async function openRoster(pass, silent){
   const btn = $("loginBtn");
@@ -210,7 +249,7 @@ async function openRoster(pass, silent){
       throw new Error("名簿用GASのURLが未設定です。設定するまでは「サンプルデータで試す」だけ使えます。");
     const res = await fetchRoster(pass);
     if (!res || !res.ok) throw new Error((res && res.error) || "合言葉が違います。");
-    DATA = { active: res.active || [], left: res.left || [] };
+    DATA = pickData(res);
     demo = false;
     store.set(PASS_KEY, pass);
     showApp();
@@ -232,7 +271,7 @@ function showLogin(){
   $("app").classList.add("hidden"); $("login").classList.remove("hidden");
   $("pass").value = ""; closeSheet();
 }
-function logout(){ store.del(PASS_KEY); DATA = { active: [], left: [] }; demo = false; showLogin(); }
+function logout(){ store.del(PASS_KEY); DATA = { active: [], left: [], quals: [] }; demo = false; showLogin(); }
 
 /* ---------- 一覧 ---------- */
 function uniq(list, key){
@@ -347,10 +386,160 @@ function openSheet(p){
   addRow(dl, "ダブルワーク有無", p.dw);
   s.appendChild(dl);
 
+  const qbox = el("div"); s.appendChild(qbox);
+  renderQuals(qbox, p);
+
   $("sheetBg").classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
-function closeSheet(){ $("sheetBg").classList.add("hidden"); document.body.style.overflow = ""; }
+function closeSheet(){ closePdf(); $("sheetBg").classList.add("hidden"); document.body.style.overflow = ""; }
+
+/* ---------- 資格書（PDFの保存とプレビュー） ---------- */
+const PDF_MAX_BYTES = 10 * 1024 * 1024;   // GAS側の上限（base64で約14MB）に収まる大きさ
+const QUAL_NAMES = ["介護福祉士", "実務者研修", "初任者研修", "ヘルパー２級", "看護師", "強度行動障害養成研修（基礎）", "強度行動障害養成研修（実践）", "重度訪問介護従事者養成研修", "同行援護従業者養成研修", "行動援護従業者養成研修"];
+
+function nameKey(s){ return String(s || "").replace(/[\s　]+/g, ""); }
+function qualsOf(p){
+  return (DATA.quals || []).filter((q) => nameKey(q.name) === nameKey(p.name))
+    .sort((a, b) => String(b.acquired || "").localeCompare(String(a.acquired || "")));
+}
+function daysLeft(ymd){
+  const d = parseDate(ymd); if (!d) return null;
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  return Math.round((d - t) / 86400000);
+}
+function driveId(url){
+  const m = /^https:\/\/drive\.google\.com\/file\/d\/([\w-]+)/.exec(String(url || ""));
+  return m ? m[1] : "";
+}
+function setMsg(box, text, kind){ box.textContent = text || ""; box.className = "q-msg" + (kind ? " " + kind : ""); }
+
+function renderQuals(box, p, notice){
+  box.innerHTML = "";
+  box.appendChild(el("div", "q-head", "資格書"));
+  if (notice){ const n = el("div", "q-msg ok", notice); box.appendChild(n); }
+  const list = qualsOf(p);
+  if (!list.length) box.appendChild(el("div", "q-none", "登録された資格書はありません"));
+  list.forEach((q) => {
+    const item = el("div", "q-item");
+    const title = el("div", "q-title", q.title);
+    const left = daysLeft(q.renew);
+    if (left != null && left < 0) title.appendChild(el("span", "q-badge ng", "更新期限が過ぎています"));
+    else if (left != null && left <= 60) title.appendChild(el("span", "q-badge soon", "更新まであと" + left + "日"));
+    item.appendChild(title);
+    const dates = [q.acquired ? "取得 " + wareki(q.acquired) : "", q.renew ? "更新 " + wareki(q.renew) : ""].filter(Boolean).join("　／　");
+    if (dates) item.appendChild(el("div", "q-dates", dates));
+    const acts = el("div", "q-acts");
+    if (driveId(q.pdf)){
+      const v = el("button", "q-btn pri", "PDFを見る"); v.type = "button";
+      v.addEventListener("click", () => openPdf(q));
+      acts.appendChild(v);
+    }
+    const r = el("button", "q-btn", "更新日を変更"); r.type = "button";
+    r.addEventListener("click", () => changeRenew(q, p, box, r));
+    acts.appendChild(r);
+    item.appendChild(acts);
+    box.appendChild(item);
+  });
+  box.appendChild(qualForm(p, box));
+  box.appendChild(el("div", "q-note", "PDFは、保存先のフォルダを共有しているGoogleアカウントでログインしていると見られます。"));
+}
+
+function qualForm(p, box){
+  const f = el("details", "q-form");
+  f.appendChild(el("summary", "", "＋ 資格を追加"));
+  const dl = el("datalist"); dl.id = "qualNames";
+  QUAL_NAMES.forEach((n) => dl.appendChild(new Option(n)));
+  f.appendChild(dl);
+  const field = (label, type, attrs) => {
+    f.appendChild(el("label", "", label));
+    const i = el("input"); i.type = type; Object.keys(attrs || {}).forEach((k) => i.setAttribute(k, attrs[k]));
+    f.appendChild(i); return i;
+  };
+  const title = field("資格名（必須）", "text", { list: "qualNames", maxlength: "100", placeholder: "例：介護福祉士" });
+  const acq = field("取得年月日", "date");
+  const ren = field("更新日（更新のある資格だけ）", "date");
+  const pdf = field("資格書のPDF", "file", { accept: "application/pdf,.pdf" });
+  const save = el("button", "q-btn pri", "保存する"); save.type = "button"; save.style.marginTop = "12px"; save.style.width = "100%";
+  const msg = el("div", "q-msg"); msg.setAttribute("role", "alert");
+  f.appendChild(save); f.appendChild(msg);
+
+  save.addEventListener("click", async () => {
+    const t = title.value.trim();
+    const file = pdf.files[0];
+    if (!t) return setMsg(msg, "資格名を入れてください。", "err");
+    if (file && file.size > PDF_MAX_BYTES) return setMsg(msg, "PDFが大きすぎます（10MBまで）。", "err");
+    if (file && !/\.pdf$/i.test(file.name) && file.type !== "application/pdf") return setMsg(msg, "PDFファイルを選んでください。", "err");
+    save.disabled = true; setMsg(msg, file ? "保存しています…（PDFが大きいと少し時間がかかります）" : "保存しています…");
+    try{
+      const body = { action: "qualAdd", pass: store.get(PASS_KEY) || "", name: p.name, no: p.no || "", title: t, acquired: acq.value, renew: ren.value };
+      if (demo){
+        DATA.quals.push({ row: 0, name: p.name, no: p.no || "", title: t, acquired: acq.value, renew: ren.value, pdf: "" });
+      } else {
+        if (file) body.pdf = await fileToBase64(file);
+        await postQual(body, p);
+      }
+      renderQuals(box, p, demo ? "追加しました（サンプルのため、PDFは保存されません）。" : "保存しました。");
+    }catch(e){
+      setMsg(msg, e.message, "err");
+    }finally{
+      save.disabled = false;
+    }
+  });
+  return f;
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1] || "");
+    r.onerror = () => reject(new Error("PDFを読み込めませんでした。"));
+    r.readAsDataURL(file);
+  });
+}
+
+// 資格の追加を GAS へ送る。結果が読めないときは、名簿を読み直して、増えたかで確かめる
+async function postQual(body, p){
+  const before = qualsOf(p).length;
+  let result = null;
+  try{
+    const res = await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+    result = await res.json();
+  }catch(e){ result = null; }
+  if (result && !result.ok) throw new Error(result.error || "保存できませんでした。");
+  const fresh = await fetchRoster(store.get(PASS_KEY) || "");
+  if (!fresh || !fresh.ok) throw new Error("保存後の名簿を読み込めませんでした。右上の「更新」を押してください。");
+  DATA = pickData(fresh);
+  if (!result && qualsOf(p).length <= before) throw new Error("保存できたか確認できませんでした。右上の「更新」を押して確かめてください。");
+}
+
+async function changeRenew(q, p, box, btn){
+  const cur = q.renew || "";
+  const v = prompt("更新日を入れてください（例 2027-04-01）。空にすると消えます。", cur);
+  if (v == null) return;
+  const t = v.trim();
+  if (t && !parseDate(t)) return alert("日付は 2027-04-01 の形で入れてください。");
+  btn.disabled = true;
+  try{
+    if (demo){ q.renew = t; }
+    else {
+      const res = await fetchGas({ action: "qualRenew", pass: store.get(PASS_KEY) || "", name: q.name, row: q.row, date: t });
+      if (!res || !res.ok) throw new Error((res && res.error) || "変更できませんでした。");
+      const fresh = await fetchRoster(store.get(PASS_KEY) || "");
+      if (fresh && fresh.ok) DATA = pickData(fresh); else q.renew = t;
+    }
+    renderQuals(box, p);
+  }catch(e){ alert(e.message); btn.disabled = false; }
+}
+
+function openPdf(q){
+  const id = driveId(q.pdf); if (!id) return;
+  $("pdfTitle").textContent = q.name + "　" + q.title;
+  $("pdfOpen").href = q.pdf;
+  $("pdfFrame").src = "https://drive.google.com/file/d/" + id + "/preview";
+  $("pdfBg").classList.remove("hidden");
+}
+function closePdf(){ $("pdfBg").classList.add("hidden"); $("pdfFrame").src = "about:blank"; }
 
 /* ---------- サンプル（架空の人物。実在の人とは関係ありません） ---------- */
 function sampleData(){
@@ -362,6 +551,10 @@ function sampleData(){
       { no:"002", name:"鈴木　花子", kana:"スズキ　ハナコ", sex:"女性", birth:ymd(1982,11,20), role:"世話人", group:"ボノボ", type:"非常勤", site:"九条", zip:"550-0001", addr:"大阪市西区○○4-5-6", mobile:"090-0000-0002", tel:"06-0000-0002", mail:"sample2@example.com", joined:ymd(y-2,6,1), kenpo:"", resume:"初任者研修", line:"資格なし", dw:"〇" },
       { no:"003", name:"佐藤　次郎", kana:"サトウ　ジロウ", sex:"男性", birth:ymd(1995,8,30), role:"夜勤", group:"", type:"非常勤", site:"酉島", zip:"554-0001", addr:"大阪市此花区○○7-8-9", mobile:"090-0000-0003", tel:"", mail:"", joined:ymd(y-1,4,15), kenpo:"2018/3/1→2025/6/19喪失", resume:"", line:"ほかなし", dw:"" },
       { no:"004", name:"高橋　美咲", kana:"タカハシ　ミサキ", sex:"女性", birth:ymd(1990,1,15), role:"準夜勤", group:"", type:"非常勤", site:"西九条", zip:"554-0002", addr:"大阪市此花区○○1-1-1", mobile:"090-0000-0004", tel:"", mail:"sample4@example.com", joined:ymd(y,1,6), kenpo:"", resume:"ヘルパー２級", line:"", dw:"" }
+    ],
+    quals: [
+      { row:2, name:"山田　太郎", no:"001", title:"介護福祉士", acquired:ymd(2012,3,25), renew:"", pdf:"" },
+      { row:3, name:"山田　太郎", no:"001", title:"普通救命講習", acquired:ymd(y-2,5,10), renew:ymd(y,12,1), pdf:"" }
     ],
     left: [
       { no:"101", name:"伊藤　健", kana:"", sex:"男性", birth:ymd(1975,7,23), role:"日中支援員", type:"非常勤", zip:"769-0206", addr:"香川県○○町1-1", mobile:"090-0000-0101", tel:"", joined:ymd(2016,4,1), left:ymd(y-1,3,31) }
@@ -379,14 +572,19 @@ $("reloadBtn").addEventListener("click", async () => {
   try{
     const res = await fetchRoster(store.get(PASS_KEY) || "");
     if (!res || !res.ok) throw new Error((res && res.error) || "合言葉が違います。");
-    DATA = { active: res.active || [], left: res.left || [] }; fillFilters(); render();
+    DATA = pickData(res); fillFilters(); render();
   }catch(e){ alert(e.message); }
   finally{ b.disabled = false; b.textContent = "更新"; }
 });
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; render(); }));
 ["q", "fSite", "fType"].forEach((id) => $(id).addEventListener("input", render));
 $("sheetBg").addEventListener("click", (e) => { if (e.target === $("sheetBg")) closeSheet(); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
+$("pdfClose").addEventListener("click", closePdf);
+$("pdfBg").addEventListener("click", (e) => { if (e.target === $("pdfBg")) closePdf(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!$("pdfBg").classList.contains("hidden")) closePdf(); else closeSheet();
+});
 
 // 同じタブで開き直したときは合言葉を覚えているので、そのまま開く
 const savedPass = store.get(PASS_KEY);
