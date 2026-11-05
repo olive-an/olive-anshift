@@ -1,0 +1,18 @@
+{
+  "name": "従業員名簿｜おりーぶ庵",
+  "short_name": "従業員名簿",
+  "description": "おりーぶ庵株式会社の従業員名簿（管理者用・閲覧専用）です。",
+  "start_url": "./roster.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#2e7d32",
+  "lang": "ja",
+  "dir": "ltr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
