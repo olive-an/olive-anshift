@@ -630,10 +630,11 @@ var ui = {
   modal: null,
   bulk: null, bulkY: shiftMonth(bm0.y, bm0.m, 1).y, bulkM: shiftMonth(bm0.y, bm0.m, 1).m, bulkHomes: null, bulkDry: false,
   pLayout: 'grid', pSel: null, a4: !isNarrow,
-  roster: null, rosterText: '', rosterReplace: true, confirmDelRes: null, editRes: null, editErr: '',
+  roster: null, rosterText: '', rosterReplace: true, confirmDelRes: null, editRes: null, editErr: '', editFac: null, facErr: '', confirmDelFac: null,
   confirmReset: false, confirmDel: null,
   toast: ''
 };
+var STORAGE_OK = (function () { try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); return true; } catch (e) { return false; } })();
 var IS_TOP = (function () { try { return window.top === window.self; } catch (e) { return false; } })();
 
 function residentsOf(homeId) { return st.residents.filter(function (r) { return r.homeId === homeId; }); }
@@ -985,9 +986,23 @@ function rulesTab() {
 }
 
 function facilitiesTab() {
-  var h = '<div class="note info">通所先ごとの休みを登録すると、自動配置のときに通所予定を作りません。以下は架空の設定です。実際の休業日は各事業所の案内で確認して入力してください。</div>';
+  var h = '<div class="note info">通所先ごとの休みを登録すると、自動配置のときに通所予定を作りません。' + (st.sample ? '以下は架空の設定です。' : '') + '実際の休業日は各事業所の案内で確認して入力してください。</div>';
+  h += '<div class="card"><h2>通所先を追加</h2><div class="row"><label class="f grow"><span>通所先の名前</span><input type="text" id="fac-new-name" maxlength="30" placeholder="例: 港育成園"></label>'
+    + '<button class="btn primary" style="align-self:end" data-action="fac-add">追加</button></div><div class="err" id="fac-add-err">' + esc(ui.facErr) + '</div>'
+    + '<p class="muted small" style="margin:6px 0 0">追加すると、休みの曜日は土・日・祝日が休みで始まります。実際に合わせて直してください。</p></div>';
+  if (!st.facilities.length) h += '<div class="card muted">通所先がまだありません。上で追加してください。</div>';
   st.facilities.forEach(function (f) {
-    h += '<div class="card fac"><h2>' + esc(f.name) + '</h2>'
+    var head;
+    if (ui.editFac === f.id) {
+      head = '<div class="row"><label class="f grow"><span>通所先の名前</span><input type="text" id="fac-edit-name" maxlength="30" value="' + esc(f.name) + '"></label>'
+        + '<button class="btn primary" style="align-self:end" data-action="fac-edit-save">保存</button><button class="btn" style="align-self:end" data-action="fac-edit-cancel">やめる</button></div>'
+        + (ui.facErr ? '<div class="err">' + esc(ui.facErr) + '</div>' : '');
+    } else {
+      head = '<div class="row"><h2 style="flex:1;margin:0">' + esc(f.name) + '</h2><button class="btn small" data-action="fac-edit" data-fid="' + f.id + '">名前を変更</button>'
+        + (ui.confirmDelFac === f.id ? '<button class="btn small danger" data-action="fac-del-yes" data-fid="' + f.id + '">本当に削除</button><button class="btn small" data-action="fac-del-no">やめる</button>'
+                                      : '<button class="btn small danger" data-action="fac-del" data-fid="' + f.id + '">削除</button>') + '</div>';
+    }
+    h += '<div class="card fac">' + head
       + '<div><div class="small muted"><b>休みの曜日</b></div><div class="wdchecks">'
       + WD.map(function (w, i) { return '<label class="chk"><input type="checkbox" data-bind="fac-wd" data-fid="' + f.id + '" data-wd="' + i + '"' + (f.closedWeekdays.indexOf(i) >= 0 ? ' checked' : '') + '>' + w + '</label>'; }).join('')
       + '<label class="chk"><input type="checkbox" data-bind="fac-hol" data-fid="' + f.id + '"' + (f.closedOnHoliday ? ' checked' : '') + '>祝日は休み</label></div></div>'
@@ -1060,7 +1075,7 @@ function rosterTab() {
   h += '<div class="card"><h2>名簿を表から貼り付けて取り込む</h2>'
     + '<p class="muted small" style="margin:0 0 8px">Excelの名簿表から「ホーム」と「氏名」の列を選んでコピーし、下に貼り付けてください。結合セルでホーム名が最初の行にしかなくても、そのホームの続きとして読み取ります。</p>'
     + '<textarea id="roster-text" rows="6" placeholder="例(タブ区切りでそのまま貼り付け)\n西九条\t氏名1\n\t氏名2\n九条\t氏名3">' + esc(ui.rosterText || '') + '</textarea>'
-    + '<div class="row" style="margin-top:8px"><label class="chk"><input type="checkbox" data-bind="roster-replace"' + (ui.rosterReplace ? ' checked' : '') + '>いまの利用者(サンプル含む)とその固定予定・予定をすべて消して、置き換える</label>'
+    + '<div class="row" style="margin-top:8px"><label class="chk"><input type="checkbox" data-bind="roster-replace"' + (ui.rosterReplace ? ' checked' : '') + '>いまの利用者(サンプル含む)とその固定予定・予定をすべて消して、置き換える(サンプルの通所先も消えます)</label>'
     + '<span style="flex:1"></span><button class="btn" data-action="roster-check">内容を確認</button></div>';
   if (ui.roster) {
     var r = ui.roster, by = {};
@@ -1113,7 +1128,8 @@ function render() {
     + '<nav class="tabs noprint" role="tablist" aria-label="画面の切り替え">'
     + [['cal', '月間カレンダー'], ['print', '印刷'], ['rules', '固定予定'], ['fac', '通所先・休業日'], ['bulk', '一括生成'], ['roster', '名簿']].map(function (t) {
         return '<button class="tab" role="tab" aria-selected="' + (ui.tab === t[0]) + '" data-action="tab" data-tab="' + t[0] + '">' + t[1] + '</button>';
-      }).join('') + '</nav>';
+      }).join('') + '</nav>'
+    + (STORAGE_OK ? '' : '<div class="note noprint">このブラウザでは、入力した内容を保存できません(プライベートウィンドウなど)。閉じると消えます。通常のウィンドウで開き直してください。</div>');
   h += ui.tab === 'cal' ? calendarTab() : ui.tab === 'print' ? printTab() : ui.tab === 'rules' ? rulesTab() : ui.tab === 'fac' ? facilitiesTab() : ui.tab === 'bulk' ? bulkTab() : rosterTab();
   document.getElementById('app').innerHTML = h;
   var lay = ui.tab === 'print' ? ui.pLayout : ui.view;
@@ -1211,7 +1227,7 @@ document.addEventListener('click', function (ev) {
   if (a === 'scrim') { if (ev.target !== t) return; ui.modal = null; renderModal(); return; }
   var res = curRes();
   switch (a) {
-    case 'tab': ui.tab = t.getAttribute('data-tab'); ui.confirmDel = null; ui.confirmDelRes = null; ui.editRes = null; render(); window.scrollTo(0, 0); break;
+    case 'tab': ui.tab = t.getAttribute('data-tab'); ui.confirmDel = null; ui.confirmDelRes = null; ui.editRes = null; ui.editFac = null; ui.facErr = ''; ui.confirmDelFac = null; render(); window.scrollTo(0, 0); break;
     case 'm-prev': case 'm-next': { var s = shiftMonth(ui.y, ui.m, a === 'm-prev' ? -1 : 1); ui.y = s.y; ui.m = s.m; render(); break; }
     case 'm-next-real': { var nm = nextMonthOfToday(); ui.y = nm.y; ui.m = nm.m; render(); break; }
     case 'b-prev': case 'b-next': { var s2 = shiftMonth(ui.bulkY, ui.bulkM, a === 'b-prev' ? -1 : 1); ui.bulkY = s2.y; ui.bulkM = s2.m; render(); break; }
@@ -1366,7 +1382,7 @@ document.addEventListener('click', function (ev) {
     case 'roster-apply': {
       if (!ui.roster || !ui.roster.rows.length) break;
       var rows = ui.roster.rows;
-      if (ui.rosterReplace) { st.residents = []; st.rules = []; st.events = []; st.notes = {}; st.fontOv = {}; }
+      if (ui.rosterReplace) { if (st.sample) st.facilities = []; st.residents = []; st.rules = []; st.events = []; st.notes = {}; st.fontOv = {}; }
       st.sample = false;
       var added = 0;
       rows.forEach(function (x) {
@@ -1385,6 +1401,30 @@ document.addEventListener('click', function (ev) {
       var hid = document.getElementById('add-home').value;
       if (st.residents.some(function (r) { return r.homeId === hid && r.name === nmv; })) { er2.textContent = '同じホームに同じ氏名がすでにいます。'; break; }
       st.residents.push(newResident(hid, nmv)); st.sample = false; save(); render(); toast('追加しました。'); break;
+    }
+    case 'fac-add': {
+      var fn = document.getElementById('fac-new-name').value.trim();
+      if (!fn) { ui.facErr = '通所先の名前を入れてください。'; render(); break; }
+      if (st.facilities.some(function (f) { return f.name === fn; })) { ui.facErr = '同じ名前の通所先がすでにあります。'; render(); break; }
+      ui.facErr = ''; st.facilities.push({ id: rid(), name: fn, closedWeekdays: [0, 6], closedOnHoliday: true, closedDates: [] });
+      save(); render(); toast('通所先を追加しました。休みの曜日を確認してください。'); break;
+    }
+    case 'fac-edit': ui.editFac = t.getAttribute('data-fid'); ui.facErr = ''; ui.confirmDelFac = null; render(); break;
+    case 'fac-edit-cancel': ui.editFac = null; ui.facErr = ''; render(); break;
+    case 'fac-edit-save': {
+      var ef = facOf(ui.editFac), en = document.getElementById('fac-edit-name').value.trim();
+      if (!ef) { ui.editFac = null; render(); break; }
+      if (!en) { ui.facErr = '通所先の名前を入れてください。'; render(); break; }
+      if (st.facilities.some(function (f) { return f.id !== ef.id && f.name === en; })) { ui.facErr = '同じ名前の通所先がすでにあります。'; render(); break; }
+      ef.name = en; ui.editFac = null; ui.facErr = ''; save(); render(); toast('名前を変更しました。'); break;
+    }
+    case 'fac-del': ui.confirmDelFac = t.getAttribute('data-fid'); render(); break;
+    case 'fac-del-no': ui.confirmDelFac = null; render(); break;
+    case 'fac-del-yes': {
+      var dfid = t.getAttribute('data-fid');
+      st.facilities = st.facilities.filter(function (f) { return f.id !== dfid; });
+      st.rules.forEach(function (r) { if (r.facilityId === dfid) r.facilityId = ''; });
+      ui.confirmDelFac = null; save(); render(); toast('通所先を削除しました。使っていた固定予定は、通所先なしの予定になります。'); break;
     }
     case 'res-edit': ui.editRes = t.getAttribute('data-id'); ui.editErr = ''; ui.confirmDelRes = null; render(); { var bx = document.getElementById('edit-name'); if (bx) { bx.focus(); bx.scrollIntoView({ block: 'center' }); } } break;
     case 'res-edit-cancel': ui.editRes = null; ui.editErr = ''; render(); break;
