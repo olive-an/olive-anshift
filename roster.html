@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="app-ver" content="2026-11-09f">
+<meta name="app-ver" content="2026-11-09g">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
@@ -494,10 +494,9 @@ function siteForm(dd, p){
       else {
         const res = await fetchGas({ action: "setsite", pass: store.get(PASS_KEY) || "", name: p.name, row: p.row, sites: sites.join(",") });
         if (!res || !res.ok) throw new Error((res && res.error) || "変更できませんでした。");
-        await reloadData();
-        const fresh = DATA.active.find((x) => x.row === p.row && nameKey(x.name) === nameKey(p.name));
-        if (fresh) { Object.assign(p, fresh); renderSite(dd, p); }
-        else { closeSheet(); }
+        // 保存できたら、すぐ画面に反映する。名簿全体の読み直しは、待たずに裏で行う（待つと数秒かかるため）
+        p.site = sites.join("・"); renderSite(dd, p); render();
+        reloadData().catch(() => {});
       }
       toast(p.name + " さんの拠点を変更しました");
     }catch(e){
