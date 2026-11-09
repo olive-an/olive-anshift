@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="app-ver" content="2026-10-09a">
+<meta name="app-ver" content="2026-11-09b">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
@@ -124,6 +124,9 @@ dl{margin:14px 0 0}
 .act-row button{flex:1;padding:12px;border-radius:10px;font-size:16px;font-weight:700;border:1.5px solid var(--line);background:#fff}
 .act-row .go{background:var(--warn);color:#fff;border-color:var(--warn)}
 .act-row button:disabled{opacity:.6}
+.ver{font-size:11px;font-weight:400;opacity:.8;margin-left:6px}
+.upd-bar{background:#fff3cd;color:#7a5a00;padding:8px 16px;text-align:center;font-size:14px}
+.upd-bar button{margin-left:8px;border:0;background:#7a5a00;color:#fff;border-radius:8px;padding:5px 12px;font-weight:700}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2a24;color:#fff;padding:12px 18px;border-radius:10px;z-index:40;font-size:15px;max-width:90%;text-align:center}
 #pdfBg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:30;display:flex;align-items:center;justify-content:center;padding:0}
 #pdfBox{background:#fff;width:100%;height:100%;max-width:900px;display:flex;flex-direction:column}
@@ -145,14 +148,14 @@ dl{margin:14px 0 0}
     <button class="btn btn-pri" id="loginBtn" type="submit">開く</button>
     <button class="btn btn-sub" id="demoBtn" type="button">サンプルデータで試す</button>
     <div class="msg" id="loginMsg" role="alert"></div>
-    <div class="note">名簿の中身はこのページには入っていません。合言葉が合ったときだけ、Googleスプレッドシートから受け取ります。個人番号は受け取りません。</div>
+    <div class="note">名簿の中身はこのページには入っていません。合言葉が合ったときだけ、Googleスプレッドシートから受け取ります。個人番号は受け取りません。<br><span id="verLogin"></span></div>
   </form>
 </section>
 
 <section id="app" class="hidden">
   <header>
     <div class="hrow">
-      <h1>従業員名簿</h1>
+      <h1>従業員名簿<span class="ver" id="verText"></span></h1>
       <div>
         <button class="hbtn" id="reloadBtn" type="button">更新</button>
         <button class="hbtn" id="logoutBtn" type="button">閉じる</button>
@@ -163,6 +166,7 @@ dl{margin:14px 0 0}
       <button class="tab" data-tab="left" type="button"></button>
     </div>
   </header>
+  <div class="upd-bar hidden" id="updBar">新しい版があります。<button id="updBtn" type="button">読み込み直す</button></div>
   <div class="demo-bar hidden" id="demoBar">サンプルデータ（架空の人物）を表示しています</div>
   <div class="tools">
     <input class="full" id="q" type="search" placeholder="氏名・カナ・役職・資格で検索">
@@ -721,6 +725,35 @@ document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("pdfBg").classList.contains("hidden")) closePdf(); else closeSheet();
 });
+
+/* ---------- 画面を新しく保つ ----------
+   スマホやiPadのブラウザは、前に見た画面を覚えていることがある。
+   公開中のページの先頭だけを読み直して、版番号が違えば読み込み直す。 */
+const APP_VER = (document.querySelector('meta[name="app-ver"]') || {}).content || "";
+$("verText").textContent = APP_VER ? "版 " + APP_VER : "";
+$("verLogin").textContent = APP_VER ? "画面の版：" + APP_VER : "";
+let verCheckedAt = 0;
+function hardReload(){ location.replace(location.pathname + "?v=" + Date.now()); }
+async function checkNewVersion(){
+  if (!APP_VER || Date.now() - verCheckedAt < 60000) return;
+  verCheckedAt = Date.now();
+  let head;
+  try{
+    const r = await fetch(location.pathname + "?v=" + Date.now(), { cache: "no-store", headers: { Range: "bytes=0-4095" } });
+    if (!r.ok) return;
+    head = await r.text();
+  }catch(e){ return; }                       // 電波が悪いときは何もしない
+  const m = head.match(/name="app-ver"\s+content="([^"]+)"/);
+  if (!m || m[1] === APP_VER) return;
+  const opened = !$("sheetBg").classList.contains("hidden");
+  let once = true;
+  try{ once = !sessionStorage.getItem("rosterVerReloaded"); sessionStorage.setItem("rosterVerReloaded", "1"); }catch(e){}
+  if (!opened && once) { hardReload(); return; }   // 開いている途中でなければ、黙って新しくする
+  $("updBar").classList.remove("hidden");           // 入力の途中なら、お知らせだけ出す
+}
+$("updBtn").addEventListener("click", hardReload);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkNewVersion(); });
+checkNewVersion();
 
 // 同じタブで開き直したときは合言葉を覚えているので、そのまま開く
 const savedPass = store.get(PASS_KEY);
