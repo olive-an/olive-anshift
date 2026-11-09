@@ -113,6 +113,18 @@ dl{margin:14px 0 0}
 .q-msg{margin-top:8px;font-size:14px;min-height:20px}
 .q-msg.err{color:var(--warn)} .q-msg.ok{color:var(--green-d)}
 .q-note{margin-top:6px;font-size:12px;color:var(--sub)}
+.act-head{margin:22px 0 6px;font-size:15px;font-weight:700;color:var(--warn)}
+.act-btn{display:block;width:100%;background:#fff;color:var(--warn);border:1.5px solid var(--warn);border-radius:10px;padding:12px;font-size:16px;font-weight:700}
+.act-btn.plain{color:var(--green-d);border-color:var(--green)}
+.act-box{border:1.5px solid var(--warn);border-radius:10px;padding:12px;background:#fffafa}
+.act-box label{display:block;font-size:13px;font-weight:700;margin-bottom:4px}
+.act-box input{width:100%;padding:10px;font-size:16px;border:1.5px solid var(--line);border-radius:8px;background:#fff}
+.act-msg{margin:10px 0;font-size:15px;line-height:1.7}
+.act-row{display:flex;gap:8px;margin-top:10px}
+.act-row button{flex:1;padding:12px;border-radius:10px;font-size:16px;font-weight:700;border:1.5px solid var(--line);background:#fff}
+.act-row .go{background:var(--warn);color:#fff;border-color:var(--warn)}
+.act-row button:disabled{opacity:.6}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2a24;color:#fff;padding:12px 18px;border-radius:10px;z-index:40;font-size:15px;max-width:90%;text-align:center}
 #pdfBg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:30;display:flex;align-items:center;justify-content:center;padding:0}
 #pdfBox{background:#fff;width:100%;height:100%;max-width:900px;display:flex;flex-direction:column}
 @media(min-width:700px){#pdfBg{padding:20px}#pdfBox{border-radius:12px;overflow:hidden}}
@@ -160,6 +172,8 @@ dl{margin:14px 0 0}
   <div class="count" id="count"></div>
   <div id="list"></div>
 </section>
+
+<div id="toast" class="hidden" role="status"></div>
 
 <div id="pdfBg" class="hidden"><div id="pdfBox">
   <div class="pdf-bar"><b id="pdfTitle"></b><a id="pdfOpen" target="_blank" rel="noopener">Googleドライブで開く</a><button class="x" id="pdfClose" type="button" aria-label="閉じる">×</button></div>
@@ -389,10 +403,132 @@ function openSheet(p){
   const qbox = el("div"); s.appendChild(qbox);
   renderQuals(qbox, p);
 
+  const abox = el("div"); s.appendChild(abox);
+  renderActions(abox, p);
+
   $("sheetBg").classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
 function closeSheet(){ closePdf(); $("sheetBg").classList.add("hidden"); document.body.style.overflow = ""; }
+
+/* ---------- 退職処理・退社年月日の変更 ---------- */
+let toastTimer = null;
+function toast(text){
+  const t = $("toast"); t.textContent = text; t.classList.remove("hidden");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add("hidden"), 6000);
+}
+function todayYmd(){
+  const d = new Date(); const z = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate());
+}
+async function reloadData(){
+  const res = await fetchRoster(store.get(PASS_KEY) || "");
+  if (!res || !res.ok) throw new Error((res && res.error) || "名簿を読み込めませんでした。右上の「更新」を押してください。");
+  DATA = pickData(res); fillFilters(); render();
+}
+
+function renderActions(box, p){
+  box.innerHTML = "";
+  if (tab === "active") {
+    box.appendChild(el("div", "act-head", "退職処理"));
+    const b = el("button", "act-btn", "この方を退職者に移す"); b.type = "button";
+    b.addEventListener("click", () => retireForm(box, p));
+    box.appendChild(b);
+  } else if (tab === "left" && p.row) {
+    box.appendChild(el("div", "act-head", "退社年月日"));
+    const b = el("button", "act-btn plain", "退社年月日を変更する"); b.type = "button";
+    b.addEventListener("click", () => leftDateForm(box, p));
+    box.appendChild(b);
+  }
+}
+
+// 1) 日付を入れる  2) 確認する  3) 移す
+function retireForm(box, p){
+  box.innerHTML = "";
+  box.appendChild(el("div", "act-head", "退職処理"));
+  const f = el("div", "act-box");
+  f.appendChild(el("label", "", "退社年月日"));
+  const d = el("input"); d.type = "date"; d.value = todayYmd(); f.appendChild(d);
+  const msg = el("div", "act-msg"); f.appendChild(msg);
+  const row = el("div", "act-row");
+  const cancel = el("button", "", "やめる"); cancel.type = "button";
+  const next = el("button", "go", "確認へ"); next.type = "button";
+  row.appendChild(cancel); row.appendChild(next); f.appendChild(row); box.appendChild(f);
+  cancel.addEventListener("click", () => renderActions(box, p));
+  next.addEventListener("click", () => {
+    if (!parseDate(d.value)) { msg.textContent = "退社年月日を入れてください。"; msg.style.color = "var(--warn)"; return; }
+    retireConfirm(box, p, d.value);
+  });
+}
+
+function retireConfirm(box, p, date){
+  box.innerHTML = "";
+  box.appendChild(el("div", "act-head", "退職処理の確認"));
+  const f = el("div", "act-box");
+  const future = parseDate(date) > new Date();
+  f.appendChild(el("div", "act-msg",
+    p.name + " さんを、" + wareki(date) + "付で退職者に移します。\n在籍者の一覧からは消えます。" +
+    (future ? "\n※まだ先の日付です。移すと、すぐに在籍者の一覧から消えます。" : "")));
+  f.firstChild.style.whiteSpace = "pre-wrap";
+  f.appendChild(el("div", "q-note", "押し間違いは、この画面からは戻せません。スプレッドシートの「退職処理ログ」を見て、戻します。"));
+  const row = el("div", "act-row");
+  const back = el("button", "", "もどる"); back.type = "button";
+  const go = el("button", "go", "移す"); go.type = "button";
+  row.appendChild(back); row.appendChild(go); f.appendChild(row); box.appendChild(f);
+  back.addEventListener("click", () => retireForm(box, p));
+  go.addEventListener("click", async () => {
+    go.disabled = back.disabled = true; go.textContent = "移しています…";
+    try{
+      if (demo){
+        const i = DATA.active.indexOf(p);
+        if (i >= 0) DATA.active.splice(i, 1);
+        DATA.left.push(Object.assign({}, p, { left: date, row: 99 }));
+        fillFilters(); render();
+      } else {
+        const res = await fetchGas({ action: "retire", pass: store.get(PASS_KEY) || "", name: p.name, no: p.no || "", date: date });
+        if (!res || !res.ok) throw new Error((res && res.error) || "移せませんでした。");
+        await reloadData();
+      }
+      closeSheet();
+      toast(p.name + " さんを退職者に移しました（" + wareki(date) + "付）");
+    }catch(e){
+      go.disabled = back.disabled = false; go.textContent = "移す";
+      const m = el("div", "act-msg", e.message); m.style.color = "var(--warn)"; f.insertBefore(m, row);
+    }
+  });
+}
+
+function leftDateForm(box, p){
+  box.innerHTML = "";
+  box.appendChild(el("div", "act-head", "退社年月日の変更"));
+  const f = el("div", "act-box");
+  f.appendChild(el("label", "", "退社年月日"));
+  const d = el("input"); d.type = "date"; d.value = p.left || todayYmd(); f.appendChild(d);
+  f.appendChild(el("div", "q-note", "在籍期間は、入社年月日から計算し直されます。"));
+  const msg = el("div", "act-msg"); f.appendChild(msg);
+  const row = el("div", "act-row");
+  const cancel = el("button", "", "やめる"); cancel.type = "button";
+  const save = el("button", "go", "変更する"); save.type = "button";
+  row.appendChild(cancel); row.appendChild(save); f.appendChild(row); box.appendChild(f);
+  cancel.addEventListener("click", () => renderActions(box, p));
+  save.addEventListener("click", async () => {
+    if (!parseDate(d.value)) { msg.textContent = "退社年月日を入れてください。"; msg.style.color = "var(--warn)"; return; }
+    save.disabled = cancel.disabled = true; save.textContent = "変更しています…";
+    try{
+      if (demo){ p.left = d.value; render(); }
+      else {
+        const res = await fetchGas({ action: "setleft", pass: store.get(PASS_KEY) || "", name: p.name, row: p.row, date: d.value });
+        if (!res || !res.ok) throw new Error((res && res.error) || "変更できませんでした。");
+        await reloadData();
+      }
+      closeSheet();
+      toast(p.name + " さんの退社年月日を " + wareki(d.value) + " に変更しました");
+    }catch(e){
+      save.disabled = cancel.disabled = false; save.textContent = "変更する";
+      msg.textContent = e.message; msg.style.color = "var(--warn)";
+    }
+  });
+}
 
 /* ---------- 資格書（PDFの保存とプレビュー） ---------- */
 const PDF_MAX_BYTES = 10 * 1024 * 1024;   // GAS側の上限（base64で約14MB）に収まる大きさ
