@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="app-ver" content="2026-11-09e">
+<meta name="app-ver" content="2026-11-09f">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
@@ -113,6 +113,13 @@ dl{margin:14px 0 0}
 .q-msg{margin-top:8px;font-size:14px;min-height:20px}
 .q-msg.err{color:var(--warn)} .q-msg.ok{color:var(--green-d)}
 .q-note{margin-top:6px;font-size:12px;color:var(--sub)}
+.site-edit{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.site-edit .q-btn{padding:5px 12px;font-size:14px}
+.site-form{width:100%;margin-top:8px;border:1.5px solid var(--green);border-radius:10px;padding:10px;background:#f7fbf7}
+.site-form label{display:flex;align-items:center;gap:10px;padding:9px 4px;font-size:17px;border-bottom:1px solid var(--line)}
+.site-form label:last-of-type{border-bottom:0}
+.site-form input[type=checkbox]{width:24px;height:24px;accent-color:var(--green)}
+.site-form .act-row{margin-top:8px}
 .act-head{margin:22px 0 6px;font-size:15px;font-weight:700;color:var(--warn)}
 .act-btn{display:block;width:100%;background:#fff;color:var(--warn);border:1.5px solid var(--warn);border-radius:10px;padding:12px;font-size:16px;font-weight:700}
 .act-btn.plain{color:var(--green-d);border-color:var(--green)}
@@ -425,7 +432,11 @@ function openSheet(p){
   addRow(dl, "役職", p.role);
   addRow(dl, "グループ", p.group);
   addRow(dl, "常勤・非常勤", p.type);
-  if (!isLeft) addRow(dl, "拠点", p.site);
+  if (!isLeft) {                      // 拠点は、チェックの入ったホーム名だけを出し、ここで変更できる
+    const row = el("div", "row"); row.appendChild(el("dt", "", "拠点"));
+    const dd = el("dd"); row.appendChild(dd); dl.appendChild(row);
+    renderSite(dd, p);
+  }
   addRow(dl, "住所", [p.zip ? "〒" + p.zip : "", p.addr || ""].filter(Boolean).join("\n"));
   addRow(dl, "携帯電話", p.mobile, { href: telHref(p.mobile) });
   addRow(dl, "電話番号", p.tel, { href: telHref(p.tel) });
@@ -449,6 +460,52 @@ function openSheet(p){
   document.body.style.overflow = "hidden";
 }
 function closeSheet(){ closePdf(); $("sheetBg").classList.add("hidden"); document.body.style.overflow = ""; }
+
+/* ---------- 拠点の変更（チェックボックス） ---------- */
+function renderSite(dd, p){
+  dd.innerHTML = "";
+  const wrap = el("div", "site-edit");
+  const names = siteTokens(p);
+  wrap.appendChild(el("span", "", names.length ? names.join("・") : "未設定"));
+  const b = el("button", "q-btn", "変更"); b.type = "button";
+  b.addEventListener("click", () => siteForm(dd, p));
+  wrap.appendChild(b); dd.appendChild(wrap);
+}
+function siteForm(dd, p){
+  dd.innerHTML = "";
+  const f = el("div", "site-form");
+  const cur = siteTokens(p);
+  const boxes = HOMES.map((h) => {
+    const lab = el("label"); const c = el("input"); c.type = "checkbox"; c.checked = cur.includes(h.n);
+    lab.appendChild(c); lab.appendChild(document.createTextNode(h.n)); f.appendChild(lab);
+    return { n: h.n, c: c };
+  });
+  const msg = el("div", "act-msg"); f.appendChild(msg);
+  const row = el("div", "act-row");
+  const cancel = el("button", "", "やめる"); cancel.type = "button";
+  const save = el("button", "", "保存する"); save.type = "button"; save.className = "go"; save.style.background = "var(--green)"; save.style.borderColor = "var(--green)";
+  row.appendChild(cancel); row.appendChild(save); f.appendChild(row); dd.appendChild(f);
+  cancel.addEventListener("click", () => renderSite(dd, p));
+  save.addEventListener("click", async () => {
+    const sites = boxes.filter((x) => x.c.checked).map((x) => x.n);
+    save.disabled = cancel.disabled = true; save.textContent = "保存しています…";
+    try{
+      if (demo){ p.site = sites.join("・"); render(); renderSite(dd, p); }
+      else {
+        const res = await fetchGas({ action: "setsite", pass: store.get(PASS_KEY) || "", name: p.name, row: p.row, sites: sites.join(",") });
+        if (!res || !res.ok) throw new Error((res && res.error) || "変更できませんでした。");
+        await reloadData();
+        const fresh = DATA.active.find((x) => x.row === p.row && nameKey(x.name) === nameKey(p.name));
+        if (fresh) { Object.assign(p, fresh); renderSite(dd, p); }
+        else { closeSheet(); }
+      }
+      toast(p.name + " さんの拠点を変更しました");
+    }catch(e){
+      save.disabled = cancel.disabled = false; save.textContent = "保存する";
+      msg.textContent = e.message; msg.style.color = "var(--warn)";
+    }
+  });
+}
 
 /* ---------- 退職処理・退社年月日の変更 ---------- */
 let toastTimer = null;
