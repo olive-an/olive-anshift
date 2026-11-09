@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="app-ver" content="2026-11-09d">
+<meta name="app-ver" content="2026-11-09e">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
@@ -125,10 +125,9 @@ dl{margin:14px 0 0}
 .act-row .go{background:var(--warn);color:#fff;border-color:var(--warn)}
 .act-row button:disabled{opacity:.6}
 .site-btns{display:flex;flex-wrap:wrap;gap:8px}
-.site-btn{border:0;border-radius:10px;padding:11px 14px;font-size:16px;color:#222;min-width:calc(33.3% - 6px);flex:1 1 auto;line-height:1.2}
+.site-btn{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:11px 14px;font-size:16px;color:#222;min-width:calc(33.3% - 6px);flex:1 1 auto;line-height:1.2}
 .site-btn small{display:block;font-size:12px;opacity:.75;margin-top:2px}
-.site-btn.all{background:#fff;border:1.5px solid var(--line)}
-.site-btn.on{outline:3px solid #1f2a24;outline-offset:1px;font-weight:700}
+.site-btn.on{background:var(--green-l);border-color:var(--green);outline:2px solid var(--green);font-weight:700}
 .chip.home{color:#222}
 .ver{font-size:11px;font-weight:400;opacity:.8;margin-left:6px}
 .upd-bar{background:#fff3cd;color:#7a5a00;padding:8px 16px;text-align:center;font-size:14px}
@@ -328,7 +327,7 @@ function renderSiteBtns(){
   const count = (n) => DATA.active.filter((p) => siteTokens(p).includes(n)).length;
   const add = (label, key, color, n) => {
     const b = el("button", "site-btn" + (key ? "" : " all") + (siteSel === key ? " on" : ""));
-    b.type = "button"; if (color) b.style.background = color;
+    b.type = "button";
     b.appendChild(document.createTextNode((siteSel === key ? "✓ " : "") + label));
     if (n != null) b.appendChild(el("small", "", n + "名"));
     b.setAttribute("aria-pressed", siteSel === key ? "true" : "false");
