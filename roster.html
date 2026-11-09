@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="app-ver" content="2026-11-09b">
+<meta name="app-ver" content="2026-11-09c">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
@@ -124,6 +124,12 @@ dl{margin:14px 0 0}
 .act-row button{flex:1;padding:12px;border-radius:10px;font-size:16px;font-weight:700;border:1.5px solid var(--line);background:#fff}
 .act-row .go{background:var(--warn);color:#fff;border-color:var(--warn)}
 .act-row button:disabled{opacity:.6}
+.site-btns{display:flex;flex-wrap:wrap;gap:8px}
+.site-btn{border:0;border-radius:10px;padding:11px 14px;font-size:16px;color:#222;min-width:calc(33.3% - 6px);flex:1 1 auto;line-height:1.2}
+.site-btn small{display:block;font-size:12px;opacity:.75;margin-top:2px}
+.site-btn.all{background:#fff;border:1.5px solid var(--line)}
+.site-btn.on{outline:3px solid #1f2a24;outline-offset:1px;font-weight:700}
+.chip.home{color:#222}
 .ver{font-size:11px;font-weight:400;opacity:.8;margin-left:6px}
 .upd-bar{background:#fff3cd;color:#7a5a00;padding:8px 16px;text-align:center;font-size:14px}
 .upd-bar button{margin-left:8px;border:0;background:#7a5a00;color:#fff;border-radius:8px;padding:5px 12px;font-weight:700}
@@ -170,8 +176,8 @@ dl{margin:14px 0 0}
   <div class="demo-bar hidden" id="demoBar">サンプルデータ（架空の人物）を表示しています</div>
   <div class="tools">
     <input class="full" id="q" type="search" placeholder="氏名・カナ・役職・資格で検索">
-    <select id="fSite"><option value="">拠点：すべて</option></select>
-    <select id="fType"><option value="">常勤・非常勤：すべて</option></select>
+    <div class="full site-btns" id="siteBtns" role="group" aria-label="拠点"></div>
+    <select class="full" id="fType"><option value="">常勤・非常勤：すべて</option></select>
   </div>
   <div class="count" id="count"></div>
   <div id="list"></div>
@@ -296,7 +302,7 @@ function uniq(list, key){
   return [...new Set(list.map((p) => (p[key] || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
 }
 function fillFilters(){
-  const keep = { s: $("fSite").value, t: $("fType").value };
+  const keep = { t: $("fType").value };
   const all = DATA.active.concat(DATA.left);
   const set = (el, label, vals, cur) => {
     el.innerHTML = "";
@@ -304,9 +310,35 @@ function fillFilters(){
     vals.forEach((v) => el.add(new Option(v, v)));
     el.value = vals.includes(cur) ? cur : "";
   };
-  set($("fSite"), "拠点：すべて", uniq(DATA.active, "site"), keep.s);
   set($("fType"), "常勤・非常勤：すべて", uniq(all, "type"), keep.t);
 }
+// 拠点の色（ホームページの「事務所情報」ボタンの色にそろえている）
+const HOMES = [
+  { n: "西九条", c: "#ffa500" }, { n: "九条", c: "#cd853f" }, { n: "酉島", c: "#ff69b4" },
+  { n: "春日出", c: "#40e0d0" }, { n: "新郡山", c: "#7cfc00" }, { n: "出来島", c: "#ffff00" },
+  { n: "本部", c: "#dfe5e1" }
+];
+let siteSel = "";
+// 「西九条・九条」のように兼務の書き方があるので、区切って1つずつ数える
+// （「九条」で「西九条」まで拾わないよう、文字の一部ではなく、1つずつの名前で比べる）
+function siteTokens(p){ return String(p.site || "").split(/[・,、\/／\s\u3000]+/).map((x) => x.trim()).filter(Boolean); }
+function homeColor(name){ const h = HOMES.find((x) => x.n === name); return h ? h.c : ""; }
+function renderSiteBtns(){
+  const box = $("siteBtns"); box.innerHTML = "";
+  const count = (n) => DATA.active.filter((p) => siteTokens(p).includes(n)).length;
+  const add = (label, key, color, n) => {
+    const b = el("button", "site-btn" + (key ? "" : " all") + (siteSel === key ? " on" : ""));
+    b.type = "button"; if (color) b.style.background = color;
+    b.appendChild(document.createTextNode((siteSel === key ? "✓ " : "") + label));
+    if (n != null) b.appendChild(el("small", "", n + "名"));
+    b.setAttribute("aria-pressed", siteSel === key ? "true" : "false");
+    b.addEventListener("click", () => { siteSel = (siteSel === key ? "" : key); render(); });
+    box.appendChild(b);
+  };
+  add("すべて", "", "", DATA.active.length);
+  HOMES.forEach((h) => add(h.n, h.n, h.c, count(h.n)));
+}
+
 // 空白をなくし、ひらがなをカタカナにそろえる（「すずき」で「スズキ」も探せるように）
 function fold(s){
   return String(s || "").replace(/[\s　]+/g, "").toLowerCase()
@@ -314,11 +346,11 @@ function fold(s){
 }
 function visible(){
   const q = fold($("q").value);
-  const site = $("fSite").value, type = $("fType").value;
+  const type = $("fType").value;
   const src = DATA[tab] || [];
   return src.filter((p) => {
     if (type && (p.type || "").trim() !== type) return false;
-    if (tab === "active" && site && (p.site || "").trim() !== site) return false;
+    if (tab === "active" && siteSel && !siteTokens(p).includes(siteSel)) return false;
     if (!q) return true;
     return fold([p.name, p.kana, p.role, p.site, p.resume, p.line].join("")).includes(q);
   });
@@ -334,7 +366,8 @@ function render(){
   tabs[0].textContent = "在籍 " + DATA.active.length + "名";
   tabs[1].textContent = "退職者 " + DATA.left.length + "名";
   tabs.forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
-  $("fSite").classList.toggle("hidden", tab !== "active");
+  $("siteBtns").classList.toggle("hidden", tab !== "active");
+  renderSiteBtns();
 
   const rows = visible();
   $("count").textContent = rows.length + "名を表示";
@@ -350,7 +383,10 @@ function render(){
     if (p.kana) b.appendChild(el("div", "kana", p.kana));
     const meta = el("div", "meta");
     const roleOne = (p.role || "").split(/\n/)[0];
-    if (tab === "active" && p.site) meta.appendChild(el("span", "chip", p.site));
+    if (tab === "active") siteTokens(p).forEach((n) => {
+      const c = el("span", "chip home", n); const col = homeColor(n);
+      if (col) c.style.background = col; meta.appendChild(c);
+    });
     if (roleOne) meta.appendChild(el("span", "chip gray", roleOne));
     if (p.type) meta.appendChild(el("span", "chip gray", p.type));
     if (tab === "left" && p.left) meta.appendChild(el("span", "chip gray", wareki(p.left) + " 退職"));
@@ -717,7 +753,7 @@ $("reloadBtn").addEventListener("click", async () => {
   finally{ b.disabled = false; b.textContent = "更新"; }
 });
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; render(); }));
-["q", "fSite", "fType"].forEach((id) => $(id).addEventListener("input", render));
+["q", "fType"].forEach((id) => $(id).addEventListener("input", render));
 $("sheetBg").addEventListener("click", (e) => { if (e.target === $("sheetBg")) closeSheet(); });
 $("pdfClose").addEventListener("click", closePdf);
 $("pdfBg").addEventListener("click", (e) => { if (e.target === $("pdfBg")) closePdf(); });
