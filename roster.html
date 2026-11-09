@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="app-ver" content="2026-11-09c">
+<meta name="app-ver" content="2026-11-09d">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
@@ -780,7 +780,9 @@ async function checkNewVersion(){
     head = await r.text();
   }catch(e){ return; }                       // 電波が悪いときは何もしない
   const m = head.match(/name="app-ver"\s+content="([^"]+)"/);
-  if (!m || m[1] === APP_VER) return;
+  if (!m) return;
+  // 同じ版になったら、読み込み直しの制限を外す（次に新しい版が出たときも、自動で切り替わるように）
+  if (m[1] === APP_VER) { try{ sessionStorage.removeItem("rosterVerReloaded"); }catch(e){} return; }
   const opened = !$("sheetBg").classList.contains("hidden");
   let once = true;
   try{ once = !sessionStorage.getItem("rosterVerReloaded"); sessionStorage.setItem("rosterVerReloaded", "1"); }catch(e){}
