@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="app-ver" content="2026-11-09g">
+<meta name="app-ver" content="2026-11-09h">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
@@ -181,7 +181,7 @@ dl{margin:14px 0 0}
   <div class="upd-bar hidden" id="updBar">新しい版があります。<button id="updBtn" type="button">読み込み直す</button></div>
   <div class="demo-bar hidden" id="demoBar">サンプルデータ（架空の人物）を表示しています</div>
   <div class="tools">
-    <input class="full" id="q" type="search" placeholder="氏名・カナ・役職・資格で検索">
+    <input class="full" id="q" type="search" placeholder="氏名・拠点で検索（例：山田 九条）">
     <div class="full site-btns" id="siteBtns" role="group" aria-label="拠点"></div>
     <select class="full" id="fType"><option value="">常勤・非常勤：すべて</option></select>
   </div>
@@ -350,15 +350,25 @@ function fold(s){
   return String(s || "").replace(/[\s　]+/g, "").toLowerCase()
     .replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
 }
+// 検索の1語が、その人に当てはまるか
+//  ・拠点の名前ちょうど（例：九条）は、拠点を1つずつで比べる（「西九条」だけの人は、「九条」では出ない）
+//  ・それ以外は、氏名・カナ・拠点・役職・資格名のどこかに含まれていればよい
+function matchTerm(p, t){
+  const nameText = fold([p.name, p.kana].join(""));
+  const home = HOMES.find((h) => fold(h.n) === t);
+  if (home) return siteTokens(p).includes(home.n) || nameText.includes(t);
+  const quals = (DATA.quals || []).filter((x) => nameKey(x.name) === nameKey(p.name)).map((x) => x.title);
+  return fold([p.name, p.kana, p.role, p.site].concat(quals).join("")).includes(t);
+}
 function visible(){
-  const q = fold($("q").value);
+  // 空白で区切った語は、すべてに当てはまる人だけを出す（例：「山田 九条」＝氏名に山田があり、拠点が九条）
+  const terms = $("q").value.split(/[\s\u3000]+/).map(fold).filter(Boolean);
   const type = $("fType").value;
   const src = DATA[tab] || [];
   return src.filter((p) => {
     if (type && (p.type || "").trim() !== type) return false;
     if (tab === "active" && siteSel && !siteTokens(p).includes(siteSel)) return false;
-    if (!q) return true;
-    return fold([p.name, p.kana, p.role, p.site, p.resume, p.line].join("")).includes(q);
+    return terms.every((t) => matchTerm(p, t));
   });
 }
 function el(tag, cls, text){
