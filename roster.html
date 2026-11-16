@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="app-ver" content="2026-11-09h">
+<meta name="app-ver" content="2026-11-09i">
 <meta http-equiv="Cache-Control" content="no-cache">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
@@ -120,6 +120,12 @@ dl{margin:14px 0 0}
 .site-form label:last-of-type{border-bottom:0}
 .site-form input[type=checkbox]{width:24px;height:24px;accent-color:var(--green)}
 .site-form .act-row{margin-top:8px}
+.act-box .f{margin-top:12px}
+.act-box .f:first-child{margin-top:0}
+.act-chg{padding:8px 0;border-bottom:1px solid var(--line);font-size:15px;line-height:1.6}
+.act-chg:last-of-type{border-bottom:0}
+.act-chg b{display:block;font-size:13px;color:var(--sub)}
+.act-chg s{color:var(--sub)}
 .act-head{margin:22px 0 6px;font-size:15px;font-weight:700;color:var(--warn)}
 .act-btn{display:block;width:100%;background:#fff;color:var(--warn);border:1.5px solid var(--warn);border-radius:10px;padding:12px;font-size:16px;font-weight:700}
 .act-btn.plain{color:var(--green-d);border-color:var(--green)}
@@ -460,6 +466,10 @@ function openSheet(p){
   addRow(dl, "ダブルワーク有無", p.dw);
   s.appendChild(dl);
 
+  if (tab === "active" && p.row) {     // 氏名・住所・連絡先の変更（在籍者）
+    const ebox = el("div"); s.appendChild(ebox); renderEdit(ebox, p);
+  }
+
   const qbox = el("div"); s.appendChild(qbox);
   renderQuals(qbox, p);
 
@@ -511,6 +521,112 @@ function siteForm(dd, p){
       toast(p.name + " さんの拠点を変更しました");
     }catch(e){
       save.disabled = cancel.disabled = false; save.textContent = "保存する";
+      msg.textContent = e.message; msg.style.color = "var(--warn)";
+    }
+  });
+}
+
+/* ---------- 氏名・住所・連絡先の変更 ---------- */
+const EDIT_FIELDS = [
+  { k: "name", label: "氏名", type: "text", note: "結婚などで氏名が変わったときも、ここで直せます。資格書の記録の氏名も、あわせて変わります。" },
+  { k: "kana", label: "カナ", type: "text" },
+  { k: "zip", label: "郵便番号", type: "text", mode: "numeric", ph: "例 651-1413" },
+  { k: "addr", label: "住所", type: "text" },
+  { k: "tel", label: "電話番号", type: "tel" },
+  { k: "mobile", label: "携帯電話", type: "tel" },
+  { k: "mail", label: "メール", type: "email" }
+];
+const editLabel = (k) => EDIT_FIELDS.find((f) => f.k === k).label;
+// 入力の整理と確認（GASと同じ決まり）。正しければ { value }、正しくなければ { error }
+function cleanEdit(k, raw){
+  let v = String(raw == null ? "" : raw).trim();
+  const label = editLabel(k);
+  if (v.length > 200) return { error: label + "が長すぎます。" };
+  if (k === "zip" || k === "tel" || k === "mobile" || k === "mail") v = v.normalize("NFKC").trim();   // 氏名・住所は、旧字体などをそのまま残す
+  if (k === "name" && !nameKey(v)) return { error: "氏名を入れてください。" };
+  if (k === "zip" && v){
+    const m = /^(\d{3})-?(\d{4})$/.exec(v);
+    if (!m) return { error: "郵便番号は、7けたの数字（例 651-1413）で入れてください。" };
+    v = m[1] + "-" + m[2];
+  }
+  if ((k === "tel" || k === "mobile") && v && !/^[0-9+\-() ]{6,20}$/.test(v)) return { error: label + "は、数字とハイフンで入れてください。" };
+  if (k === "mail" && v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return { error: "メールアドレスの形が正しくありません。" };
+  return { value: v };
+}
+
+function renderEdit(box, p){
+  box.innerHTML = "";
+  const b = el("button", "act-btn plain", "氏名・住所・連絡先を変更する"); b.type = "button"; b.style.marginTop = "14px";
+  b.addEventListener("click", () => editForm(box, p));
+  box.appendChild(b);
+}
+
+function editForm(box, p, entered){
+  box.innerHTML = "";
+  box.appendChild(el("div", "act-head", "氏名・住所・連絡先の変更")).style.color = "var(--green-d)";
+  const f = el("div", "act-box"); f.style.borderColor = "var(--green)"; f.style.background = "#f7fbf7";
+  const inputs = {};
+  EDIT_FIELDS.forEach((d) => {
+    const w = el("div", "f"); w.appendChild(el("label", "", d.label));
+    const i = el("input"); i.type = d.type; i.value = entered && entered[d.k] != null ? entered[d.k] : (p[d.k] || ""); if (d.mode) i.inputMode = d.mode; if (d.ph) i.placeholder = d.ph;
+    i.autocomplete = "off"; inputs[d.k] = i; w.appendChild(i);
+    if (d.note) w.appendChild(el("div", "q-note", d.note));
+    f.appendChild(w);
+  });
+  const msg = el("div", "act-msg"); f.appendChild(msg);
+  const row = el("div", "act-row");
+  const cancel = el("button", "", "やめる"); cancel.type = "button";
+  const next = el("button", "go", "確認へ"); next.type = "button"; next.style.background = "var(--green)"; next.style.borderColor = "var(--green)";
+  row.appendChild(cancel); row.appendChild(next); f.appendChild(row); box.appendChild(f);
+  cancel.addEventListener("click", () => renderEdit(box, p));
+  next.addEventListener("click", () => {
+    const changes = [], values = {};
+    for (const d of EDIT_FIELDS){
+      const c = cleanEdit(d.k, inputs[d.k].value);
+      if (c.error){ msg.textContent = c.error; msg.style.color = "var(--warn)"; inputs[d.k].focus(); return; }
+      values[d.k] = c.value;
+      if (c.value !== String(p[d.k] || "").trim()) changes.push({ k: d.k, label: d.label, before: String(p[d.k] || "").trim(), after: c.value });
+    }
+    if (!changes.length){ msg.textContent = "変更した項目がありません。"; msg.style.color = "var(--warn)"; return; }
+    editConfirm(box, p, changes, values);
+  });
+}
+
+function editConfirm(box, p, changes, values){
+  box.innerHTML = "";
+  box.appendChild(el("div", "act-head", "変更内容の確認")).style.color = "var(--green-d)";
+  const f = el("div", "act-box"); f.style.borderColor = "var(--green)"; f.style.background = "#f7fbf7";
+  changes.forEach((c) => {
+    const r = el("div", "act-chg"); r.appendChild(el("b", "", c.label));
+    const before = el("s", "", c.before || "（空）"); r.appendChild(before);
+    r.appendChild(document.createTextNode("　→　")); r.appendChild(el("span", "", c.after || "（空にする）"));
+    f.appendChild(r);
+  });
+  if (changes.some((c) => c.k === "name")) f.appendChild(el("div", "q-note", "氏名を変えると、資格書の記録の氏名も、あわせて変わります。"));
+  f.appendChild(el("div", "q-note", "変更の記録は、スプレッドシートの「名簿変更ログ」に残ります。間違えたときは、同じ画面で、もう一度直せます。"));
+  const msg = el("div", "act-msg"); f.appendChild(msg);
+  const row = el("div", "act-row");
+  const back = el("button", "", "もどる"); back.type = "button";
+  const go = el("button", "go", "変更する"); go.type = "button"; go.style.background = "var(--green)"; go.style.borderColor = "var(--green)";
+  row.appendChild(back); row.appendChild(go); f.appendChild(row); box.appendChild(f);
+  back.addEventListener("click", () => editForm(box, p, values));   // もどっても、入力した内容は残す
+  go.addEventListener("click", async () => {
+    go.disabled = back.disabled = true; go.textContent = "変更しています…";
+    try{
+      const set = {}; changes.forEach((c) => { set[c.k] = c.after; });
+      if (!demo){
+        const res = await fetchGas({ action: "update", pass: store.get(PASS_KEY) || "", name: p.name, row: p.row, set: JSON.stringify(set) });
+        if (!res || !res.ok) throw new Error((res && res.error) || "変更できませんでした。");
+      }
+      // 保存できたら、すぐ画面に反映する。名簿全体の読み直しは、待たずに裏で行う
+      const oldName = p.name;
+      changes.forEach((c) => { p[c.k] = c.after; });
+      if (set.name != null) (DATA.quals || []).forEach((q) => { if (nameKey(q.name) === nameKey(oldName)) q.name = set.name; });
+      render(); openSheet(p);
+      toast(p.name + " さんの情報を変更しました");
+      if (!demo) reloadData().catch(() => {});
+    }catch(e){
+      go.disabled = back.disabled = false; go.textContent = "変更する";
       msg.textContent = e.message; msg.style.color = "var(--warn)";
     }
   });
