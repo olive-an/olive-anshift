@@ -564,8 +564,9 @@ function plan(res, y, m) {
       var date = ymd(y, m, d), wd = wdOf(y, m, d);
       if (r.from && date < r.from) continue;
       if (r.to && date > r.to) continue;
-      if (r.weekdays.indexOf(wd) < 0) continue;
-      if (r.nth.length) {
+      var viaHol = !!r.onHoliday && !!hol[date];
+      if (r.weekdays.indexOf(wd) < 0 && !viaHol) continue;
+      if (r.nth.length && !viaHol) {
         var n = Math.ceil(d / 7), last = d + 7 > days;
         if (!(r.nth.indexOf(n) >= 0 || (last && r.nth.indexOf(-1) >= 0))) continue;
       }
@@ -579,7 +580,7 @@ function plan(res, y, m) {
           if (cd) reason = fac.name + 'の' + (cd.label || '休業日');
         }
       }
-      if (!reason && r.skipHoliday && hol[date]) reason = '祝日のため(' + hol[date] + ')';
+      if (!reason && r.skipHoliday && hol[date] && !viaHol) reason = '祝日のため(' + hol[date] + ')';
       if (reason) { skipped.push({ ruleId: r.id, title: r.title, date: date, reason: reason }); continue; }
       items.push({ key: r.id + '|' + date, date: date, rule: r, fp: ruleFp(r) });
     }
@@ -691,6 +692,8 @@ function ruleSummary(r) {
   var when = r.nth.length
     ? r.nth.slice().sort(function (a, b) { return (a === -1 ? 9 : a) - (b === -1 ? 9 : b); }).map(function (n) { return n === -1 ? '最終' : '第' + n; }).join('・') + ' ' + (every ? '毎日' : days + '曜日')
     : (every ? '毎日' : '毎週 ' + days + '曜日');
+  if (!r.weekdays.length) when = '祝日のみ';
+  else if (r.onHoliday) when += '・祝日も';
   return when + (r.start ? '　' + fmtTime(r.start, r.end) : '');
 }
 
@@ -971,7 +974,7 @@ function rulesTab() {
     return '<div class="rule k-' + r.kind + '"><div><div class="rt">' + esc(r.title) + ' <span class="pill">' + KINDS[r.kind].label + '</span>'
       + (r.staff ? ' <span class="pill warn">職員対応' + (r.staffNote ? ': ' + esc(r.staffNote) : '') + '</span>' : '') + '</div>'
       + '<div class="rd">' + esc(ruleSummary(r)) + '</div>'
-      + '<div class="rd">適用期間 ' + esc(term) + (fac ? '／通所先 ' + esc(fac.name) + '(休業日を反映)' : '') + (r.place ? '／場所 ' + esc(r.place) : '') + (r.skipHoliday ? '／祝日は作らない' : '') + '</div></div>'
+      + '<div class="rd">適用期間 ' + esc(term) + (fac ? '／通所先 ' + esc(fac.name) + '(休業日を反映)' : '') + (r.place ? '／場所 ' + esc(r.place) : '') + (r.skipHoliday ? '／祝日は作らない' : '') + (r.onHoliday ? '／祝日にも作る' : '') + '</div></div>'
       + '<div class="acts"><button class="btn small" data-action="rule-edit" data-id="' + r.id + '">編集</button>'
       + (del ? '<button class="btn small danger" data-action="rule-del-yes" data-id="' + r.id + '">本当に削除</button><button class="btn small" data-action="rule-del-no">やめる</button>'
              : '<button class="btn small danger" data-action="rule-del" data-id="' + r.id + '">削除</button>') + '</div></div>';
@@ -1176,6 +1179,7 @@ function ruleForm(r, err, isNew) {
     + '<div class="span-all"><label class="chk"><input type="checkbox" id="rf-staff"' + (r.staff ? ' checked' : '') + '>職員の対応が必要</label></div>'
     + '<label class="f span-all"><span>担当者名・条件(任意。例: 吉永 / 女性職員)</span><input type="text" id="rf-staffnote" value="' + esc(r.staffNote) + '" maxlength="20"></label>'
     + '<div class="span-all"><label class="chk"><input type="checkbox" id="rf-skiphol"' + (r.skipHoliday ? ' checked' : '') + '>祝日は予定を作らない</label></div>'
+    + '<div class="span-all"><label class="chk"><input type="checkbox" id="rf-onhol"' + (r.onHoliday ? ' checked' : '') + '>祝日にも予定を作る(平日の祝日にも入れたいとき。例: 帰宅)</label></div>'
     + (isNew ? '<div class="span-all"><label class="chk"><input type="checkbox" id="rf-all">同じホームの全員にも追加する</label></div>' : '')
     + '</div>'
     + (err ? '<div class="err" role="alert">' + esc(err) + '</div>' : '')
@@ -1195,11 +1199,12 @@ function readRuleForm() {
   r.from = g('rf-from').value; r.to = g('rf-to').value;
   r.staff = g('rf-staff').checked; r.staffNote = g('rf-staffnote').value.trim();
   r.skipHoliday = g('rf-skiphol').checked;
+  r.onHoliday = g('rf-onhol').checked;
   ui.modal.applyAll = !!(g('rf-all') && g('rf-all').checked);
 }
 function validateRule(r) {
   if (!r.title) return '予定の名前を入れてください。';
-  if (!r.weekdays.length) return '曜日を1つ以上選んでください。';
+  if (!r.weekdays.length && !r.onHoliday) return '曜日を1つ以上選ぶか、「祝日にも予定を作る」にチェックしてください。';
   if (!r.from) return '適用開始日を入れてください。';
   if (r.end && !r.start) return '終了時刻を入れる場合は、開始時刻も入れてください。';
   if (r.start && r.end && r.end <= r.start) return '終了時刻は開始時刻より後にしてください。';
@@ -1317,7 +1322,7 @@ document.addEventListener('click', function (ev) {
     case 'gen-bulk': runBulk(); break;
     case 'rule-new': {
       if (!res) break;
-      ui.modal = { type: 'rule', isNew: true, err: '', draft: { id: rid(), residentId: res.id, kind: 'day', title: '', place: '', facilityId: '', weekdays: [1, 2, 3, 4, 5], nth: [], start: '', end: '', staff: false, staffNote: '', from: ymd(ui.y, ui.m, 1), to: '', skipHoliday: false } };
+      ui.modal = { type: 'rule', isNew: true, err: '', draft: { id: rid(), residentId: res.id, kind: 'day', title: '', place: '', facilityId: '', weekdays: [1, 2, 3, 4, 5], nth: [], start: '', end: '', staff: false, staffNote: '', from: ymd(ui.y, ui.m, 1), to: '', skipHoliday: false, onHoliday: false } };
       renderModal(); break;
     }
     case 'rule-edit': {
@@ -1460,7 +1465,7 @@ document.addEventListener('click', function (ev) {
       try {
         var o = JSON.parse(document.getElementById('restore-text').value);
         if (!o || o.version !== DATA_VER || !o.residents || !o.rules || !o.homes) throw new Error('形式が違います');
-        o.fontOv = o.fontOv || {}; st = o; save(); ui.residentId = null; ui.roster = null; render(); toast('バックアップから戻しました。');
+        o.fontOv = o.fontOv || {}; st = o; save(); ui.residentId = null; ui.roster = null; ui.pSel = null; ui.editRes = null; if (st.residents[0]) ui.homeId = st.residents[0].homeId; render(); toast('バックアップから戻しました。');
       } catch (e3) { er3.textContent = 'バックアップの文字を読み取れませんでした。コピーした内容をそのまま貼り付けてください。'; }
       break;
     }
